@@ -1,3 +1,5 @@
 node_modules/
 docs/
 out/
+package.json
+run.log

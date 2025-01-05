@@ -31,7 +31,7 @@ const init = async (args) => {
 
   // Check supported model
   const model = getModel();
-  if (!model || !model.includes("Raspberry Pi 5")) {
+  if (!model || !model.includes("Raspberry Pi")) {
     console.warn(`Device ${model} not supported`);
     return false;
   }
@@ -44,8 +44,10 @@ const init = async (args) => {
   console.log("Memory Usage:", getMemoryUsage());
   console.log("Processor Usage:", getProcessorUsage());
   console.log("Processor Temperature:", getProcessorTemperature());
-  console.log("Display Status:", getDisplayStatus());
-  console.log("Display Brightness:", getDisplayBrightness(), "\n");
+  // Commented out for Pi 4 testing purposes as of 05.01.2025 - 17:15
+  // console.log("Display Status:", getDisplayStatus());
+  // console.log("Display Brightness:", getDisplayBrightness(), "\n");
+
 
   // Init globals
   HARDWARE.initialized = true;
@@ -64,6 +66,9 @@ const update = () => {
   if (!HARDWARE.initialized) {
     return;
   }
+  
+  // commented out for testing Pi 4 as of 05.01.2025 - 17:19
+  /*
   const path = "/sys/class/backlight/10-0045";
 
   // Display status has changed
@@ -85,6 +90,7 @@ const update = () => {
       notifier();
     });
   }
+  */
 };
 
 /**
@@ -96,8 +102,9 @@ const hardwareExists = () => {
   const files = [
     "/sys/firmware/devicetree/base/model",
     "/sys/firmware/devicetree/base/serial-number",
-    "/sys/class/backlight/10-0045/brightness",
-    "/sys/class/backlight/10-0045/bl_power",
+    // Uncommented for testing purposes as of 05.01.2025 - 16:57
+    // "/sys/class/backlight/10-0045/brightness",
+    // "/sys/class/backlight/10-0045/bl_power",
   ];
   return files.every((file) => fs.existsSync(file));
 };

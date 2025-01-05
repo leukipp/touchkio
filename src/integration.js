@@ -63,7 +63,7 @@ const init = async (args) => {
       initReboot(INTEGRATION.client);
       initRefresh(INTEGRATION.client);
       initKiosk(INTEGRATION.client);
-      initDisplay(INTEGRATION.client);
+      // initDisplay(INTEGRATION.client);  - Commented out for Pi 4 testing purposes as of 05.01.2025 - 16:59
 
       // Init client sensors
       initModel(INTEGRATION.client);
@@ -139,7 +139,7 @@ const initShutdown = (client) => {
     .on("message", (topic, message) => {
       if (topic === `${root}/execute`) {
         console.log("Shutdown system...");
-        hardware.setDisplayStatus("ON");
+        // hardware.setDisplayStatus("ON"); - Commented out for Pi 4 testing purposes as of 05.01.2025 - 16:59
         hardware.shutdownSystem();
       }
     })
@@ -168,7 +168,7 @@ const initReboot = (client) => {
     .on("message", (topic, message) => {
       if (topic === `${root}/execute`) {
         console.log("Rebooting system...");
-        hardware.setDisplayStatus("ON");
+        // hardware.setDisplayStatus("ON"); - Commented out for Pi 4 testing purposes as of 05.01.2025 - 16:59
         hardware.rebootSystem();
       }
     })
@@ -197,7 +197,7 @@ const initRefresh = (client) => {
     .on("message", (topic, message) => {
       if (topic === `${root}/execute`) {
         console.log("Refreshing webview...");
-        hardware.setDisplayStatus("ON");
+        // hardware.setDisplayStatus("ON"); - Commented out for Pi 4 testing purposes as of 05.01.2025 - 16:59
         WEBVIEW.view.webContents.reloadIgnoringCache();
       }
     })
@@ -236,7 +236,7 @@ const initKiosk = (client) => {
       if (topic === `${root}/set`) {
         const status = message.toString();
         console.log("Set Kiosk Status:", status);
-        hardware.setDisplayStatus("ON");
+        // hardware.setDisplayStatus("ON"); - Commented out for Pi 4 testing purposes as of 05.01.2025 - 16:59
         switch (status) {
           case "Framed":
             WEBVIEW.window.restore();
