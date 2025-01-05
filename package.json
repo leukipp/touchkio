@@ -6,7 +6,7 @@
     "license": "MIT",
     "main": "index.js",
     "scripts": {
-        "start": "electron . --web-url=https://demo.home-assistant.io",
+        "start": "electron . --web-url=https://hass.sh-software.info --mqtt-url=mqtt://10.127.100.11:1883 --mqtt-user=tablets --mqtt-password=Baltimore.2014 --display-type=HDMI",
         "build": "electron-forge make"
     },
     "config": {
@@ -58,5 +58,6 @@
     },
     "dependencies": {
         "mqtt": "^5.10.3"
-    }
+    },
+    "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

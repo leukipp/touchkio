@@ -23,8 +23,14 @@ const init = async (args) => {
     return false;
   }
 
+  if (args.display_type.includes("DSI")) {
+    console.log("Running in DSI mode...");
+  }
+  else if (args.display_type.includes("HDMI")) {
+    console.log("Running in HDMI mode...");
+  }
   // Check supported hardware
-  if (!hardwareExists()) {
+  if (!hardwareExists(args)) {
     console.warn("Hardware not supported");
     return false;
   }
@@ -44,17 +50,18 @@ const init = async (args) => {
   console.log("Memory Usage:", getMemoryUsage());
   console.log("Processor Usage:", getProcessorUsage());
   console.log("Processor Temperature:", getProcessorTemperature());
-  // Commented out for Pi 4 testing purposes as of 05.01.2025 - 17:15
-  // console.log("Display Status:", getDisplayStatus());
-  // console.log("Display Brightness:", getDisplayBrightness(), "\n");
 
+  if (args.display_type.includes("DSI")) {
+    console.log("Display Status:", getDisplayStatus());
+    console.log("Display Brightness:", getDisplayBrightness(), "\n");
+  }
 
   // Init globals
   HARDWARE.initialized = true;
   HARDWARE.status = "valid";
 
   // Check for display changes
-  setInterval(update, 500);
+  setInterval(update(args), 500);
 
   return true;
 };
@@ -62,13 +69,11 @@ const init = async (args) => {
 /**
  * Updates the shared hardware properties.
  */
-const update = () => {
-  if (!HARDWARE.initialized) {
+const update = (args) => {
+  if (!HARDWARE.initialized || !args.display_type.includes("DSI")) {
     return;
   }
-  
-  // commented out for testing Pi 4 as of 05.01.2025 - 17:19
-  /*
+
   const path = "/sys/class/backlight/10-0045";
 
   // Display status has changed
@@ -90,7 +95,6 @@ const update = () => {
       notifier();
     });
   }
-  */
 };
 
 /**
@@ -98,14 +102,17 @@ const update = () => {
  *
  * @returns {bool} Returns true if all files exists.
  */
-const hardwareExists = () => {
+const hardwareExists = (args) => {
+  console.log("Running hardware checks...");
   const files = [
     "/sys/firmware/devicetree/base/model",
     "/sys/firmware/devicetree/base/serial-number",
-    // Uncommented for testing purposes as of 05.01.2025 - 16:57
-    // "/sys/class/backlight/10-0045/brightness",
-    // "/sys/class/backlight/10-0045/bl_power",
   ];
+  if (args.display_type.includes("DSI")){
+    console.log("Checking for DSI hardware...")
+    files.push("/sys/class/backlight/10-0045/brightness");
+    files.push("/sys/class/backlight/10-0045/bl_power")
+  }
   return files.every((file) => fs.existsSync(file));
 };
 

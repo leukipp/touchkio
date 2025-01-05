@@ -120,6 +120,11 @@ const promptArgs = async (proc) => {
       fallback: "homeassistant",
     },
     {
+      key: "display_type",
+      question: "Do you use an HDMI or DSI display (e.g. Raspberry Pi Touch Display)?",
+      "fallback": "HDMI",
+    },
+    {
       key: "check",
       question: "\nEverything looks good?",
       fallback: "Y/n",
