@@ -6,7 +6,7 @@
     "license": "MIT",
     "main": "index.js",
     "scripts": {
-        "start": "electron . --web-url=https://hass.sh-software.info --mqtt-url=mqtt://10.127.100.11:1883 --mqtt-user=tablets --mqtt-password=Baltimore.2014 --display-type=HDMI",
+        "start": "electron . --web-url=https://demo.home-assistant.io --mqtt-url=mqtt://172.0.0.1:1883 --mqtt-user=kiosk --mqtt-password=kiosk --display-type=HDMI",
         "build": "electron-forge make"
     },
     "config": {
