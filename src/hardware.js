@@ -61,7 +61,7 @@ const init = async (args) => {
   HARDWARE.status = "valid";
 
   // Check for display changes
-  setInterval(update(args), 500);
+  setInterval(() => update(args), 500);
 
   return true;
 };
