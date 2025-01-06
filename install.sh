@@ -47,13 +47,32 @@ WantedBy=default.target
 EOF"
 
 systemctl --user enable "$(basename "$SERVICE_FILE")" || { echo "Failed to enable service $SERVICE_FILE"; exit 1; }
+echo "Service $SERVICE_FILE enabled"
 
 # Create the udev rule for backlight
 echo -e "\nCreating udev rule for backlight..."
 
-sudo bash -c 'cat << EOF > /etc/udev/rules.d/backlight-permissions.rules
-SUBSYSTEM=="backlight", KERNEL=="10-0045", RUN+="/bin/chmod 666 /sys/class/backlight/%k/bl_power /sys/class/backlight/%k/brightness"
-EOF'
+UDEV_FILE="/etc/udev/rules.d/backlight-permissions.rules"
+sudo bash -c "cat << EOF > \"$UDEV_FILE\"
+SUBSYSTEM==\"backlight\", KERNEL==\"10-0045\", RUN+=\"/bin/chmod 666 /sys/class/backlight/%k/bl_power /sys/class/backlight/%k/brightness\"
+EOF"
+echo "Rule $UDEV_FILE created"
+
+# Export display variables
+echo -e "\nExporting display variables..."
+
+if [ -z "$DISPLAY" ]; then
+    export DISPLAY=":0"
+    echo "DISPLAY was not set, defaulting to \"$DISPLAY\""
+else
+    echo "DISPLAY is set to \"$DISPLAY\""
+fi
+if [ -z "$WAYLAND_DISPLAY" ]; then
+    export WAYLAND_DISPLAY="wayland-0"
+    echo "WAYLAND_DISPLAY was not set, defaulting to \"$WAYLAND_DISPLAY\""
+else
+    echo "WAYLAND_DISPLAY is set to \"$WAYLAND_DISPLAY\""
+fi
 
 # Start the setup mode
 echo ""
