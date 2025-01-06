@@ -92,12 +92,18 @@ For example:
 touchkio --web-url=http://192.168.1.42:8123 --mqtt-url=mqtt://192.168.1.42:1883 --mqtt-user=kiosk --mqtt-password=password
 ```
 
+### DISPLAY
+To enable display control, you can use the following argument. Please be advised, that HDMI displays do not allow for control and setting the type to DSI, while using an HDMI display will break functionality
+| Name                          | Default         | Description                                                                              |
+| ----------------------------- | --------------- | ---------------------------------------------------------------------------------------- |
+| `--display-type` (Required)   | HDMI            | Sets the display type to enable/disable display control (Allwed: HDMI, DSI)              |
+
 ## Development
 If you want to create your own local build install [nodejs](https://pimylifeup.com/raspberry-pi-nodejs) and [yarn](https://classic.yarnpkg.com/lang/en/docs/install) on your Raspberry Pi.
 
 Clone this repository and run `yarn install` to install the dependencies.
 Then use `yarn start` to execute the `start` script located in the `package.json` file.
-There you can adjust the `--web-url` and other arguments for development runs.
+There you can adjust the `--web-url`, `--display-type` and other arguments for development runs.
 
 ### The nitty gritty
 
@@ -106,6 +112,8 @@ There you can adjust the `--web-url` and other arguments for development runs.
 To enable **write access** to the `/sys/class/backlight/10-0045/bl_power` and `/sys/class/backlight/10-0045/brightness` files, you need to set up a **udev rule**.
 This is done within the `install.sh` script, which also creates a `.service` file.
 While creating a service file is optional, it's highly recommended if you want your Raspberry Pi to automatically boot into kiosk mode.
+
+To differentiate between HDMI and DSI (e.g. official Raspberry Pi Touch Display), --display-type is used as a manual override for now. This might change in the future by implementing autodiscovery of the display type.
 
 The Raspberry Pi's **build-in screen blanking** function uses the command `swayidle -w timeout 600 'wlopm --off \*' resume 'wlopm --on \*' &` inside `~/.config/labwc/autostart` to blank the screen after **10 minutes**.
 The `wlopm --off \*` command changes the `bl_power` value to **4**, when setting the value to **0** the screen will turn on again.
@@ -137,8 +145,6 @@ Electron apps are known to be **resource intensive** due to their architecture a
 </div></details>
 
 ## Issues
-- Currently, only the Raspberry Pi 5 in combination with the new touch display 2 supports the MQTT integration.
-  - Other variations, such as Raspberry Pi 4 or Raspberry Pi 5 with touch display 1, could likely be added, but this will require additional testing and contributions via pull requests.
 - You can use Raspberry Pi's build-in screen blanking functionality, however, if the screen is turned on through Home Assistant after being automatically turned off, it will remain on indefinitely.
   - It's recommended to either use the built-in screen blanking feature or implement a Home Assistant automation (e.g., presence detection) to manage the screen status.
 - Hyperlinks that redirect the browser away from the main window are intentionally disabled.
