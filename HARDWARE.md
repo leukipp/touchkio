@@ -18,11 +18,13 @@ If you are running Linux with a graphical user interface (Wayland or X11), you s
 | Raspberry Pi 5 | [Official 7" Touch Display 2](https://www.raspberrypi.com/products/touch-display-2/)            | ✅      | Fully operational | Working display power, brightness and keyboard control via MQTT. |
 
 ### HDMI
-| Device         | Display                                                                | Tested | Status                | Notes                                                              |
-| -------------- | ---------------------------------------------------------------------- | ------ | --------------------- | ------------------------------------------------------------------ |
-| Raspberry Pi 4 | [LAFVIN 5" Touch Display](https://www.amazon.de/gp/product/B0BWJ8YP7S) | ✅      | Partially operational | Display brightness control is not available via MQTT.              |
-| Raspberry Pi 5 | Generic Non-Touch                                                      | ✅      | Partially operational | Display brightness control is not available via MQTT.              |
-| Generic Ubuntu | Generic Non-Touch                                                      | ✅      | Partially operational | Display brightness and keyboard control is not available via MQTT. |
+| Device         | Display                                                                          | Tested  | Status                | Notes                                                              |
+| -------------- | -------------------------------------------------------------------------------- | ------- | --------------------- | ------------------------------------------------------------------ |
+| Raspberry Pi 4 | [LAFVIN 5" Touch Display](https://www.amazon.de/gp/product/B0BWJ8YP7S)           | ✅      | Partially operational | Display brightness control is not available via MQTT.              |
+| Raspberry Pi 5 | Generic Non-Touch                                                                | ✅      | Partially operational | Display brightness control is not available via MQTT.              |
+| Generic Ubuntu | Generic Non-Touch                                                                | ✅      | Partially operational | Display brightness and keyboard control is not available via MQTT. |
+| Raspberry Pi 5 | [GeeekPi 10.1" Capacitive Touch / 1280X800](https://www.amazon.nl/dp/B0DHV6DZC1) | ✅      | Partially operational | Display brightness control is not available via MQTT, Working Display power |
+
 
 ## Contributions
 In case your hardware is not listed above don't worry, give it a try.
