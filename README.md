@@ -48,11 +48,16 @@ If your hardware is [supported](https://github.com/leukipp/touchkio/blob/main/HA
 
 #### Option 1 - The easy way
 Run this command to download and install the latest **.deb** (arm64 or x64) release.
-It will also create a systemd file for auto-startup and will guide you through the setup process:
+It will also create a systemd in the userspace file for auto-startup and will guide you through the setup process:
 ```bash
 bash <(wget -qO- https://raw.githubusercontent.com/leukipp/touchkio/main/install.sh)
 ```
 If you are paranoid, or smart, or both, have a look into the [install.sh](https://github.com/leukipp/touchkio/blob/main/install.sh) script before executing external code on your machine.
+For controlling the automatically created systemd service you can use the
+```bash
+systemctl --user start|stop|status|restart touchkio.service
+```
+commands.
 
 <details><summary>Alternatives</summary><div>
 
