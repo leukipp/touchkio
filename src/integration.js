@@ -307,10 +307,12 @@ const initDisplay = (client) => {
         const status = message.toString();
         console.log("Set Display Status:", status);
         hardware.setDisplayStatus(status);
+        hardware.update();
       } else if (topic === `${root}/brightness/set`) {
         const brightness = parseInt(message, 10);
         console.log("Set Display Brightness:", brightness);
         hardware.setDisplayBrightness(brightness);
+        hardware.update();
       }
     })
     .subscribe(`${root}/set`)

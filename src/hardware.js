@@ -1,7 +1,8 @@
 const os = require("os");
 const fs = require("fs");
 const path = require("path");
-const process = require("child_process");
+const fsp = require("fs/promises");
+const cpr = require("child_process");
 
 global.HARDWARE = global.HARDWARE || {
   initialized: false,
@@ -90,7 +91,7 @@ const init = async () => {
   });
 
   // Check for display changes
-  setInterval(update, 500);
+  interval(update, 1000);
 
   return true;
 };
@@ -98,14 +99,14 @@ const init = async () => {
 /**
  * Updates the shared hardware properties.
  */
-const update = () => {
+const update = async () => {
   if (!HARDWARE.initialized) {
     return;
   }
 
   // Display status has changed
   if (HARDWARE.support.displayStatus) {
-    const status = fs.readFileSync(`${HARDWARE.display.status.path}/dpms`, "utf8").trim();
+    const status = (await fsp.readFile(`${HARDWARE.display.status.path}/dpms`, "utf8")).trim();
     if (status !== HARDWARE.display.status.value) {
       console.log("Update Display Status:", getDisplayStatus());
       HARDWARE.display.status.value = status;
@@ -117,7 +118,7 @@ const update = () => {
 
   // Display brightness has changed
   if (HARDWARE.support.displayBrightness) {
-    const brightness = fs.readFileSync(`${HARDWARE.display.brightness.path}/brightness`, "utf8").trim();
+    const brightness = (await fsp.readFile(`${HARDWARE.display.brightness.path}/brightness`, "utf8")).trim();
     if (brightness !== HARDWARE.display.brightness.value) {
       console.log("Update Display Brightness:", getDisplayBrightness());
       HARDWARE.display.brightness.value = brightness;
@@ -532,7 +533,7 @@ const rebootSystem = (callback = null) => {
  */
 const processRuns = (name) => {
   try {
-    return !!process.execSync(`pidof ${name}`, { encoding: "utf8" });
+    return !!cpr.execSync(`pidof ${name}`, { encoding: "utf8" });
   } catch {}
   return false;
 };
@@ -545,7 +546,7 @@ const processRuns = (name) => {
  */
 const commandExists = (name) => {
   try {
-    return !!process.execSync(`which ${name}`, { encoding: "utf8" });
+    return !!cpr.execSync(`which ${name}`, { encoding: "utf8" });
   } catch {}
   return false;
 };
@@ -559,7 +560,7 @@ const commandExists = (name) => {
  */
 const execSyncCommand = (cmd, args = []) => {
   try {
-    const output = process.execSync([cmd, ...args].join(" "), { encoding: "utf8" });
+    const output = cpr.execSync([cmd, ...args].join(" "), { encoding: "utf8" });
     return output.trim().replace(/\0/g, "");
   } catch (error) {
     console.error("Execute Sync:", error.message);
@@ -578,7 +579,7 @@ const execSyncCommand = (cmd, args = []) => {
 const execAsyncCommand = (cmd, args = [], callback = null) => {
   let errorOutput = "";
   let successOutput = "";
-  let proc = process.spawn(cmd, args);
+  let proc = cpr.spawn(cmd, args);
   proc.stderr.on("data", (data) => {
     if (data) {
       errorOutput += data.toString();
@@ -622,7 +623,7 @@ const dbusCall = (path, method, values, callback = null) => {
   const dest = `${iface} ${path} ${iface}.${method} ${values.join(" ")}`;
   const args = ["--print-reply", "--type=method_call", `--dest=${dest}`];
   try {
-    const output = process.execSync([cmd, ...args].join(" "), { encoding: "utf8" });
+    const output = cpr.execSync([cmd, ...args].join(" "), { encoding: "utf8" });
     if (typeof callback === "function") {
       callback(output.trim().replace(/\0/g, ""), null);
     }
@@ -644,7 +645,7 @@ const dbusCall = (path, method, values, callback = null) => {
 const dbusMonitor = (path, callback) => {
   const cmd = "dbus-monitor";
   const args = [`interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='${path}'`];
-  const proc = process.spawn(cmd, args);
+  const proc = cpr.spawn(cmd, args);
   proc.stdout.on("data", (data) => {
     try {
       const signal = data.toString();
@@ -678,6 +679,26 @@ const dbusMonitor = (path, callback) => {
     }
   });
   return proc;
+};
+
+/**
+ * Helper function for asynchronous interval calls.
+ *
+ * @param {function} callback - An async callback function.
+ * @param {number} ms - Sleep time in milliseconds.
+ */
+const interval = (callback, ms) => {
+  const run = () => {
+    setTimeout(async () => {
+      try {
+        await callback();
+      } catch (error) {
+        console.error("Interval Callback:", error.message);
+      }
+      run();
+    }, ms);
+  };
+  run();
 };
 
 module.exports = {
