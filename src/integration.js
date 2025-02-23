@@ -117,7 +117,7 @@ const init = async () => {
 /**
  * Updates the shared integration properties.
  */
-const update = () => {
+const update = async () => {
   if (!INTEGRATION.initialized) {
     return;
   }

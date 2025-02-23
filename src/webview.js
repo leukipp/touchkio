@@ -86,7 +86,7 @@ const init = async () => {
 /**
  * Updates the shared webview properties.
  */
-const update = () => {
+const update = async () => {
   if (!WEBVIEW.initialized) {
     return;
   }
