@@ -16,22 +16,22 @@ global.WEBVIEW = global.WEBVIEW || {
 /**
  * Initializes the webview with the provided arguments.
  *
- * @param {Object} args - The command-line arguments to customize the initialization process.
  * @returns {boolean} Returns true if the initialization was successful.
  */
-const init = async (args) => {
-  if (!args.web_url) {
+const init = async () => {
+  if (!ARGS.web_url) {
     console.error("Please provide the '--web-url' parameter");
     return app.quit();
   }
-  if (!/^https?:\/\//.test(args.web_url)) {
+  if (!/^https?:\/\//.test(ARGS.web_url)) {
     console.error("Please provide the '--web-url' parameter with http(s)");
     return app.quit();
   }
-  const url = new URL(args.web_url);
-  const theme = ["light", "dark"].includes(args.web_theme) ? args.web_theme : "dark";
-  const zoom = !isNaN(parseFloat(args.web_zoom)) ? parseFloat(args.web_zoom) : 1.25;
-  const widget = args.web_widget ? args.web_widget === "true" : true;
+  const url = new URL(ARGS.web_url);
+  const theme = ["light", "dark"].includes(ARGS.web_theme) ? ARGS.web_theme : "dark";
+  const zoom = !isNaN(parseFloat(ARGS.web_zoom)) ? parseFloat(ARGS.web_zoom) : 1.25;
+  const widget = ARGS.web_widget ? ARGS.web_widget === "true" : true;
+  const fullscreen = ARGS.app_debug !== "true";
 
   // Init global layout
   WEBVIEW.viewZoom = zoom;
@@ -46,7 +46,10 @@ const init = async (args) => {
     icon: path.join(__dirname, "..", "img", "icon.png"),
   });
   WEBVIEW.window.setMenuBarVisibility(false);
-  WEBVIEW.window.setFullScreen(true);
+  WEBVIEW.window.setFullScreen(fullscreen);
+  if (!fullscreen) {
+    WEBVIEW.window.maximize();
+  }
 
   // Init global webview
   WEBVIEW.view = new WebContentsView({
@@ -288,7 +291,9 @@ const domEvents = () => {
 
   // Webview fully loaded
   WEBVIEW.view.webContents.on("did-finish-load", () => {
-    // view.webContents.openDevTools();
+    if (ARGS.app_debug === "true") {
+      WEBVIEW.view.webContents.openDevTools();
+    }
     WEBVIEW.initialized = true;
     update();
   });

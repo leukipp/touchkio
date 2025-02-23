@@ -29,10 +29,9 @@ global.HARDWARE = global.HARDWARE || {
 /**
  * Initializes the hardware with the provided arguments.
  *
- * @param {Object} args - The command-line arguments to customize the initialization process.
  * @returns {boolean} Returns true if the initialization was successful.
  */
-const init = async (args) => {
+const init = async () => {
   if (!compatibleDevice()) {
     console.warn("Device not supported");
     return false;

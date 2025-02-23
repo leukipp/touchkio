@@ -7,6 +7,8 @@ const hardware = require("./src/hardware");
 const webview = require("./src/webview");
 const { app } = require("electron");
 
+global.ARGS = global.ARGS || {};
+
 /**
  * This promise resolves when the app has finished initializing,
  * allowing to safely create browser windows and perform other
@@ -34,14 +36,15 @@ app.whenReady().then(async () => {
   } else if (!argsProvided && argsFileExists) {
     args = readArgs(argsFilePath);
   }
+  global.ARGS = args;
 
   // Show used arguments
-  console.log(`Arguments: ${JSON.stringify(args, null, 2)}`);
+  console.log(`Arguments: ${JSON.stringify(global.ARGS, null, 2)}`);
 
   // Chained init functions
   const chained = [webview.init, hardware.init, integration.init];
   for (const init of chained) {
-    if (!(await init(args))) {
+    if (!(await init())) {
       break;
     }
   }

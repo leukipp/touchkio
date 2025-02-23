@@ -10,21 +10,20 @@ global.INTEGRATION = global.INTEGRATION || {
 /**
  * Initializes the integration with the provided arguments.
  *
- * @param {Object} args - The command-line arguments to customize the initialization process.
  * @returns {boolean} Returns true if the initialization was successful.
  */
-const init = async (args) => {
-  if (!args.mqtt_url) {
+const init = async () => {
+  if (!ARGS.mqtt_url) {
     return false;
   }
-  if (!/^mqtts?:\/\//.test(args.mqtt_url)) {
+  if (!/^mqtts?:\/\//.test(ARGS.mqtt_url)) {
     console.error("Please provide the '--mqtt-url' parameter with mqtt(s)");
     return app.quit();
   }
-  const url = new URL(args.mqtt_url);
-  const user = args.mqtt_user ? args.mqtt_user : null;
-  const password = args.mqtt_password ? args.mqtt_password : null;
-  const discovery = args.mqtt_discovery ? args.mqtt_discovery : "homeassistant";
+  const url = new URL(ARGS.mqtt_url);
+  const user = ARGS.mqtt_user ? ARGS.mqtt_user : null;
+  const password = ARGS.mqtt_password ? ARGS.mqtt_password : null;
+  const discovery = ARGS.mqtt_discovery ? ARGS.mqtt_discovery : "homeassistant";
 
   const model = hardware.getModel();
   const vendor = hardware.getVendor();
