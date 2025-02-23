@@ -48,16 +48,19 @@ If your hardware is [supported](https://github.com/leukipp/touchkio/blob/main/HA
 
 #### Option 1 - The easy way
 Run this command to download and install the latest **.deb** (arm64 or x64) release.
-It will also create a systemd in the userspace file for auto-startup and will guide you through the setup process:
+It will also create a systemd user file for auto-startup and will guide you through the setup process:
 ```bash
 bash <(wget -qO- https://raw.githubusercontent.com/leukipp/touchkio/main/install.sh)
 ```
+Make sure that you run this with your **standard user** and not with root (sudo).
 If you are paranoid, or smart, or both, have a look into the [install.sh](https://github.com/leukipp/touchkio/blob/main/install.sh) script before executing external code on your machine.
-For controlling the automatically created systemd service you can use the
+The script can also be re-run to **update** an existing installation to the latest version.
+
+The systemd **user service** is enabled by default and the kiosk application should start automatically the next time you boot.
+If you need manual control use:
 ```bash
 systemctl --user start|stop|status|restart touchkio.service
 ```
-commands.
 
 <details><summary>Alternatives</summary><div>
 
@@ -77,7 +80,7 @@ The [install.sh](https://github.com/leukipp/touchkio/blob/main/install.sh) scrip
 Pre-built release files are available for arm64 and x64 Linux systems.
 If you are using a different architecture, you can still utilize this repository to build your own application.
 
-For more information, please refer to the [development](https://github.com/leukipp/touchkio?tab=readme-ov-file#development) section, however this will do the job:
+For more information please refer to the [development](https://github.com/leukipp/touchkio?tab=readme-ov-file#development) section, however this will do the job:
 ```bash
 yarn build
 ```
@@ -133,7 +136,7 @@ If you connect to your device via SSH, you may have to export display variables 
 export DISPLAY=":0"
 export WAYLAND_DISPLAY="wayland-0"
 ```
-To make this permanent, consider adding the export variables to the `~/.bashrc` file.
+To make this permanent, consider adding the export variables into the `~/.bashrc` file.
 
 ### Extensions
 
@@ -186,7 +189,7 @@ I managed to achieve this for the `brightness` file by implementing a simple `fs
 However, I found that it **never triggered** for the `bl_power` file.
 Although the file content changes, none of the filesystem listeners where fired.
 This could be due to `swayidle`/`wlopm` performing write actions at a deeper level that are not detectable by file listeners.
-As a result, I went for a **polling solution**, checking the state of the file every **500 milliseconds** for any changes.
+As a result, I went for a **polling solution**, checking the state of the file **every second** for any changes.
 While I understand this is not ideal, it's necessary to ensure proper functionality.
 
 The display power status and brightness can be adjusted via the MQTT integration.
