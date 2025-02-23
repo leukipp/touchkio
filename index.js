@@ -238,4 +238,6 @@ const decrypt = (value) => {
  * @param {number} ms - Sleep time in milliseconds.
  * @returns {Promise} A promise resolving after the timeout.
  */
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms) => {
+  return new Promise((r) => setTimeout(r, ms));
+};
