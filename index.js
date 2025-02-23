@@ -9,6 +9,14 @@ const { app } = require("electron");
 
 global.ARGS = global.ARGS || {};
 
+if (!process.env.DISPLAY) {
+  console.error(`$DISPLAY variable not set to run the GUI application, are you connected via SSH?`);
+  console.error(`If you have installed the service use:`);
+  console.error(`  systemctl --user start touchkio.service`);
+  console.error(`Alternatively export the variables first:`);
+  console.error(`  export DISPLAY=":0" && export WAYLAND_DISPLAY="wayland-0" && touchkio\n`);
+}
+
 /**
  * This promise resolves when the app has finished initializing,
  * allowing to safely create browser windows and perform other
