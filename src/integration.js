@@ -80,11 +80,11 @@ const init = async () => {
 
       // Integration initialized
       INTEGRATION.initialized = true;
-      INTEGRATION.status = "online";
+      INTEGRATION.status = "Online";
     })
     .on("error", (error) => {
       console.error("MQTT:", error);
-      INTEGRATION.status = "offline";
+      INTEGRATION.status = "Offline";
     });
 
   // Update sensor states from notifiers

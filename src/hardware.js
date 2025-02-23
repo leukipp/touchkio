@@ -48,7 +48,7 @@ const init = async () => {
   HARDWARE.display.brightness.max = getDisplayBrightnessMax();
   HARDWARE.support.keyboardVisibility = processRuns("squeekboard");
   HARDWARE.initialized = true;
-  HARDWARE.status = "valid";
+  HARDWARE.status = "Supported";
 
   // Show supported features
   console.log(`Supported: ${JSON.stringify(HARDWARE.support, null, 2)}`);
