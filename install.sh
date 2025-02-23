@@ -102,4 +102,7 @@ read -p "Start touchkio setup? (Y/n) " answer
 if [[ ${answer:-y} == [Yy]* ]]; then
     echo "/usr/bin/touchkio --setup"
     /usr/bin/touchkio --setup
+else
+    echo "/usr/bin/touchkio"
+    /usr/bin/touchkio
 fi
