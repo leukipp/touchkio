@@ -4,7 +4,7 @@ const { app } = require("electron");
 
 global.INTEGRATION = global.INTEGRATION || {
   initialized: false,
-  status: "offline",
+  status: null,
 };
 
 /**

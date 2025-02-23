@@ -6,7 +6,7 @@ const cpr = require("child_process");
 
 global.HARDWARE = global.HARDWARE || {
   initialized: false,
-  status: "invalid",
+  status: null,
   session: {},
   support: {},
   display: {

@@ -5,7 +5,7 @@ const { app, screen, nativeTheme, ipcMain, BaseWindow, WebContentsView } = requi
 
 global.WEBVIEW = global.WEBVIEW || {
   initialized: false,
-  status: "offline",
+  status: null,
   locked: false,
   pointer: {
     position: {},
