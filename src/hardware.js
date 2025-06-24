@@ -182,13 +182,13 @@ const session = (type) => {
 /**
  * Gets the model name using `/sys/firmware/devicetree/base/model` or `/sys/class/dmi/id/product_name`.
  *
- * @returns {string|null} The model name of the device or 'Generic' if not found.
+ * @returns {string} The model name of the device or 'Generic' if not found.
  */
 const getModel = () => {
   const paths = ["/sys/firmware/devicetree/base/model", "/sys/class/dmi/id/product_name"];
   for (const path of paths) {
     if (fs.existsSync(path)) {
-      return execSyncCommand("sudo", ["cat", path]);
+      return execSyncCommand("sudo", ["cat", path]) || "Generic";
     }
   }
   return "Generic";
@@ -197,13 +197,13 @@ const getModel = () => {
 /**
  * Gets the vendor name using `/sys/class/dmi/id/board_vendor`.
  *
- * @returns {string|null} The vendor name of the device or 'Generic' if not found.
+ * @returns {string} The vendor name of the device or 'Generic' if not found.
  */
 const getVendor = () => {
   const paths = ["/sys/class/dmi/id/board_vendor"];
   for (const path of paths) {
     if (fs.existsSync(path)) {
-      return execSyncCommand("sudo", ["cat", path]);
+      return execSyncCommand("sudo", ["cat", path]) || "Generic";
     }
   }
   const model = getModel();
@@ -216,13 +216,13 @@ const getVendor = () => {
 /**
  * Gets the serial number using `/sys/firmware/devicetree/base/serial-number` or `/sys/class/dmi/id/product_serial`.
  *
- * @returns {string|null} The serial number of the device or '123456' if not found.
+ * @returns {string} The serial number of the device or '123456' if not found.
  */
 const getSerialNumber = () => {
   const paths = ["/sys/firmware/devicetree/base/serial-number", "/sys/class/dmi/id/product_serial"];
   for (const path of paths) {
     if (fs.existsSync(path)) {
-      return execSyncCommand("sudo", ["cat", path]);
+      return execSyncCommand("sudo", ["cat", path]) || "123456";
     }
   }
   return "123456";
@@ -234,7 +234,13 @@ const getSerialNumber = () => {
  * @returns {string} The machine id of the system or '123456' if not found.
  */
 const getMachineId = () => {
-  return execSyncCommand("cat", ["/etc/machine-id"]) || "123456";
+  const paths = ["/etc/machine-id"];
+  for (const path of paths) {
+    if (fs.existsSync(path)) {
+      return execSyncCommand("sudo", ["cat", path]) || "123456";
+    }
+  }
+  return "123456";
 };
 
 /**
