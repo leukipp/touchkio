@@ -297,6 +297,23 @@ const domEvents = () => {
     WEBVIEW.initialized = true;
     update();
   });
+
+  // Webview not loaded
+  WEBVIEW.view.webContents.on("did-fail-load", (e, code, description, url, mainframe) => {
+    if (mainframe) {
+      const html = `
+        <html>
+          <body style="display:flex;justify-content:center;align-items:center;font-family:sans-serif;">
+            <div style="text-align:center;">
+              <h1>Whoopsie!</h1>
+              <p><strong>Loading:</strong> ${url}</p>
+              <p><strong>Error:</strong> ${description} (${code})</p>
+            </div>
+          </body>
+        </html>`;
+      WEBVIEW.view.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    }
+  });
 };
 
 /**
