@@ -68,7 +68,7 @@ const parseArgs = (proc) => {
   let args = {};
   proc.argv.slice(1).forEach((arg) => {
     if (arg !== ".") {
-      const [key, value] = arg.split("=");
+      const [key, value] = /^(.*?)=(.*)$/.exec(arg).slice(1);
       args[key.replace("--", "").replace("-", "_")] = value;
     }
   });
