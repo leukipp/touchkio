@@ -30,7 +30,7 @@ global.HARDWARE = global.HARDWARE || {
 /**
  * Initializes the hardware with the provided arguments.
  *
- * @returns {boolean} Returns true if the initialization was successful.
+ * @returns {bool} Returns true if the initialization was successful.
  */
 const init = async () => {
   if (!compatibleDevice()) {
@@ -176,7 +176,7 @@ const sessionType = () => {
  * @returns {bool} Returns true if the session matches the type.
  */
 const session = (type) => {
-  return HARDWARE.session.type == type;
+  return HARDWARE.session.type === type;
 };
 
 /**
@@ -361,7 +361,7 @@ const getDisplayStatus = () => {
  * the appropriate command to set the display status.
  *
  * @param {string} status - The desired status ('ON' or 'OFF').
- * @param {function} callback - A callback function that receives the output or error.
+ * @param {Function} callback - A callback function that receives the output or error.
  */
 const setDisplayStatus = (status, callback = null) => {
   if (!HARDWARE.support.displayStatus) {
@@ -437,7 +437,7 @@ const getDisplayBrightness = () => {
  * maps it to the proper range and writes it to the system.
  *
  * @param {number} brightness - The desired brightness level (1-100).
- * @param {function} callback - A callback function that receives the output or error.
+ * @param {Function} callback - A callback function that receives the output or error.
  */
 const setDisplayBrightness = (brightness, callback = null) => {
   if (!HARDWARE.support.displayBrightness) {
@@ -474,8 +474,8 @@ const getKeyboardVisibility = () => {
  * This function takes a desired visibility ('ON' or 'OFF') and executes
  * the appropriate command to show or hide the keyboard.
  *
- * @param {boolean} visibility - The desired visibility ('ON' or 'OFF').
- * @param {function} callback - A callback function that receives the output or error.
+ * @param {bool} visibility - The desired visibility ('ON' or 'OFF').
+ * @param {Function} callback - A callback function that receives the output or error.
  */
 const setKeyboardVisibility = (visibility, callback = null) => {
   if (!HARDWARE.support.keyboardVisibility) {
@@ -513,7 +513,7 @@ const checkPackageUpgrades = () => {
  * This function executes the command asynchronously.
  * The output of the command will be provided through the callback function.
  *
- * @param {function} callback - A callback function that receives the output or error.
+ * @param {Function} callback - A callback function that receives the output or error.
  */
 const shutdownSystem = (callback = null) => {
   execAsyncCommand("sudo", ["shutdown", "-h", "now"], callback);
@@ -525,7 +525,7 @@ const shutdownSystem = (callback = null) => {
  * This function executes the command asynchronously.
  * The output of the command will be provided through the callback function.
  *
- * @param {function} callback - A callback function that receives the output or error.
+ * @param {Function} callback - A callback function that receives the output or error.
  */
 const rebootSystem = (callback = null) => {
   execAsyncCommand("sudo", ["reboot"], callback);
@@ -535,7 +535,7 @@ const rebootSystem = (callback = null) => {
  * Checks if a process is running using `pidof`.
  *
  * @param {string} name - The process name to check.
- * @returns {boolean} Returns true if the process runs.
+ * @returns {bool} Returns true if the process runs.
  */
 const processRuns = (name) => {
   try {
@@ -548,7 +548,7 @@ const processRuns = (name) => {
  * Checks if a command is available using `which`.
  *
  * @param {string} name - The command name to check.
- * @returns {boolean} Returns true if the command is available.
+ * @returns {bool} Returns true if the command is available.
  */
 const commandExists = (name) => {
   try {
@@ -579,8 +579,8 @@ const execSyncCommand = (cmd, args = []) => {
  *
  * @param {string} cmd - The command to execute.
  * @param {Array<string>} args - The arguments for the command.
- * @param {function} callback - A callback function that receives the output or error.
- * @returns {object} The spawned process object.
+ * @param {Function} callback - A callback function that receives the output or error.
+ * @returns {Object} The spawned process object.
  */
 const execAsyncCommand = (cmd, args = [], callback = null) => {
   let errorOutput = "";
@@ -621,7 +621,7 @@ const execAsyncCommand = (cmd, args = [], callback = null) => {
  * @param {string} path - The D-Bus object path.
  * @param {string} method - The D-Bus method name.
  * @param {Array<string>} values - The argument values for the D-Bus method.
- * @param {function} callback - A callback function that receives the output or error.
+ * @param {Function} callback - A callback function that receives the output or error.
  */
 const dbusCall = (path, method, values, callback = null) => {
   const cmd = "dbus-send";
@@ -645,8 +645,8 @@ const dbusCall = (path, method, values, callback = null) => {
  * Monitors D-Bus property changes asynchronously using `dbus-monitor`.
  *
  * @param {string} path - The D-Bus object path.
- * @param {function} callback - A callback function that receives the changed property.
- * @returns {object} The spawned process object.
+ * @param {Function} callback - A callback function that receives the changed property.
+ * @returns {Object} The spawned process object.
  */
 const dbusMonitor = (path, callback) => {
   const cmd = "dbus-monitor";
@@ -690,7 +690,7 @@ const dbusMonitor = (path, callback) => {
 /**
  * Helper function for asynchronous interval calls.
  *
- * @param {function} callback - An async callback function.
+ * @param {Function} callback - An async callback function.
  * @param {number} ms - Sleep time in milliseconds.
  */
 const interval = (callback, ms) => {
