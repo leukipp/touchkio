@@ -71,17 +71,13 @@ app.whenReady().then(async () => {
  * @returns {Object} An object mapping argument names to their corresponding values.
  */
 const parseArgs = (proc) => {
-  let args = {};
-  proc.argv.slice(1).forEach((arg) => {
-    if (arg !== ".") {
-      const match = /^(.*?)=(.*)$/.exec(arg);
-      if (match) {
-        const [key, value] = match.slice(1);
-        args[key.replace("--", "").replace("-", "_")] = value;
-      }
-    }
-  });
-  return args;
+  const args = proc.argv.slice(1).filter((arg) => arg !== ".");
+  return Object.fromEntries(
+    args.flatMap((arg) => {
+      const match = arg.match(/^--?([^=]+)(?:=(.*))?$/);
+      return match ? [[match[1].replace(/-/g, "_"), match[2] ?? null]] : [];
+    }),
+  );
 };
 
 /**
