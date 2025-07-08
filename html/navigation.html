@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+  <head>
+    <style>
+      [data-theme="dark"] {
+        --primary-color: rgba(225, 225, 225, 1);
+        --border-color: rgba(225, 225, 225, 0.15);
+        --background-color: rgba(28, 28, 28, 1);
+      }
+      [data-theme="light"] {
+        --primary-color: rgba(33, 33, 33, 1);
+        --border-color: rgba(33, 33, 33, 0.15);
+        --background-color: rgba(255, 255, 255, 1);
+      }
+      ::-webkit-scrollbar {
+        display: none;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        cursor: pointer;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        width: 100vw;
+        height: 100vh;
+      }
+      menu {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        width: 100vw;
+        height: 100vh;
+        padding: 0 30px;
+        column-gap: 20px;
+        list-style-type: none;
+        border-top: 1px solid var(--border-color);
+        background: var(--background-color);
+      }
+      li {
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+      }
+      li.dynamic {
+        flex: 1 1 0%;
+      }
+      button {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background-color: transparent;
+      }
+      button.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+      }
+      input {
+        width: 100%;
+        min-width: 0;
+        margin: 0 10px;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 18px;
+        outline: none;
+        border: none;
+        box-sizing: border-box;
+        color: var(--primary-color);
+        background-color: var(--border-color);
+      }
+      svg {
+        pointer-events: none;
+        fill: var(--primary-color);
+      }
+    </style>
+  </head>
+  <body>
+    <menu>
+      <li>
+        <button id="home">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <title>home-circle</title>
+            <path
+              d="M19.07,4.93C17.22,3 14.66,1.96 12,2C9.34,1.96 6.79,3 4.94,4.93C3,6.78 1.96,9.34 2,12C1.96,14.66 3,17.21 4.93,19.06C6.78,21 9.34,22.04 12,22C14.66,22.04 17.21,21 19.06,19.07C21,17.22 22.04,14.66 22,12C22.04,9.34 21,6.78 19.07,4.93M17,12V18H13.5V13H10.5V18H7V12H5L12,5L19.5,12H17Z"
+            />
+          </svg>
+        </button>
+      </li>
+      <li>
+        <button id="pager">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <title>page-next</title>
+            <path
+              d="M20,3H5A2,2 0 0,0 3,5V11H7V9L11,12L7,15V13H3V19A2,2 0 0,0 5,21H20A2,2 0 0,0 22,19V5A2,2 0 0,0 20,3M17,17H13V15H17V17M20,13H13V11H20V13M20,9H13V7H20V9M3,13H0V11H3V13Z"
+            />
+          </svg>
+        </button>
+      </li>
+      <li class="dynamic">
+        <input id="url" type="text" spellcheck="false" />
+      </li>
+      <li>
+        <button id="backward">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <title>arrow-left-circle</title>
+            <path
+              d="M2,12A10,10 0 0,1 12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12M18,11H10L13.5,7.5L12.08,6.08L6.16,12L12.08,17.92L13.5,16.5L10,13H18V11Z"
+            />
+          </svg>
+        </button>
+      </li>
+      <li>
+        <button id="forward">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <title>arrow-right-circle</title>
+            <path
+              d="M22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2A10,10 0 0,1 22,12M6,13H14L10.5,16.5L11.92,17.92L17.84,12L11.92,6.08L10.5,7.5L14,11H6V13Z"
+            />
+          </svg>
+        </button>
+      </li>
+    </menu>
+    <script>
+      const { ipcRenderer } = require("electron");
+
+      const registerSendEvents = () => {
+        document.querySelectorAll("button").forEach((button) => {
+          button.addEventListener("click", (e) => {
+            ipcRenderer.send("button-click", { id: e.target.id });
+          });
+        });
+        document.querySelectorAll("input").forEach((input) => {
+          input.addEventListener("focus", (e) => {
+            ipcRenderer.send("input-focus", { id: e.target.id });
+          });
+          input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+              ipcRenderer.send("input-enter", { id: e.target.id, text: e.target.value });
+            }
+          });
+        });
+      };
+
+      const registerReceiveEvents = () => {
+        ipcRenderer.on("button-disabled", (e, button) => {
+          document.getElementById(button.id).classList.toggle("disabled", button.disabled);
+        });
+        ipcRenderer.on("input-blur", (e, input) => {
+          document.getElementById(input.id).blur();
+        });
+        ipcRenderer.on("input-select", (e, input) => {
+          document.getElementById(input.id).select();
+        });
+        ipcRenderer.on("input-text", (e, input) => {
+          document.getElementById(input.id).value = input.text;
+          document.getElementById(input.id).placeholder = input.placeholder;
+        });
+        ipcRenderer.on("data-theme", (e, data) => {
+          document.documentElement.setAttribute("data-theme", data.theme);
+        });
+      };
+
+      registerSendEvents();
+      registerReceiveEvents();
+    </script>
+  </body>
+</html>

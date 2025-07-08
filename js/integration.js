@@ -10,7 +10,7 @@ global.INTEGRATION = global.INTEGRATION || {
 /**
  * Initializes the integration with the provided arguments.
  *
- * @returns {boolean} Returns true if the initialization was successful.
+ * @returns {bool} Returns true if the initialization was successful.
  */
 const init = async () => {
   if (!ARGS.mqtt_url) {
@@ -47,7 +47,7 @@ const init = async () => {
   };
 
   // Connection settings
-  const options = user === null || password == null ? null : { username: user, password: password };
+  const options = user === null || password === null ? null : { username: user, password: password };
   const masked = password === null ? "null" : "*".repeat(password.length);
   console.log("MQTT Connecting:", `${user}:${masked}@${url.toString()}`);
   INTEGRATION.client = mqtt.connect(url.toString(), options);
@@ -64,6 +64,8 @@ const init = async () => {
       initKiosk(INTEGRATION.client);
       initDisplay(INTEGRATION.client);
       initKeyboard(INTEGRATION.client);
+      initPageNumber(INTEGRATION.client);
+      initPageUrl(INTEGRATION.client);
 
       // Init client sensors
       initModel(INTEGRATION.client);
@@ -124,6 +126,8 @@ const update = async () => {
 
   // Update client sensors
   updateKiosk(INTEGRATION.client);
+  updatePageNumber(INTEGRATION.client);
+  updatePageUrl(INTEGRATION.client);
   updateUpTime(INTEGRATION.client);
   updateLastActive(INTEGRATION.client);
   updateMemoryUsage(INTEGRATION.client);
@@ -203,7 +207,7 @@ const initRefresh = (client) => {
       if (topic === `${root}/execute`) {
         console.log("Refreshing webview...");
         hardware.setDisplayStatus("ON");
-        WEBVIEW.view.webContents.reloadIgnoringCache();
+        WEBVIEW.views[WEBVIEW.viewActive].webContents.reloadIgnoringCache();
       }
     })
     .subscribe(`${root}/execute`);
@@ -217,7 +221,7 @@ const initRefresh = (client) => {
 const initKiosk = (client) => {
   const root = `${INTEGRATION.discovery}/select/${INTEGRATION.node}/kiosk`;
   const config = {
-    name: `Kiosk`,
+    name: "Kiosk",
     unique_id: `${INTEGRATION.node}_kiosk`,
     command_topic: `${root}/set`,
     state_topic: `${root}/status`,
@@ -287,7 +291,7 @@ const initDisplay = (client) => {
   }
   const root = `${INTEGRATION.discovery}/light/${INTEGRATION.node}/display`;
   const config = {
-    name: `Display`,
+    name: "Display",
     unique_id: `${INTEGRATION.node}_display`,
     command_topic: `${root}/set`,
     state_topic: `${root}/status`,
@@ -348,7 +352,7 @@ const initKeyboard = (client) => {
   }
   const root = `${INTEGRATION.discovery}/switch/${INTEGRATION.node}/keyboard`;
   const config = {
-    name: `Keyboard`,
+    name: "Keyboard",
     unique_id: `${INTEGRATION.node}_keyboard`,
     command_topic: `${root}/set`,
     state_topic: `${root}/status`,
@@ -394,6 +398,97 @@ const updateKeyboard = (client) => {
 };
 
 /**
+ * Initializes the page number and handles the execute logic.
+ *
+ * @param {Object} client - Instance of the mqtt client.
+ */
+const initPageNumber = (client) => {
+  const root = `${INTEGRATION.discovery}/number/${INTEGRATION.node}/page_number`;
+  const config = {
+    name: "View",
+    unique_id: `${INTEGRATION.node}_page_number`,
+    command_topic: `${root}/set`,
+    state_topic: `${root}/status`,
+    value_template: "{{ value }}",
+    mode: "box",
+    min: 1,
+    max: WEBVIEW.viewUrls.length - 1,
+    unit_of_measurement: "Page",
+    icon: "mdi:page-next",
+    device: INTEGRATION.device,
+  };
+  client
+    .publish(`${root}/config`, JSON.stringify(config), { qos: 1, retain: true })
+    .on("message", (topic, message) => {
+      if (topic === `${root}/set`) {
+        const number = parseInt(message, 10);
+        console.log("Set Page Number:", number);
+        WEBVIEW.viewActive = number;
+      }
+    })
+    .subscribe(`${root}/set`);
+  updatePageNumber(client);
+};
+
+/**
+ * Updates the page number via the mqtt connection.
+ *
+ * @param {Object} client - Instance of the mqtt client.
+ */
+const updatePageNumber = (client) => {
+  const pageNumber = WEBVIEW.viewActive;
+  const root = `${INTEGRATION.discovery}/number/${INTEGRATION.node}/page_number`;
+  if (pageNumber !== null) {
+    client.publish(`${root}/status`, `${pageNumber}`, { qos: 1, retain: true });
+  }
+};
+
+/**
+ * Initializes the page url and handles the execute logic.
+ *
+ * @param {Object} client - Instance of the mqtt client.
+ */
+const initPageUrl = (client) => {
+  const root = `${INTEGRATION.discovery}/text/${INTEGRATION.node}/page_url`;
+  const config = {
+    name: "Url",
+    unique_id: `${INTEGRATION.node}_page_url`,
+    command_topic: `${root}/set`,
+    state_topic: `${root}/status`,
+    value_template: "{{ value }}",
+    pattern: "https?://.*",
+    icon: "mdi:web",
+    device: INTEGRATION.device,
+  };
+  client
+    .publish(`${root}/config`, JSON.stringify(config), { qos: 1, retain: true })
+    .on("message", (topic, message) => {
+      if (topic === `${root}/set`) {
+        const url = message.toString();
+        console.log("Set Page Url:", url);
+        WEBVIEW.views[WEBVIEW.viewActive].webContents.loadURL(url);
+      }
+    })
+    .subscribe(`${root}/set`);
+  updatePageUrl(client);
+};
+
+/**
+ * Updates the page url via the mqtt connection.
+ *
+ * @param {Object} client - Instance of the mqtt client.
+ */
+const updatePageUrl = (client) => {
+  const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
+  const currentUrl = WEBVIEW.views[WEBVIEW.viewActive].webContents.getURL();
+  const pageUrl = !currentUrl || currentUrl.startsWith("data:") ? defaultUrl : currentUrl;
+  const root = `${INTEGRATION.discovery}/text/${INTEGRATION.node}/page_url`;
+  if (pageUrl !== null) {
+    client.publish(`${root}/status`, `${pageUrl}`, { qos: 1, retain: true });
+  }
+};
+
+/**
  * Initializes the model sensor.
  *
  * @param {Object} client - Instance of the mqtt client.
@@ -401,7 +496,7 @@ const updateKeyboard = (client) => {
 const initModel = (client) => {
   const root = `${INTEGRATION.discovery}/sensor/${INTEGRATION.node}/model`;
   const config = {
-    name: `Model`,
+    name: "Model",
     unique_id: `${INTEGRATION.node}_model`,
     state_topic: `${root}/status`,
     value_template: "{{ value }}",
@@ -433,7 +528,7 @@ const updateModel = (client) => {
 const initSerialNumber = (client) => {
   const root = `${INTEGRATION.discovery}/sensor/${INTEGRATION.node}/serial_number`;
   const config = {
-    name: `Serial Number`,
+    name: "Serial Number",
     unique_id: `${INTEGRATION.node}_serial_number`,
     state_topic: `${root}/status`,
     value_template: "{{ value }}",
@@ -465,7 +560,7 @@ const updateSerialNumber = (client) => {
 const initHostName = (client) => {
   const root = `${INTEGRATION.discovery}/sensor/${INTEGRATION.node}/host_name`;
   const config = {
-    name: `Host Name`,
+    name: "Host Name",
     unique_id: `${INTEGRATION.node}_host_name`,
     state_topic: `${root}/status`,
     value_template: "{{ value }}",
@@ -497,7 +592,7 @@ const updateHostName = (client) => {
 const initUpTime = (client) => {
   const root = `${INTEGRATION.discovery}/sensor/${INTEGRATION.node}/up_time`;
   const config = {
-    name: `Up Time`,
+    name: "Up Time",
     unique_id: `${INTEGRATION.node}_up_time`,
     state_topic: `${root}/status`,
     value_template: "{{ (value | float) | round(0) }}",
@@ -530,7 +625,7 @@ const updateUpTime = (client) => {
 const initMemorySize = (client) => {
   const root = `${INTEGRATION.discovery}/sensor/${INTEGRATION.node}/memory_size`;
   const config = {
-    name: `Memory Size`,
+    name: "Memory Size",
     unique_id: `${INTEGRATION.node}_memory_size`,
     state_topic: `${root}/status`,
     value_template: "{{ (value | float) | round(2) }}",
@@ -563,7 +658,7 @@ const updateMemorySize = (client) => {
 const initMemoryUsage = (client) => {
   const root = `${INTEGRATION.discovery}/sensor/${INTEGRATION.node}/memory_usage`;
   const config = {
-    name: `Memory Usage`,
+    name: "Memory Usage",
     unique_id: `${INTEGRATION.node}_memory_usage`,
     state_topic: `${root}/status`,
     value_template: "{{ (value | float) | round(0) }}",
@@ -596,7 +691,7 @@ const updateMemoryUsage = (client) => {
 const initProcessorUsage = (client) => {
   const root = `${INTEGRATION.discovery}/sensor/${INTEGRATION.node}/processor_usage`;
   const config = {
-    name: `Processor Usage`,
+    name: "Processor Usage",
     unique_id: `${INTEGRATION.node}_processor_usage`,
     state_topic: `${root}/status`,
     value_template: "{{ (value | float) | round(0) }}",
@@ -629,7 +724,7 @@ const updateProcessorUsage = (client) => {
 const initProcessorTemperature = (client) => {
   const root = `${INTEGRATION.discovery}/sensor/${INTEGRATION.node}/processor_temperature`;
   const config = {
-    name: `Processor Temperature`,
+    name: "Processor Temperature",
     unique_id: `${INTEGRATION.node}_processor_temperature`,
     state_topic: `${root}/status`,
     value_template: "{{ (value | float) | round(0) }}",
@@ -662,7 +757,7 @@ const updateProcessorTemperature = (client) => {
 const initPackageUpgrades = (client) => {
   const root = `${INTEGRATION.discovery}/sensor/${INTEGRATION.node}/package_upgrades`;
   const config = {
-    name: `Package Upgrades`,
+    name: "Package Upgrades",
     unique_id: `${INTEGRATION.node}_package_upgrades`,
     state_topic: `${root}/status`,
     json_attributes_topic: `${root}/attributes`,
@@ -700,7 +795,7 @@ const updatePackageUpgrades = (client) => {
 const initHeartbeat = (client) => {
   const root = `${INTEGRATION.discovery}/sensor/${INTEGRATION.node}/heartbeat`;
   const config = {
-    name: `Heartbeat`,
+    name: "Heartbeat",
     unique_id: `${INTEGRATION.node}_heartbeat`,
     state_topic: `${root}/status`,
     value_template: "{{ value }}",
@@ -732,7 +827,7 @@ const updateHeartbeat = (client) => {
 const initLastActive = (client) => {
   const root = `${INTEGRATION.discovery}/sensor/${INTEGRATION.node}/last_active`;
   const config = {
-    name: `Last Active`,
+    name: "Last Active",
     unique_id: `${INTEGRATION.node}_last_active`,
     state_topic: `${root}/status`,
     value_template: "{{ (value | float) | round(0) }}",

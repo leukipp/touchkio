@@ -2,9 +2,9 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const readline = require("readline/promises");
-const integration = require("./src/integration");
-const hardware = require("./src/hardware");
-const webview = require("./src/webview");
+const integration = require("./js/integration");
+const hardware = require("./js/hardware");
+const webview = require("./js/webview");
 const { app } = require("electron");
 
 global.ARGS = global.ARGS || {};
@@ -44,6 +44,12 @@ app.whenReady().then(async () => {
   } else if (!argsProvided && argsFileExists) {
     args = readArgs(argsFilePath);
   }
+
+  // Split url arguments
+  args.web_url = args.web_url || [];
+  if (!Array.isArray(args.web_url)) {
+    args.web_url = args.web_url.split(",").map((url) => url.trim());
+  }
   global.ARGS = args;
 
   // Show used arguments
@@ -68,8 +74,11 @@ const parseArgs = (proc) => {
   let args = {};
   proc.argv.slice(1).forEach((arg) => {
     if (arg !== ".") {
-      const [key, value] = /^(.*?)=(.*)$/.exec(arg).slice(1);
-      args[key.replace("--", "").replace("-", "_")] = value;
+      const match = /^(.*?)=(.*)$/.exec(arg);
+      if (match) {
+        const [key, value] = match.slice(1);
+        args[key.replace("--", "").replace("-", "_")] = value;
+      }
     }
   });
   return args;
@@ -164,7 +173,11 @@ const promptArgs = async (proc) => {
       const prompt = `${question} (${fallback}): `;
       const answer = await read.question(prompt);
       const value = answer.trim() || fallback;
-      args[key] = value;
+      if (key === "web_url") {
+        args[key] = value.split(",").map((v) => v.trim());
+      } else {
+        args[key] = value;
+      }
     }
   }
   read.close();
