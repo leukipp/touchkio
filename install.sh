@@ -33,6 +33,7 @@ sed 's/"browser_download_url": "//;s/"//g')
 
 TMP_DIR=$(mktemp -d)
 DEB_PATH="${TMP_DIR}/$(basename "$DEB_URL")"
+chmod 755 "$TMP_DIR"
 
 if [ -z "$DEB_URL" ]; then
     echo "Download url for .deb file not found."
@@ -47,12 +48,12 @@ fi
 # Install the latest .deb package
 echo -e "\nInstalling the latest release..."
 
-if ! command -v dpkg &> /dev/null; then
-    echo "Package manager dpkg was not found."
+if ! command -v apt &> /dev/null; then
+    echo "Package manager apt was not found."
     exit 1
 fi
 
-if ! sudo dpkg -i "$DEB_PATH"; then
+if ! sudo apt install "$DEB_PATH"; then
     echo "Installation of .deb file failed."
     exit 1
 fi
