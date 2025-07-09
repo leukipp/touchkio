@@ -77,6 +77,7 @@ const init = async () => {
       initMemoryUsage();
       initProcessorUsage();
       initProcessorTemperature();
+      initBatteryLevel();
       initPackageUpgrades();
       initHeartbeat();
       initLastActive();
@@ -134,6 +135,7 @@ const update = async () => {
   updateMemoryUsage();
   updateProcessorUsage();
   updateProcessorTemperature();
+  updateBatteryLevel();
 };
 
 /**
@@ -690,6 +692,35 @@ const initProcessorTemperature = () => {
 const updateProcessorTemperature = () => {
   const processorTemperature = hardware.getProcessorTemperature();
   publishState("processor_temperature", processorTemperature);
+};
+
+/**
+ * Initializes the battery level sensor.
+ */
+const initBatteryLevel = () => {
+  if (!HARDWARE.support.batteryLevel) {
+    return;
+  }
+  const root = `${INTEGRATION.root}/battery_level`;
+  const config = {
+    name: "Battery Level",
+    unique_id: `${INTEGRATION.node}_battery_level`,
+    state_topic: `${root}/state`,
+    value_template: "{{ (value | float) | round(0) }}",
+    unit_of_measurement: "%",
+    icon: "mdi:battery-medium",
+    device: INTEGRATION.device,
+  };
+  publishConfig("sensor", config);
+  updateBatteryLevel();
+};
+
+/**
+ * Updates the battery level sensor via the mqtt connection.
+ */
+const updateBatteryLevel = () => {
+  const batteryLevel = hardware.getBatteryLevel();
+  publishState("battery_level", batteryLevel);
 };
 
 /**

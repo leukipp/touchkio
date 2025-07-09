@@ -9,6 +9,11 @@ global.HARDWARE = global.HARDWARE || {
   status: null,
   session: {},
   support: {},
+  battery: {
+    level: {
+      path: null,
+    },
+  },
   display: {
     status: {
       path: null,
@@ -41,6 +46,8 @@ const init = async () => {
   // Init globals
   HARDWARE.session.user = sessionUser();
   HARDWARE.session.type = sessionType();
+  HARDWARE.battery.level.path = getBatteryLevelPath();
+  HARDWARE.support.batteryLevel = HARDWARE.battery.level.path !== null;
   HARDWARE.display.status.path = getDisplayStatusPath();
   HARDWARE.support.displayStatus = HARDWARE.display.status.path !== null;
   HARDWARE.display.brightness.path = getDisplayBrightnessPath();
@@ -70,8 +77,9 @@ const init = async () => {
   console.log("Processor Usage:", getProcessorUsage());
   console.log("Processor Temperature:", getProcessorTemperature());
 
-  // Show display infos
-  console.log(`\nDisplay Status [${HARDWARE.display.status.path}]:`, getDisplayStatus());
+  // Show hardware infos
+  console.log(`\nBattery Level [${HARDWARE.battery.level.path}]:`, getBatteryLevel());
+  console.log(`Display Status [${HARDWARE.display.status.path}]:`, getDisplayStatus());
   console.log(`Display Brightness [${HARDWARE.display.brightness.path}]:`, getDisplayBrightness(), "\n");
 
   // Check for keyboard visibility
@@ -310,6 +318,39 @@ const getProcessorTemperature = () => {
 };
 
 /**
+ * Gets the current battery power level path using `/sys/class/power_supply`.
+ *
+ * @returns {string|null} The battery power level path or null if nothing was found.
+ */
+const getBatteryLevelPath = () => {
+  const power = "/sys/class/power_supply";
+  for (const supply of fs.readdirSync(power)) {
+    const capacityFile = path.join(power, supply, "capacity");
+    if (!fs.existsSync(capacityFile)) {
+      continue;
+    }
+    return path.join(power, supply);
+  }
+  return null;
+};
+
+/**
+ * Gets the current battery power level using `/sys/class/power_supply/.../capacity`.
+ *
+ * @returns {number|null} The battery power level in percentage or null if nothing was found.
+ */
+const getBatteryLevel = () => {
+  if (!HARDWARE.support.batteryLevel) {
+    return null;
+  }
+  const capacity = fs.readFileSync(`${HARDWARE.battery.level.path}/capacity`, "utf8").trim();
+  if (capacity) {
+    return parseFloat(capacity);
+  }
+  return null;
+};
+
+/**
  * Gets the current display status path using `/sys/class/drm`.
  *
  * @returns {string|null} The display status path or null if nothing was found.
@@ -406,8 +447,8 @@ const getDisplayBrightnessMax = () => {
   if (!HARDWARE.support.displayBrightness) {
     return null;
   }
-  const max = execSyncCommand("cat", [`${HARDWARE.display.brightness.path}/max_brightness`]);
-  if (max !== null) {
+  const max = fs.readFileSync(`${HARDWARE.display.brightness.path}/max_brightness`, "utf8").trim();
+  if (max) {
     return parseInt(max, 10);
   }
   return null;
@@ -422,10 +463,10 @@ const getDisplayBrightness = () => {
   if (!HARDWARE.support.displayBrightness) {
     return null;
   }
-  const brightness = execSyncCommand("cat", [`${HARDWARE.display.brightness.path}/brightness`]);
-  if (brightness !== null) {
-    const max = HARDWARE.display.brightness.max;
-    return Math.round((parseInt(brightness, 10) / max) * 100);
+  const brightness = fs.readFileSync(`${HARDWARE.display.brightness.path}/brightness`, "utf8").trim();
+  if (brightness) {
+    const max = HARDWARE.display.brightness.max || 1;
+    return Math.max(1, Math.min(Math.round((parseInt(brightness, 10) / max) * 100), 100));
   }
   return null;
 };
@@ -720,6 +761,8 @@ module.exports = {
   getMemoryUsage,
   getProcessorUsage,
   getProcessorTemperature,
+  getBatteryLevelPath,
+  getBatteryLevel,
   getDisplayStatusPath,
   getDisplayStatus,
   setDisplayStatus,

@@ -10,7 +10,7 @@ const { app } = require("electron");
 global.ARGS = global.ARGS || {};
 
 if (!process.env.DISPLAY) {
-  console.error(`$DISPLAY variable not set to run the GUI application, are you connected via SSH?`);
+  console.error(`\n$DISPLAY variable not set to run the GUI application, are you connected via SSH?`);
   console.error(`If you have installed the service use:`);
   console.error(`  systemctl --user start touchkio.service`);
   console.error(`Alternatively export the variables first:`);
