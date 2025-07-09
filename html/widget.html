@@ -46,6 +46,14 @@
         border-bottom: 1px solid var(--border-color);
         background: var(--background-color);
       }
+      li {
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+      }
+      li.hidden {
+        display: none;
+      }
       button {
         width: 32px;
         height: 32px;
@@ -114,7 +122,7 @@
 
       const registerReceiveEvents = () => {
         ipcRenderer.on("button-hidden", (e, button) => {
-          document.getElementById(button.id).parentNode.hidden = button.hidden;
+          document.getElementById(button.id).parentNode.classList.toggle("hidden", button.hidden);
         });
         ipcRenderer.on("data-theme", (e, data) => {
           document.documentElement.setAttribute("data-theme", data.theme);

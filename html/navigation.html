@@ -46,15 +46,18 @@
       li.dynamic {
         flex: 1 1 0%;
       }
+      li.hidden {
+        display: none;
+      }
+      li.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+      }
       button {
         width: 32px;
         height: 32px;
         border: none;
         background-color: transparent;
-      }
-      button.disabled {
-        opacity: 0.5;
-        pointer-events: none;
       }
       input {
         width: 100%;
@@ -144,7 +147,10 @@
 
       const registerReceiveEvents = () => {
         ipcRenderer.on("button-disabled", (e, button) => {
-          document.getElementById(button.id).classList.toggle("disabled", button.disabled);
+          document.getElementById(button.id).parentNode.classList.toggle("disabled", button.disabled);
+        });
+        ipcRenderer.on("button-hidden", (e, button) => {
+          document.getElementById(button.id).parentNode.classList.toggle("hidden", button.hidden);
         });
         ipcRenderer.on("input-blur", (e, input) => {
           document.getElementById(input.id).blur();

@@ -183,10 +183,10 @@ const updateNavigation = () => {
   const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
   const currentUrl = view.webContents.getURL();
 
-  // Disable pager button
-  WEBVIEW.navigation.webContents.send("button-disabled", {
+  // Hide pager button
+  WEBVIEW.navigation.webContents.send("button-hidden", {
     id: "pager",
-    disabled: WEBVIEW.views.length < 3,
+    hidden: WEBVIEW.viewUrls.length < 3,
   });
 
   // Update url text

@@ -413,6 +413,9 @@ const updateKeyboard = () => {
  * Initializes the page number and handles the execute logic.
  */
 const initPageNumber = () => {
+  if (WEBVIEW.viewUrls.length < 3) {
+    return;
+  }
   const root = `${INTEGRATION.root}/page_number`;
   const config = {
     name: "Page Number",
