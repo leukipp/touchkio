@@ -10,7 +10,7 @@ const { app } = require("electron");
 global.ARGS = global.ARGS || {};
 
 if (!process.env.DISPLAY) {
-  console.error(`\n$DISPLAY variable not set to run the GUI application, are you connected via SSH?`);
+  console.error(`\n$DISPLAY variable not set to run the GUI application, are you connected via SSH?\n`);
   console.error(`If you have installed the service use:`);
   console.error(`  systemctl --user start touchkio.service`);
   console.error(`Alternatively export the variables first:`);
@@ -33,6 +33,12 @@ app.whenReady().then(async () => {
 
   let argsFilePath = path.join(app.getPath("userData"), "Arguments.json");
   let argsFileExists = fs.existsSync(argsFilePath);
+
+  // Show version and release info
+  if ("help" in args || "version" in args) {
+    console.log(`${app.getName()}-v${app.getVersion()}, https://github.com/leukipp/touchkio`);
+    return app.quit();
+  }
 
   // Setup arguments from file path
   if ("setup" in args || (!argsProvided && !argsFileExists)) {
