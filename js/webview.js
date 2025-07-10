@@ -1,7 +1,7 @@
 const path = require("path");
 const hardware = require("./hardware");
 const integration = require("./integration");
-const { app, screen, nativeTheme, ipcMain, BaseWindow, WebContentsView } = require("electron");
+const { app, screen, nativeTheme, ipcMain, session, BaseWindow, WebContentsView } = require("electron");
 
 global.WEBVIEW = global.WEBVIEW || {
   initialized: false,
@@ -27,6 +27,9 @@ const init = async () => {
     console.error("Please provide the '--web-url' parameter with http(s)");
     return app.quit();
   }
+  session.defaultSession.clearCache();
+
+  // Parse arguments
   const fullscreen = ARGS.app_debug !== "true";
   const widget = ARGS.web_widget ? ARGS.web_widget === "true" : true;
   const zoom = !isNaN(parseFloat(ARGS.web_zoom)) ? parseFloat(ARGS.web_zoom) : 1.25;
@@ -346,17 +349,27 @@ const windowEvents = () => {
 
   // Handle window touch events for activity tracking
   setInterval(() => {
-    const posOld = WEBVIEW.pointer.position;
+    const now = new Date();
+    const then = WEBVIEW.pointer.time;
+    const delta = Math.abs(now - then) / 1000;
     const posNew = screen.getCursorScreenPoint();
+    const posOld = WEBVIEW.pointer.position;
+
+    // Cursor movement detected
     if (posOld.x !== posNew.x || posOld.y !== posNew.y) {
-      const now = new Date();
-      const then = WEBVIEW.pointer.time;
+      WEBVIEW.pointer.time = now;
 
       // Update integration sensor
-      WEBVIEW.pointer.time = now;
-      if (Math.abs(now - then) / 1000 > 30) {
+      if (delta > 30) {
         console.log("Update Last Active");
         integration.update();
+      }
+    } else if (delta > 60) {
+      const navigation = WEBVIEW.navigation.getBounds();
+
+      // Auto-hide navigation
+      if (navigation.height > 0) {
+        toggleNavigation();
       }
     }
     WEBVIEW.pointer.position = posNew;

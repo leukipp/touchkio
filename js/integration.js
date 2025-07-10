@@ -20,6 +20,8 @@ const init = async () => {
     console.error("Please provide the '--mqtt-url' parameter with mqtt(s)");
     return app.quit();
   }
+
+  // Parse arguments
   const url = new URL(ARGS.mqtt_url);
   const user = ARGS.mqtt_user ? ARGS.mqtt_user : null;
   const password = ARGS.mqtt_password ? ARGS.mqtt_password : null;
@@ -30,14 +32,13 @@ const init = async () => {
   const hostName = hardware.getHostName();
   const serialNumber = hardware.getSerialNumber();
   const serialNumberSuffix = serialNumber.slice(-6);
-
-  const deviceId = serialNumberSuffix.toUpperCase().replace(/[^A-Z0-9]/g, "");
   const deviceName = hostName.charAt(0).toUpperCase() + hostName.slice(1);
+  const deviceId = serialNumberSuffix.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
   // Init globals
+  INTEGRATION.discovery = discovery;
   INTEGRATION.node = `rpi_${deviceId}`;
   INTEGRATION.root = `${app.getName()}/${INTEGRATION.node}`;
-  INTEGRATION.discovery = discovery;
   INTEGRATION.device = {
     name: `TouchKio ${deviceName}`,
     model: model,
