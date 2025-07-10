@@ -11,17 +11,19 @@ Moreover, the device running the **kiosk application** also offers several **Hom
 ## Features
 - [x] Fast and easy setup.
 - [x] Remember login credentials.
+- [x] Touch optimized web browsing.
 - [x] Side panel widget for kiosk control.
-- [x] Touch friendly web browser interface.
-- [x] Configurable zoom and theme support. 
-- [x] Single-tap screen wake-up functionality.
+- [x] Navigation bar to switch between pages.
+- [x] Configurable browser zoom and theme support. 
+- [x] Extended touch screen wake-up functionality.
 - [x] Remote controllable via MQTT.
   - [x] Manage kiosk window status.
-  - [x] Manage touch keyboard status.
+  - [x] Toggle the on-screen keyboard.
   - [x] Touch display power and brightness.
-  - [x] Show available system package upgrades.
-  - [x] Execute system reboot and shutdown commands.
+  - [x] Multi-webpage switching and url navigation.
   - [x] Monitor temperature, processor and memory usage.
+  - [x] Execute system reboot and shutdown commands.
+  - [x] Show available system package upgrades.
 
 The kiosk application can be executed with command line arguments to load a **Home Assistant dashboard in fullscreen** mode.
 Additionally, a **MQTT endpoint** can be defined, allowing the application to provide controls and sensors for the Linux device and the connected Touch Display.
@@ -54,7 +56,7 @@ bash <(wget -qO- https://raw.githubusercontent.com/leukipp/touchkio/main/install
 ```
 Make sure that you run this with your **standard user** and not with root (sudo).
 If you are paranoid, or smart, or both, have a look into the [install.sh](https://github.com/leukipp/touchkio/blob/main/install.sh) script before executing external code on your machine.
-The script can also be re-run to **update** an existing installation to the latest version.
+This command can also be re-run to **update** an existing installation to the latest version.
 
 The systemd **user service** is enabled by default and the kiosk application should start automatically the next time you boot.
 If you need manual control use:
@@ -69,7 +71,7 @@ When connected via SSH, it's necessary to export the display variables first, as
 The [install.sh](https://github.com/leukipp/touchkio/blob/main/install.sh) script mentioned above performs the following tasks (and you just have to do it manually):
 - [Download](https://github.com/leukipp/touchkio/releases/latest) the latest version file that is suitable for your architecture (arm64 or x64).
   - Debian (**deb**): Open a terminal and execute the following command to install the application, e.g:
-`sudo dpkg -i touchkio_1.x.x_arm64.deb && touchkio --setup`
+`sudo apt install ./touchkio_1.x.x_arm64.deb && touchkio --setup`
   - Others (**zip**): Extract the archive and run the binary, e.g:  `unzip touchkio-linux-x64-1.x.x.zip && cd touchkio-linux-x64 && ./touchkio --setup`
 - If you just want to load a Home Assistant dashboard without further control you are good to go, e.g: `touchkio --web-url=https://demo.home-assistant.io`
   - The `--web-url` doesn't necessarily need to be a Home Assistant url, any kind of website can be shown in kiosk mode.
@@ -93,18 +95,32 @@ These default arguments are stored in `~/.config/touchkio/Arguments.json`, where
 
 ### WEB
 The available arguments to control the kiosk application via terminal are as follows: 
-| Name                      | Default | Description                                            |
-| ------------------------- | ------- | ------------------------------------------------------ |
-| `--web-url` (Required)    | -       | Url of the Home Assistant instance (HTTP(S)://IP:PORT) |
-| `--web-theme` (Optional)  | `dark`  | Theme settings of the web browser (`light` or `dark`)  |
-| `--web-zoom` (Optional)   | `1.25`  | Zoom settings of the web browser (`1.0` is `100%`)     |
-| `--web-widget` (Optional) | `true`  | Enables the sidebar widget (`true` or `false`)         |
+| Name                      | Default | Description                                                                                                |
+| ------------------------- | ------- | ---------------------------------------------------------------------------------------------------------- |
+| `--web-url` (Required)    | -       | Url of the Home Assistant instance<a id="ref1"></a><sup><a href="#foot1">[1]</a></sup> (HTTP(S)://IP:PORT) |
+| `--web-theme` (Optional)  | `dark`  | Theme settings of the web browser (`light` or `dark`)                                                      |
+| `--web-zoom` (Optional)   | `1.25`  | Zoom settings of the web browser (`1.0` is `100%`)                                                         |
+| `--web-widget` (Optional) | `true`  | Enables the sidebar widget (`true` or `false`)                                                             |
 
 These arguments allow you to customize the appearance of the web browser view.
 
 For example:
 ```bash
 touchkio --web-url=http://192.168.1.42:8123 --web-theme=light --web-zoom=1.0
+```
+
+> <a href="#ref1">↩ </a><a id="foot1"></a>**[1]:** Not necessarily a Home Assistant Url.  
+> You can load multiple pages by separating them with a comma:
+> `touchkio --web-url=https://demo.home-assistant.io,https://imvbh.github.io/FlipClock`.
+
+In the `~/.config/touchkio/Arguments.json` file: 
+```json
+{
+  "web_url": [
+    "https://demo.home-assistant.io",
+    "https://imvbh.github.io/FlipClock"
+  ]
+}
 ```
 
 ### MQTT
@@ -129,9 +145,9 @@ To create your own local build, you first need to install [Node.js](https://pimy
 
 Clone this repository and run `yarn install` to install the dependencies.
 Then use `yarn start` to execute the start script located in the [package.json](https://github.com/leukipp/touchkio/blob/main/package.json) file.
-There you can adjust the `--web-url` and other arguments for development runs.
+There you may want to adjust the `--web-url` and other arguments for development runs.
 
-If you connect to your device via SSH, you may have to export display variables so that the kiosk application can be loaded inside the desktop environment:
+If you access your device over SSH, make sure to export the display variables so the kiosk application can launch in the desktop environment.
 ```bash
 export DISPLAY=":0"
 export WAYLAND_DISPLAY="wayland-0"
@@ -178,7 +194,7 @@ While using external sensors that directly integrate with Home Assistant and by 
 <details><summary>Don't waste your time reading this.</summary><div></br>
 
 The Raspberry Pi's **build-in on-screen keyboard** named `squeekboard` (it squeaks because some *Rust* got inside), is specifically designed for Wayland environments and features a **D-Bus interface** that allows applications to show or hide the keyboard as needed.
-The kiosk application interacts with squeekboard via this `D-Bus` object path `/sm/puri/OSK0`, enabling the keyboard to be hidden or shown based on **MQTT** user input or system events. 
+The kiosk application interacts with squeekboard via the `D-Bus` object path `/sm/puri/OSK0`, enabling the keyboard to be hidden or shown based on **MQTT** user input or system events. 
 
 The Raspberry Pi's **build-in screen blanking** function uses the command `swayidle -w timeout 600 'wlopm --off \*' resume 'wlopm --on \*' &` inside `~/.config/labwc/autostart` to blank the screen after **10 minutes**.
 The `wlopm --off \*` command changes the `bl_power` value to **4**, when setting the value to **0** the screen will turn on again.
@@ -221,22 +237,21 @@ Please have a look into the [hardware](https://github.com/leukipp/touchkio/blob/
 - A webview kiosk window launched in fullscreen mode and loading the specified `--web-url` website should not cause any problems.
 
 **Extended features** become available when the `--mqtt-*` arguments are provided and the hardware is supported:
-- Sensor features that may work out-of-the-box include those that do not require any interaction with the display or keyboard.
 - If your hardware is not fully compatible there should be no crashes, but you may miss some sensors.
     - On some Debian based systems (e.g. Ubuntu), the display status control may only be available when using X11.
 
 **Known Issues** that are by-design or for which there isn't a solution so far:
 - You can use Raspberry Pi's build-in screen blanking functionality, however, if the screen is turned on through Home Assistant after being automatically turned off, it will remain on indefinitely.
   - It's recommended to either use the built-in screen blanking feature or implement a Home Assistant automation (e.g. presence detection) to manage the screen status.
-- When using a Raspberry Pi, the on-screen keyboard doesn't automatically pop-out when entering a text field.
-  - This [issue](https://github.com/leukipp/touchkio/issues/4) also occurs in the default browser but as a current workaround you can use the side [widget](https://github.com/leukipp/touchkio/issues/16) to toggle the keyboard.
-- Hyperlinks that redirect the browser away from the main window are intentionally disabled.
-  - This decision was made to maintain a clean design, as navigation buttons to move back and forth between different sites were not included.
+- When using a Raspberry Pi, the on-screen keyboard doesn't automatically pop-out when entering a text field inside the webview.
+  - As a current [workaround](https://github.com/leukipp/touchkio/issues/4) you can use the side [widget](https://github.com/leukipp/touchkio/issues/16) to toggle the keyboard visibility.
 - On the terminal you may see some *ERROR:gbm_wrapper.cc* messages.
   -  This appears to be a [known issue](https://github.com/electron/electron/issues/42322) that currently lacks a fix, but the webview still works.
 
 ## Credits
-Inspired by the one and only Raspberry Pi Master Lord, [Jeff Geerling](https://www.jeffgeerling.com/blog/2024/home-assistant-and-carplay-pi-touch-display-2).
+Thanks to Sebastian ([@pdsccode](https://github.com/pdsccode)) for his contributions on issues and [community](https://community.home-assistant.io/t/kiosk-mode-for-raspberry-pi-with-touch-display/821196) discussions.
+
+[Inspired by](https://www.jeffgeerling.com/blog/2024/home-assistant-and-carplay-pi-touch-display-2) the one and only Raspberry Pi Master, Jeff Geerling ([@geerlingguy](https://github.com/geerlingguy)).
 
 ## License
 [MIT](https://github.com/leukipp/touchkio/blob/main/LICENSE)
