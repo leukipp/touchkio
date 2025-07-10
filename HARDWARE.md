@@ -35,10 +35,12 @@ If you are running Linux with a graphical user interface (Wayland or X11), you s
 | Raspberry Pi 4 (arm64)   | Raspberry Pi OS (64-bit), Wayland, X11 | [Hannspree HT225 21.5" (1920x1080)](https://www.hannspree.eu/product/HT-225-HPB)                            | 🟨      |
 | Raspberry Pi 400 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [UPerfect Vertical Touch 15.6" (1920x1080)](https://uperfect.com/products/uperfect-y-vertical-monitor-15-6) | 🟨      |
 | Raspberry Pi 5 (arm64)   | Raspberry Pi OS (64-bit), Wayland, X11 | [GeeekPi 10.1" Capacitive Touch (1280x800)](https://www.amazon.nl/dp/B0DHV6DZC1)                            | 🟨      |
-| Raspberry Pi 5 (arm64)   | Raspberry Pi OS (64-bit), Wayland, X11 | [Portable Touch 18.5" FHD (1920x1080)](https://www.amazon.de/dp/B0CT2KLDBQ)                                 | 🟨      |
+| Raspberry Pi 5 (arm64)   | Raspberry Pi OS (64-bit), Wayland, X11 | [Prechen Portable Touch 18.5" FHD (1920x1080)](https://www.amazon.de/dp/B0CT2KLDBQ)                         | 🟨      |
+| Raspberry Pi 5 (arm64)   | Raspberry Pi OS (64-bit), Wayland, X11 | [Akntzcs Portable Touch 16" HD (1920x1200)](https://www.amazon.com/dp/B0CTGW6MQ6)                           | 🟨      |
 | Raspberry Pi 5 (arm64)   | Raspberry Pi OS (64-bit), Wayland, X11 | Generic Non-Touch                                                                                           | 🟨      |
-| Generic PC (x64)         | Ubuntu (64-bit), X11                   | Generic Non-Touch                                                                                           | 🟧      |
-| Generic PC (x64)         | Ubuntu (64-bit), Wayland               | Generic Non-Touch                                                                                           | 🟥      |
+| Generic PC (x64)         | Debian KDE (64-bit), X11               | Generic Non-Touch                                                                                           | 🟧      |
+| Generic PC (x64)         | Ubuntu GNOME (64-bit), X11             | Generic Non-Touch                                                                                           | 🟧      |
+| Generic PC (x64)         | Ubuntu GNOME (64-bit), Wayland         | Generic Non-Touch                                                                                           | 🟥      |
 
 ## Contributions
 In case your hardware is not listed above don't worry, give it a try.
