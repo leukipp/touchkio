@@ -473,7 +473,7 @@ const initPageZoom = () => {
     icon: "mdi:magnify-plus-outline",
     device: INTEGRATION.device,
   };
-  publishConfig("zoom", config)
+  publishConfig("number", config)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const zoom = parseInt(message, 10);
