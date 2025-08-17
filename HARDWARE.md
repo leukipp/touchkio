@@ -34,6 +34,7 @@ If you are running Linux with a graphical user interface (Wayland or X11), you s
 | Raspberry Pi 4 (arm64)   | Raspberry Pi OS (64-bit), Wayland, X11 | [Waveshare 7" 7EP-CAPLCD (1280x800)](https://www.waveshare.com/7ep-caplcd.htm)                              | 🟨      |
 | Raspberry Pi 4 (arm64)   | Raspberry Pi OS (64-bit), Wayland, X11 | [Hannspree HT225 21.5" (1920x1080)](https://www.hannspree.eu/product/HT-225-HPB)                            | 🟨      |
 | Raspberry Pi 400 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [UPerfect Vertical Touch 15.6" (1920x1080)](https://uperfect.com/products/uperfect-y-vertical-monitor-15-6) | 🟨      |
+|  Raspberry Pi Compute Module 4 Rev 1.1  | Raspberry Pi OS (64-bit), Wayland, X11 |[Lenovo 23,8" (1920x1080)](https://psref.lenovo.com/Detail/ThinkCentre_Tiny_In_One_24_Gen_5?M=12NBGAT1EU) | 🟨      |
 | Raspberry Pi 5 (arm64)   | Raspberry Pi OS (64-bit), Wayland, X11 | [GeeekPi 10.1" Capacitive Touch (1280x800)](https://www.amazon.nl/dp/B0DHV6DZC1)                            | 🟨      |
 | Raspberry Pi 5 (arm64)   | Raspberry Pi OS (64-bit), Wayland, X11 | [Prechen Portable Touch 18.5" FHD (1920x1080)](https://www.amazon.de/dp/B0CT2KLDBQ)                         | 🟨      |
 | Raspberry Pi 5 (arm64)   | Raspberry Pi OS (64-bit), Wayland, X11 | [Akntzcs Portable Touch 16" HD (1920x1200)](https://www.amazon.com/dp/B0CTGW6MQ6)                           | 🟨      |
