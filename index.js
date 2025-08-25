@@ -59,7 +59,7 @@ app.whenReady().then(async () => {
   global.ARGS = args;
 
   // Show used arguments
-  console.log(`Arguments: ${JSON.stringify(global.ARGS, null, 2)}`);
+  console.log(`Arguments: ${JSON.stringify(global.ARGS, null, 2)}\n`);
 
   // Chained init functions
   const chained = [webview.init, hardware.init, integration.init];

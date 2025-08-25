@@ -2,9 +2,11 @@ const path = require("path");
 const hardware = require("./hardware");
 const integration = require("./integration");
 const { app, screen, nativeTheme, ipcMain, session, BaseWindow, WebContentsView } = require("electron");
+const Events = require("events");
 
 global.WEBVIEW = global.WEBVIEW || {
   initialized: false,
+  events: new Events(),
   status: null,
   locked: false,
   pointer: {
@@ -37,31 +39,17 @@ const init = async () => {
   const urls = [loaderHtml(40, 1.0, theme)].concat(ARGS.web_url);
 
   // Init global properties
+  WEBVIEW.viewActive = 0;
   WEBVIEW.viewUrls = urls;
-  Object.defineProperty(WEBVIEW, "viewZoom", {
-    get() {
-      return this._viewZoom || zoom;
-    },
-    set(v) {
-      this._viewZoom = Math.max(0, v);
-      updateZoom();
-    },
-  });
+  WEBVIEW.viewZoom = zoom;
   WEBVIEW.viewTheme = theme;
   WEBVIEW.widgetTheme = theme;
   WEBVIEW.widgetEnabled = widget;
   WEBVIEW.navigationTheme = theme;
   WEBVIEW.navigationEnabled = widget;
   nativeTheme.themeSource = WEBVIEW.viewTheme;
-  Object.defineProperty(WEBVIEW, "viewActive", {
-    get() {
-      return this._viewActive || 0;
-    },
-    set(v) {
-      this._viewActive = Math.max(0, Math.min(v, WEBVIEW.viewUrls.length - 1));
-      updateView();
-    },
-  });
+  WEBVIEW.events.on("reloadView", reloadView);
+  WEBVIEW.events.on("updateView", updateView);
 
   // Init global root window
   WEBVIEW.window = new BaseWindow({
@@ -263,6 +251,7 @@ const historyForward = () => {
  */
 const nextView = () => {
   WEBVIEW.viewActive = (WEBVIEW.viewActive + 1) % WEBVIEW.views.length || 1;
+  updateView();
 };
 
 /**
@@ -297,7 +286,6 @@ const resizeView = () => {
       width: window.width,
       height: window.height - navigation.height,
     });
-    view.webContents.setZoomFactor(WEBVIEW.viewZoom);
   });
 
   // Update widget size
@@ -324,17 +312,6 @@ const resizeView = () => {
 };
 
 /**
- * Updates zoom level for all webviews.
- */
-const updateZoom = () => {
-  // And apply to all views
-  WEBVIEW.views.forEach((view) => {
-    view.webContents.setZoomFactor(WEBVIEW.viewZoom);
-  });
-
-};
-
-/**
  * Register window events and handler.
  */
 const windowEvents = () => {
@@ -351,7 +328,7 @@ const windowEvents = () => {
     }
     WEBVIEW.locked = false;
   });
-  HARDWARE.display.notifiers.push(() => {
+  HARDWARE.events.on("updateDisplay", () => {
     WEBVIEW.locked = hardware.getDisplayStatus() === "OFF";
     if (WEBVIEW.locked) {
       WEBVIEW.window.blur();
@@ -577,8 +554,9 @@ const domEvents = () => {
       return { action: "deny" };
     });
 
-    // Remove webview scrollbar
+    // Update webview layout
     view.webContents.on("dom-ready", () => {
+      view.webContents.setZoomFactor(WEBVIEW.viewZoom);
       view.webContents.insertCSS("::-webkit-scrollbar { display: none; }");
     });
 

@@ -1,10 +1,11 @@
 const mqtt = require("mqtt");
 const hardware = require("./hardware");
 const { app } = require("electron");
+const Events = require("events");
 
 global.INTEGRATION = global.INTEGRATION || {
   initialized: false,
-  status: null,
+  events: new Events(),
 };
 
 /**
@@ -86,20 +87,14 @@ const init = async () => {
 
       // Integration initialized
       INTEGRATION.initialized = true;
-      INTEGRATION.status = "Online";
     })
     .on("error", (error) => {
       console.error("MQTT:", error);
-      INTEGRATION.status = "Offline";
     });
 
-  // Update sensor states from notifiers
-  HARDWARE.display.notifiers.push(() => {
-    updateDisplay();
-  });
-  HARDWARE.keyboard.notifiers.push(() => {
-    updateKeyboard();
-  });
+  // Update sensor states from events
+  HARDWARE.events.on("updateDisplay", updateDisplay);
+  HARDWARE.events.on("updateKeyboard", updateKeyboard);
 
   // Update time sensors periodically (30s)
   setInterval(() => {
@@ -250,7 +245,7 @@ const initRefresh = () => {
       if (topic === config.command_topic) {
         console.log("Refreshing webview...");
         hardware.setDisplayStatus("ON");
-        WEBVIEW.views[WEBVIEW.viewActive].webContents.reloadIgnoringCache();
+        WEBVIEW.events.emit("reloadView");
       }
     })
     .subscribe(config.command_topic);
@@ -441,6 +436,7 @@ const initPageNumber = () => {
         const number = parseInt(message, 10);
         console.log("Set Page Number:", number);
         WEBVIEW.viewActive = number;
+        WEBVIEW.events.emit("updateView");
       }
     })
     .subscribe(config.command_topic);
@@ -467,8 +463,8 @@ const initPageZoom = () => {
     state_topic: `${root}/state`,
     value_template: "{{ value | int }}",
     mode: "slider",
-    min: 10,
-    max: 400,
+    min: 5,
+    max: 500,
     unit_of_measurement: "%",
     icon: "mdi:magnify-plus-outline",
     device: INTEGRATION.device,
@@ -478,7 +474,8 @@ const initPageZoom = () => {
       if (topic === config.command_topic) {
         const zoom = parseInt(message, 10);
         console.log("Set Page Zoom:", zoom);
-        WEBVIEW.viewZoom = zoom / 100.0;
+        WEBVIEW.views[WEBVIEW.viewActive].webContents.setZoomFactor(zoom / 100.0);
+        WEBVIEW.events.emit("updateView");
       }
     })
     .subscribe(config.command_topic);
@@ -489,7 +486,7 @@ const initPageZoom = () => {
  * Updates the page zoom via the mqtt connection.
  */
 const updatePageZoom = () => {
-  const pageZoom = Math.round(WEBVIEW.viewZoom * 100.0);
+  const pageZoom = Math.round(WEBVIEW.views[WEBVIEW.viewActive].webContents.getZoomFactor() * 100.0);
   publishState("page_zoom", pageZoom);
 };
 

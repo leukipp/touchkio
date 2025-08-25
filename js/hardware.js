@@ -3,10 +3,11 @@ const fs = require("fs");
 const path = require("path");
 const fsp = require("fs/promises");
 const cpr = require("child_process");
+const Events = require("events");
 
 global.HARDWARE = global.HARDWARE || {
   initialized: false,
-  status: null,
+  events: new Events(),
   session: {},
   support: {},
   battery: {
@@ -24,11 +25,9 @@ global.HARDWARE = global.HARDWARE || {
       value: null,
       max: null,
     },
-    notifiers: [],
   },
   keyboard: {
     visible: null,
-    notifiers: [],
   },
 };
 
@@ -39,7 +38,11 @@ global.HARDWARE = global.HARDWARE || {
  */
 const init = async () => {
   if (!compatibleDevice()) {
-    console.warn("Device not supported");
+    console.warn("Operating system is not supported\n");
+    return false;
+  }
+  if (!sessionRights()) {
+    console.warn(`User "${sessionUser()}" is missing password-less sudo rights\n`);
     return false;
   }
 
@@ -55,7 +58,6 @@ const init = async () => {
   HARDWARE.display.brightness.max = getDisplayBrightnessMax();
   HARDWARE.support.keyboardVisibility = processRuns("squeekboard");
   HARDWARE.initialized = true;
-  HARDWARE.status = "Supported";
 
   // Show supported features
   console.log(`Supported: ${JSON.stringify(HARDWARE.support, null, 2)}`);
@@ -92,9 +94,7 @@ const init = async () => {
         return;
       }
       HARDWARE.keyboard.visibility = property.Visible === "true";
-      HARDWARE.keyboard.notifiers.forEach((notifier) => {
-        notifier();
-      });
+      HARDWARE.events.emit("updateKeyboard");
     });
   });
 
@@ -118,9 +118,7 @@ const update = async () => {
     if (status !== HARDWARE.display.status.value) {
       console.log("Update Display Status:", getDisplayStatus());
       HARDWARE.display.status.value = status;
-      HARDWARE.display.notifiers.forEach((notifier) => {
-        notifier();
-      });
+      HARDWARE.events.emit("updateDisplay");
     }
   }
 
@@ -130,9 +128,7 @@ const update = async () => {
     if (brightness !== HARDWARE.display.brightness.value) {
       console.log("Update Display Brightness:", getDisplayBrightness());
       HARDWARE.display.brightness.value = brightness;
-      HARDWARE.display.notifiers.forEach((notifier) => {
-        notifier();
-      });
+      HARDWARE.events.emit("updateDisplay");
     }
   }
 };
@@ -148,6 +144,19 @@ const compatibleDevice = () => {
   }
   const paths = ["/sys/class/drm", "/sys/class/backlight", "/sys/class/thermal"];
   return paths.every((path) => fs.existsSync(path));
+};
+
+/**
+ * Verifies user rights to run sudo commands without a password.
+ *
+ * @returns {bool} Returns true if password-less sudo rights exists.
+ */
+const sessionRights = () => {
+  if (!commandExists("sudo")) {
+    return false;
+  }
+  const result = execSyncCommand("sudo", ["-n", "true"]);
+  return result !== null && !result.includes("password is required");
 };
 
 /**
@@ -176,15 +185,6 @@ const sessionType = () => {
     "$(loginctl show-user $(whoami) -p Display --value)",
     "-p Type --value",
   ]);
-};
-
-/**
- * Checks the session type for the logged in user.
- *
- * @returns {bool} Returns true if the session matches the type.
- */
-const session = (type) => {
-  return HARDWARE.session.type === type;
 };
 
 /**
@@ -379,18 +379,25 @@ const getDisplayStatus = () => {
   if (!HARDWARE.support.displayStatus) {
     return null;
   }
-  if (session("wayland") && commandExists("wlopm")) {
-    const status = execSyncCommand("wlopm", []);
-    if (status !== null) {
-      const out = status.split("\n")[0].split(" ");
-      return out.pop().toUpperCase();
-    }
-  } else if (session("x11") && commandExists("xset")) {
-    const status = execSyncCommand("xset", ["-q"]);
-    if (status !== null) {
-      const on = /Monitor is On/.test(status);
-      return on ? "ON" : "OFF";
-    }
+  switch (HARDWARE.session.type) {
+    case "wayland":
+      if (commandExists("wlopm")) {
+        const status = execSyncCommand("wlopm", []);
+        if (status !== null) {
+          const out = status.split("\n")[0].split(" ");
+          return out.pop().toUpperCase();
+        }
+      }
+      break;
+    case "x11":
+      if (commandExists("xset")) {
+        const status = execSyncCommand("xset", ["-q"]);
+        if (status !== null) {
+          const on = /Monitor is On/.test(status);
+          return on ? "ON" : "OFF";
+        }
+      }
+      break;
   }
   return null;
 };
@@ -414,10 +421,19 @@ const setDisplayStatus = (status, callback = null) => {
     if (typeof callback === "function") callback(null, "Invalid status");
     return;
   }
-  if (session("wayland") && commandExists("wlopm")) {
-    execAsyncCommand("wlopm", [`--${status.toLowerCase()}`, "*"], callback);
-  } else if (session("x11") && commandExists("xset")) {
-    execAsyncCommand("xset", ["dpms", "force", status.toLowerCase()], callback);
+  switch (HARDWARE.session.type) {
+    case "wayland":
+      if (commandExists("wlopm")) {
+        execAsyncCommand("wlopm", [`--${status.toLowerCase()}`, "*"], callback);
+      }
+      break;
+    case "x11":
+      if (commandExists("xset")) {
+        execAsyncCommand("xset", ["dpms", "force", status.toLowerCase()], callback);
+      }
+      break;
+    default:
+      if (typeof callback === "function") callback(null, "Invalid session type");
   }
 };
 
