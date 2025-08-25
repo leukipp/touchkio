@@ -38,7 +38,15 @@ const init = async () => {
 
   // Init global properties
   WEBVIEW.viewUrls = urls;
-  WEBVIEW.viewZoom = zoom;
+  Object.defineProperty(WEBVIEW, "viewZoom", {
+    get() {
+      return this._viewZoom || zoom;
+    },
+    set(v) {
+      this._viewZoom = Math.max(0, v);
+      updateZoom();
+    },
+  });
   WEBVIEW.viewTheme = theme;
   WEBVIEW.widgetTheme = theme;
   WEBVIEW.widgetEnabled = widget;
@@ -313,6 +321,17 @@ const resizeView = () => {
     });
     WEBVIEW.navigation.webContents.send("data-theme", { theme: WEBVIEW.navigationTheme });
   }
+};
+
+/**
+ * Updates zoom level for all webviews.
+ */
+const updateZoom = () => {
+  // And apply to all views
+  WEBVIEW.views.forEach((view) => {
+    view.webContents.setZoomFactor(WEBVIEW.viewZoom);
+  });
+
 };
 
 /**

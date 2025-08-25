@@ -67,6 +67,7 @@ const init = async () => {
       initDisplay();
       initKeyboard();
       initPageNumber();
+      initPageZoom();
       initPageUrl();
 
       // Init client sensors
@@ -130,6 +131,7 @@ const update = async () => {
   // Update client sensors
   updateKiosk();
   updatePageNumber();
+  updatePageZoom();
   updatePageUrl();
   updateUpTime();
   updateLastActive();
@@ -451,6 +453,44 @@ const initPageNumber = () => {
 const updatePageNumber = () => {
   const pageNumber = WEBVIEW.viewActive;
   publishState("page_number", pageNumber);
+};
+
+/**
+ * Initializes the page zoom and handles the execute logic.
+ */
+const initPageZoom = () => {
+  const root = `${INTEGRATION.root}/page_zoom`;
+  const config = {
+    name: "Page Zoom",
+    unique_id: `${INTEGRATION.node}_page_zoom`,
+    command_topic: `${root}/set`,
+    state_topic: `${root}/state`,
+    value_template: "{{ value | int }}",
+    mode: "slider",
+    min: 10,
+    max: 400,
+    unit_of_measurement: "%",
+    icon: "mdi:magnify-plus-outline",
+    device: INTEGRATION.device,
+  };
+  publishConfig("number", config)
+    .on("message", (topic, message) => {
+      if (topic === config.command_topic) {
+        const zoom = parseInt(message, 10);
+        console.log("Set Page Zoom:", zoom);
+        WEBVIEW.viewZoom = zoom / 100.0;
+      }
+    })
+    .subscribe(config.command_topic);
+  updatePageZoom();
+};
+
+/**
+ * Updates the page zoom via the mqtt connection.
+ */
+const updatePageZoom = () => {
+  const pageZoom = Math.round(WEBVIEW.viewZoom * 100.0);
+  publishState("page_zoom", pageZoom);
 };
 
 /**
