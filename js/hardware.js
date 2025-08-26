@@ -17,12 +17,13 @@ global.HARDWARE = global.HARDWARE || {
   },
   display: {
     status: {
-      path: null,
       value: null,
+      path: null,
+      command: null,
     },
     brightness: {
-      path: null,
       value: null,
+      path: null,
       max: null,
     },
   },
@@ -37,7 +38,7 @@ global.HARDWARE = global.HARDWARE || {
  * @returns {bool} Returns true if the initialization was successful.
  */
 const init = async () => {
-  if (!compatibleDevice()) {
+  if (!compatibleSystem()) {
     console.warn("Operating system is not supported\n");
     return false;
   }
@@ -49,14 +50,13 @@ const init = async () => {
   // Init globals
   HARDWARE.session.user = sessionUser();
   HARDWARE.session.type = sessionType();
+  HARDWARE.session.desktop = sessionDesktop();
   HARDWARE.battery.level.path = getBatteryLevelPath();
-  HARDWARE.support.batteryLevel = HARDWARE.battery.level.path !== null;
   HARDWARE.display.status.path = getDisplayStatusPath();
-  HARDWARE.support.displayStatus = HARDWARE.display.status.path !== null;
+  HARDWARE.display.status.command = getDisplayStatusCommand();
   HARDWARE.display.brightness.path = getDisplayBrightnessPath();
-  HARDWARE.support.displayBrightness = HARDWARE.display.brightness.path !== null;
   HARDWARE.display.brightness.max = getDisplayBrightnessMax();
-  HARDWARE.support.keyboardVisibility = processRuns("squeekboard");
+  HARDWARE.support = checkSupport();
   HARDWARE.initialized = true;
 
   // Show supported features
@@ -65,6 +65,7 @@ const init = async () => {
   // Show session infos
   console.log("\nUser:", HARDWARE.session.user);
   console.log("Session:", HARDWARE.session.type);
+  console.log("Desktop:", HARDWARE.session.desktop);
 
   // Show device infos
   console.log("\nModel:", getModel());
@@ -80,9 +81,23 @@ const init = async () => {
   console.log("Processor Temperature:", getProcessorTemperature());
 
   // Show hardware infos
-  console.log(`\nBattery Level [${HARDWARE.battery.level.path}]:`, getBatteryLevel());
-  console.log(`Display Status [${HARDWARE.display.status.path}]:`, getDisplayStatus());
-  console.log(`Display Brightness [${HARDWARE.display.brightness.path}]:`, getDisplayBrightness(), "\n");
+  const unsupported = "unsupported";
+  console.log(
+    `\nBattery Level [${HARDWARE.battery.level.path || unsupported}]:`,
+    `${getBatteryLevel() || unsupported}`,
+  );
+  console.log(
+    `Display Status [${HARDWARE.display.status.path || unsupported}]:`,
+    `${getDisplayStatus() || unsupported} (${HARDWARE.display.status.command || unsupported})`,
+  );
+  console.log(
+    `Display Brightness [${HARDWARE.display.brightness.path || unsupported}]:`,
+    `${getDisplayBrightness() || unsupported}`,
+  );
+  console.log(
+    `Keyboard Visibility [${HARDWARE.support.keyboardVisibility ? "squeekboard" : unsupported}]:`,
+    `${getKeyboardVisibility() || unsupported}\n`,
+  );
 
   // Check for keyboard visibility
   setKeyboardVisibility("OFF", (reply, error) => {
@@ -134,15 +149,15 @@ const update = async () => {
 };
 
 /**
- * Verifies device compatibility by checking the presence of necessary sys paths.
+ * Verifies system compatibility by checking the presence of necessary sys paths.
  *
  * @returns {bool} Returns true if all paths exists.
  */
-const compatibleDevice = () => {
+const compatibleSystem = () => {
   if (os.platform() !== "linux") {
     return false;
   }
-  const paths = ["/sys/class/drm", "/sys/class/backlight", "/sys/class/thermal"];
+  const paths = ["/sys/class/drm", "/sys/class/backlight", "/sys/class/power_supply", "/sys/class/thermal"];
   return paths.every((path) => fs.existsSync(path));
 };
 
@@ -185,6 +200,35 @@ const sessionType = () => {
     "$(loginctl show-user $(whoami) -p Display --value)",
     "-p Type --value",
   ]);
+};
+
+/**
+ * Gets the desktop environment name by checking environment variables.
+ *
+ * @returns {string} Returns desktop environment name or 'unknown' if not detected.
+ */
+const sessionDesktop = () => {
+  const envs = ["XDG_CURRENT_DESKTOP", "XDG_DESKTOP_SESSION", "DESKTOP_SESSION"];
+  const names = envs.map((env) => process.env[env]).filter(Boolean);
+  return (names.join(":") || "unknown").toLowerCase();
+};
+
+/**
+ * Checks supported features based on global properties.
+ *
+ * @returns {Object} Returns support object with boolean values.
+ */
+const checkSupport = () => {
+  const battery = HARDWARE.battery.level;
+  const status = HARDWARE.display.status;
+  const brightness = HARDWARE.display.brightness;
+  const keyboard = processRuns("squeekboard");
+  return {
+    batteryLevel: battery.path !== null,
+    displayStatus: status.path !== null && status.command !== null,
+    displayBrightness: brightness.path !== null && brightness.max !== null,
+    keyboardVisibility: keyboard === true,
+  };
 };
 
 /**
@@ -371,7 +415,31 @@ const getDisplayStatusPath = () => {
 };
 
 /**
- * Gets the current display power status using `wlopm` or `xset`.
+ * Gets the available display status command checking for `wlopm`, `kscreen-doctor` and `xset`.
+ *
+ * @returns {string|null} The display status command or null if nothing was found.
+ */
+const getDisplayStatusCommand = () => {
+  const type = HARDWARE.session.type;
+  const desktop = HARDWARE.session.desktop;
+  const mapping = {
+    wayland: [
+      { command: "wlopm", desktops: ["labwc", "wayfire"] },
+      { command: "kscreen-doctor", desktops: ["kde", "plasma"] },
+    ],
+    x11: [{ command: "xset", desktops: ["*"] }],
+  }[type];
+  for (const map of mapping || []) {
+    if (commandExists(map.command) && map.desktops.some((d) => d === "*" || desktop.includes(d))) {
+      return map.command;
+    }
+  }
+  console.warn("No display command available");
+  return null;
+};
+
+/**
+ * Gets the current display power status using the available command.
  *
  * @returns {string|null} The display status as 'ON'/'OFF' or null if an error occurs.
  */
@@ -379,23 +447,26 @@ const getDisplayStatus = () => {
   if (!HARDWARE.support.displayStatus) {
     return null;
   }
-  switch (HARDWARE.session.type) {
-    case "wayland":
-      if (commandExists("wlopm")) {
-        const status = execSyncCommand("wlopm", []);
-        if (status !== null) {
-          const out = status.split("\n")[0].split(" ");
-          return out.pop().toUpperCase();
-        }
+  switch (HARDWARE.display.status.command) {
+    case "wlopm":
+      const wlopm = execSyncCommand("wlopm", []);
+      if (wlopm !== null) {
+        const out = wlopm.split("\n")[0].split(" ");
+        return out.pop().toUpperCase();
       }
       break;
-    case "x11":
-      if (commandExists("xset")) {
-        const status = execSyncCommand("xset", ["-q"]);
-        if (status !== null) {
-          const on = /Monitor is On/.test(status);
-          return on ? "ON" : "OFF";
-        }
+    case "kscreen-doctor":
+      const kdoc = execSyncCommand("kscreen-doctor", ["--dpms", "show"]);
+      if (kdoc !== null) {
+        const out = kdoc.split("\n")[0].split(" ");
+        return out.pop().toUpperCase();
+      }
+      break;
+    case "xset":
+      const xset = execSyncCommand("xset", ["-q"]);
+      if (xset !== null) {
+        const on = /Monitor is On/.test(xset);
+        return on ? "ON" : "OFF";
       }
       break;
   }
@@ -403,7 +474,7 @@ const getDisplayStatus = () => {
 };
 
 /**
- * Sets the display power status using `wlopm` or `xset`.
+ * Sets the display power status using the available command.
  *
  * This function takes a desired status ('ON' or 'OFF') and executes
  * the appropriate command to set the display status.
@@ -421,19 +492,16 @@ const setDisplayStatus = (status, callback = null) => {
     if (typeof callback === "function") callback(null, "Invalid status");
     return;
   }
-  switch (HARDWARE.session.type) {
-    case "wayland":
-      if (commandExists("wlopm")) {
-        execAsyncCommand("wlopm", [`--${status.toLowerCase()}`, "*"], callback);
-      }
+  switch (HARDWARE.display.status.command) {
+    case "wlopm":
+      execAsyncCommand("wlopm", [`--${status.toLowerCase()}`, "*"], callback);
       break;
-    case "x11":
-      if (commandExists("xset")) {
-        execAsyncCommand("xset", ["dpms", "force", status.toLowerCase()], callback);
-      }
+    case "kscreen-doctor":
+      execAsyncCommand("kscreen-doctor", ["--dpms", status.toLowerCase()], callback);
       break;
-    default:
-      if (typeof callback === "function") callback(null, "Invalid session type");
+    case "xset":
+      execAsyncCommand("xset", ["dpms", "force", status.toLowerCase()], callback);
+      break;
   }
 };
 
@@ -460,7 +528,7 @@ const getDisplayBrightnessPath = () => {
  * @returns {number|null} The brightness maximum value or null if an error occurs.
  */
 const getDisplayBrightnessMax = () => {
-  if (!HARDWARE.support.displayBrightness) {
+  if (!HARDWARE.display.brightness.path) {
     return null;
   }
   const max = fs.readFileSync(`${HARDWARE.display.brightness.path}/max_brightness`, "utf8").trim();
@@ -506,7 +574,7 @@ const setDisplayBrightness = (brightness, callback = null) => {
     if (typeof callback === "function") callback(null, "Invalid brightness");
     return;
   }
-  const max = HARDWARE.display.brightness.max;
+  const max = HARDWARE.display.brightness.max || 1;
   const value = Math.max(1, Math.min(Math.round((brightness / 100) * max), max));
   const proc = execAsyncCommand("sudo", ["tee", `${HARDWARE.display.brightness.path}/brightness`], callback);
   proc.stdin.write(value.toString());
@@ -686,9 +754,9 @@ const dbusCall = (path, method, values, callback = null) => {
   const dest = `${iface} ${path} ${iface}.${method} ${values.join(" ")}`;
   const args = ["--print-reply", "--type=method_call", `--dest=${dest}`];
   try {
-    const output = cpr.execSync([cmd, ...args].join(" "), { encoding: "utf8" });
+    const output = cpr.execSync([cmd, ...args].join(" ").trim(), { encoding: "utf8" });
     if (typeof callback === "function") {
-      callback(output.trim().replace(/\0/g, ""), null);
+      callback(output.trim().replace(/\0/g, "").split("\n").slice(1).join("\n").trim(), null);
     }
   } catch (error) {
     console.error("Call D-Bus:", error.message);
@@ -777,13 +845,9 @@ module.exports = {
   getMemoryUsage,
   getProcessorUsage,
   getProcessorTemperature,
-  getBatteryLevelPath,
   getBatteryLevel,
-  getDisplayStatusPath,
   getDisplayStatus,
   setDisplayStatus,
-  getDisplayBrightnessPath,
-  getDisplayBrightnessMax,
   getDisplayBrightness,
   setDisplayBrightness,
   getKeyboardVisibility,

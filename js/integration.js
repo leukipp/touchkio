@@ -337,13 +337,23 @@ const initDisplay = () => {
       if (topic === config.command_topic) {
         const status = message.toString();
         console.log("Set Display Status:", status);
-        hardware.setDisplayStatus(status);
-        hardware.update();
+        hardware.setDisplayStatus(status, (reply, error) => {
+          if (error) {
+            console.warn("Failed:", error);
+          } else {
+            hardware.update();
+          }
+        });
       } else if (topic === config.brightness_command_topic) {
         const brightness = parseInt(message, 10);
         console.log("Set Display Brightness:", brightness);
-        hardware.setDisplayBrightness(brightness);
-        hardware.update();
+        hardware.setDisplayBrightness(brightness, (reply, error) => {
+          if (error) {
+            console.warn("Failed:", error);
+          } else {
+            hardware.update();
+          }
+        });
       }
     })
     .subscribe(config.command_topic)
