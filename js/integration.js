@@ -445,7 +445,7 @@ const initPageNumber = () => {
       if (topic === config.command_topic) {
         const number = parseInt(message, 10);
         console.log("Set Page Number:", number);
-        WEBVIEW.viewActive = number;
+        WEBVIEW.viewActive = number || 1;
         WEBVIEW.events.emit("updateView");
       }
     })
@@ -457,7 +457,7 @@ const initPageNumber = () => {
  * Updates the page number via the mqtt connection.
  */
 const updatePageNumber = () => {
-  const pageNumber = WEBVIEW.viewActive;
+  const pageNumber = WEBVIEW.viewActive || 1;
   publishState("page_number", pageNumber);
 };
 
@@ -484,7 +484,7 @@ const initPageZoom = () => {
       if (topic === config.command_topic) {
         const zoom = parseInt(message, 10);
         console.log("Set Page Zoom:", zoom);
-        WEBVIEW.views[WEBVIEW.viewActive].webContents.setZoomFactor(zoom / 100.0);
+        WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.setZoomFactor(zoom / 100.0);
         WEBVIEW.events.emit("updateView");
       }
     })
@@ -496,7 +496,7 @@ const initPageZoom = () => {
  * Updates the page zoom via the mqtt connection.
  */
 const updatePageZoom = () => {
-  const pageZoom = Math.round(WEBVIEW.views[WEBVIEW.viewActive].webContents.getZoomFactor() * 100.0);
+  const pageZoom = Math.round(WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.getZoomFactor() * 100.0);
   publishState("page_zoom", pageZoom);
 };
 
@@ -520,7 +520,7 @@ const initPageUrl = () => {
       if (topic === config.command_topic) {
         const url = message.toString();
         console.log("Set Page Url:", url);
-        WEBVIEW.views[WEBVIEW.viewActive].webContents.loadURL(url);
+        WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.loadURL(url);
       }
     })
     .subscribe(config.command_topic);
@@ -531,8 +531,8 @@ const initPageUrl = () => {
  * Updates the page url via the mqtt connection.
  */
 const updatePageUrl = () => {
-  const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
-  const currentUrl = WEBVIEW.views[WEBVIEW.viewActive].webContents.getURL();
+  const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive || 1];
+  const currentUrl = WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.getURL();
   const pageUrl = !currentUrl || currentUrl.startsWith("data:") ? defaultUrl : currentUrl;
   publishState("page_url", pageUrl);
 };

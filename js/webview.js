@@ -1,4 +1,5 @@
 const path = require("path");
+const axios = require("axios");
 const hardware = require("./hardware");
 const integration = require("./integration");
 const { app, screen, nativeTheme, ipcMain, session, BaseWindow, WebContentsView } = require("electron");
@@ -74,8 +75,10 @@ const init = async () => {
     view.setVisible(i === 0);
     view.setBackgroundColor("#FFFFFFFF");
     WEBVIEW.window.contentView.addChildView(view);
-    view.webContents.loadURL(url);
     WEBVIEW.views.push(view);
+    onlineStatus(url).then(() => {
+      view.webContents.loadURL(url);
+    });
   });
 
   // Init global widget
@@ -146,6 +149,9 @@ const update = async () => {
  * Updates the active view.
  */
 const updateView = () => {
+  if (!WEBVIEW.viewActive) {
+    return;
+  }
   const title = `TouchKio - ${new URL(WEBVIEW.viewUrls[WEBVIEW.viewActive]).host}`;
   console.log(`Update View: ${title} (${WEBVIEW.viewActive})`);
   WEBVIEW.window.setTitle(title);
@@ -192,7 +198,7 @@ const updateNavigation = () => {
   WEBVIEW.navigation.webContents.send("input-text", {
     id: "url",
     text: currentUrl.startsWith("data:") ? "" : currentUrl,
-    placeholder: defaultUrl,
+    placeholder: defaultUrl.startsWith("data:") ? "" : defaultUrl,
   });
 
   // Disable history buttons
@@ -540,7 +546,8 @@ const navigationEvents = () => {
  * Register dom events and handler.
  */
 const domEvents = () => {
-  WEBVIEW.views.forEach((view) => {
+  const ready = [];
+  WEBVIEW.views.forEach((view, i) => {
     // Enable webview touch emulation
     view.webContents.debugger.attach("1.1");
     view.webContents.debugger.sendCommand("Emulation.setEmitTouchEventsForMouse", {
@@ -556,14 +563,15 @@ const domEvents = () => {
 
     // Update webview layout
     view.webContents.on("dom-ready", () => {
-      view.webContents.setZoomFactor(WEBVIEW.viewZoom);
       view.webContents.insertCSS("::-webkit-scrollbar { display: none; }");
+      view.webContents.setZoomFactor(WEBVIEW.viewZoom);
+      WEBVIEW.initialized = true;
+      ready.push(i);
     });
 
     // Webview fully loaded
     view.webContents.on("did-finish-load", () => {
-      WEBVIEW.initialized = true;
-      if (WEBVIEW.viewActive === 0) {
+      if (WEBVIEW.viewActive === 0 && ready.length === WEBVIEW.views.length) {
         nextView();
       }
       if (ARGS.app_debug === "true") {
@@ -576,7 +584,7 @@ const domEvents = () => {
     // Webview not loaded
     view.webContents.on("did-fail-load", (e, code, text, url, mainframe) => {
       if (mainframe) {
-        if (WEBVIEW.viewActive === 0) {
+        if (WEBVIEW.viewActive === 0 && ready.length === WEBVIEW.views.length) {
           nextView();
         }
         view.webContents.loadURL(errorHtml(code, text, url));
@@ -612,6 +620,39 @@ const appEvents = () => {
       WEBVIEW.window.restore();
     }
     WEBVIEW.window.focus();
+  });
+};
+
+/**
+ * Checks for network connectivity by requesting a known url.
+ *
+ * @param {string} url - Url to request.
+ * @param {number} interval - Interval between requests in milliseconds.
+ * @param {number} timeout - Maximum time to repeat requests in milliseconds.
+ * @returns {Promise<boolean>} Resolves true if online, false on timeout.
+ */
+const onlineStatus = (url, interval = 1000, timeout = 60000) => {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const check = async () => {
+      const elapsed = Date.now() - start;
+      try {
+        if (!url.startsWith("data:")) {
+          await axios.get(url, { timeout: 10000 });
+        }
+        resolve(true);
+      } catch (error) {
+        if (elapsed >= interval) {
+          console.warn(`Checking Connection: ${url}`, error.message);
+        }
+        if (elapsed >= timeout) {
+          resolve(false);
+        } else {
+          setTimeout(check, interval);
+        }
+      }
+    };
+    check();
   });
 };
 
