@@ -424,8 +424,8 @@ const getDisplayStatusCommand = () => {
   const desktop = HARDWARE.session.desktop;
   const mapping = {
     wayland: [
-      { command: "wlopm", desktops: ["labwc", "wayfire"] },
-      { command: "kscreen-doctor", desktops: ["kde", "plasma"] },
+      { command: "wlopm", desktops: ["labwc", "wayfire", "unknown"] },
+      { command: "kscreen-doctor", desktops: ["kde", "plasma", "unknown"] },
     ],
     x11: [{ command: "xset", desktops: ["*"] }],
   }[type];
