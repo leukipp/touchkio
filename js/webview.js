@@ -274,6 +274,7 @@ const reloadView = () => {
   } else {
     view.webContents.reloadIgnoringCache();
   }
+  update();
 };
 
 /**
@@ -564,9 +565,10 @@ const domEvents = () => {
     // Update webview layout
     view.webContents.on("dom-ready", () => {
       view.webContents.insertCSS("::-webkit-scrollbar { display: none; }");
-      view.webContents.setZoomFactor(WEBVIEW.viewZoom);
-      WEBVIEW.initialized = true;
-      ready.push(i);
+      if (ready.length < WEBVIEW.views.length) {
+        view.webContents.setZoomFactor(WEBVIEW.viewZoom);
+        ready.push(i);
+      }
     });
 
     // Webview fully loaded
@@ -621,6 +623,9 @@ const appEvents = () => {
     }
     WEBVIEW.window.focus();
   });
+
+  // Webview initialized
+  WEBVIEW.initialized = true;
 };
 
 /**
