@@ -3,7 +3,7 @@
     "description": "Home Assistant Touch Kiosk",
     "homepage": "https://github.com/leukipp/touchkio",
     "author": "leukipp",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "license": "MIT",
     "main": "index.js",
     "scripts": {
