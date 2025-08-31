@@ -63,23 +63,34 @@ echo -e "\nCreating systemd user service..."
 
 SERVICE_FILE="$HOME/.config/systemd/user/touchkio.service"
 mkdir -p "$(dirname "$SERVICE_FILE")" || { echo "Failed to create directory for $SERVICE_FILE"; exit 1; }
-
-bash -c "cat << EOF > \"$SERVICE_FILE\"
-[Unit]
+SERVICE_CONTENT="[Unit]
 Description=TouchKio
 After=graphical.target
+Wants=network-online.target
 
 [Service]
 ExecStart=/usr/bin/touchkio
 Restart=on-failure
-RestartSec=5s 
+RestartSec=5s
 
 [Install]
-WantedBy=default.target
-EOF"
+WantedBy=default.target"
 
-systemctl --user enable "$(basename "$SERVICE_FILE")" || { echo "Failed to enable service $SERVICE_FILE"; exit 1; }
-echo "Service $SERVICE_FILE enabled"
+SERVICE_CREATE=true
+if [ -f "$SERVICE_FILE" ]; then
+    read -p "Service $SERVICE_FILE exists, overwrite? (y/N) " overwrite
+    if [[ ! ${overwrite:-n} == [Yy]* ]]; then
+        SERVICE_CREATE=false
+    fi
+fi
+
+if [ "$SERVICE_CREATE" = true ]; then
+    echo "$SERVICE_CONTENT" > "$SERVICE_FILE" || { echo "Failed to write to $SERVICE_FILE"; exit 1; }
+    systemctl --user enable "$(basename "$SERVICE_FILE")" || { echo "Failed to enable service $SERVICE_FILE"; exit 1; }
+    echo "Service $SERVICE_FILE enabled"
+else
+    echo "Service $SERVICE_FILE not created"
+fi
 
 # Export display variables
 echo -e "\nExporting display variables..."
@@ -99,8 +110,8 @@ fi
 
 # Start the setup mode
 echo ""
-read -p "Start touchkio setup? (Y/n) " answer
-if [[ ${answer:-y} == [Yy]* ]]; then
+read -p "Start touchkio setup? (Y/n) " setup
+if [[ ${setup:-y} == [Yy]* ]]; then
     echo "/usr/bin/touchkio --setup"
     /usr/bin/touchkio --setup
 else
