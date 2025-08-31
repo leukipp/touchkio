@@ -2,7 +2,7 @@ const path = require("path");
 const axios = require("axios");
 const hardware = require("./hardware");
 const integration = require("./integration");
-const { app, screen, nativeTheme, ipcMain, session, BaseWindow, WebContentsView } = require("electron");
+const { app, nativeTheme, globalShortcut, ipcMain, session, BaseWindow, WebContentsView } = require("electron");
 const Events = require("events");
 
 global.WEBVIEW = global.WEBVIEW || {
@@ -11,7 +11,6 @@ global.WEBVIEW = global.WEBVIEW || {
   status: null,
   locked: false,
   pointer: {
-    position: {},
     time: new Date(),
   },
 };
@@ -109,7 +108,7 @@ const init = async () => {
   windowEvents();
   widgetEvents();
   navigationEvents();
-  domEvents();
+  viewEvents();
   appEvents();
 
   return true;
@@ -188,10 +187,24 @@ const updateNavigation = () => {
   const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
   const currentUrl = view.webContents.getURL();
 
-  // Hide pager button
+  // Hide pager buttons
   WEBVIEW.navigation.webContents.send("button-hidden", {
-    id: "pager",
-    hidden: WEBVIEW.viewUrls.length < 3,
+    id: "previous",
+    hidden: WEBVIEW.viewUrls.length <= 2,
+  });
+  WEBVIEW.navigation.webContents.send("button-hidden", {
+    id: "next",
+    hidden: WEBVIEW.viewUrls.length <= 2,
+  });
+
+  // Disable pager buttons
+  WEBVIEW.navigation.webContents.send("button-disabled", {
+    id: "previous",
+    disabled: WEBVIEW.viewActive <= 1,
+  });
+  WEBVIEW.navigation.webContents.send("button-disabled", {
+    id: "next",
+    disabled: WEBVIEW.viewActive >= WEBVIEW.viewUrls.length - 1,
   });
 
   // Update url text
@@ -243,6 +256,24 @@ const toggleNavigation = () => {
 };
 
 /**
+ * Decreases page zoom on the active webview.
+ */
+const zoomMinus = () => {
+  const view = WEBVIEW.views[WEBVIEW.viewActive];
+  view.webContents.setZoomFactor(Math.max(0.25, view.webContents.getZoomFactor() - 0.1));
+  update();
+};
+
+/**
+ * Increases page zoom on the active webview.
+ */
+const zoomPlus = () => {
+  const view = WEBVIEW.views[WEBVIEW.viewActive];
+  view.webContents.setZoomFactor(Math.min(4.0, view.webContents.getZoomFactor() + 0.1));
+  update();
+};
+
+/**
  * Navigates backward in the history of the active webview.
  */
 const historyBackward = () => {
@@ -263,10 +294,18 @@ const historyForward = () => {
 };
 
 /**
- * Activates the next webview or cycles back to the first.
+ * Activates the previous webview page.
+ */
+const previousView = () => {
+  if (WEBVIEW.viewActive > 1) WEBVIEW.viewActive--;
+  updateView();
+};
+
+/**
+ * Activates the next webview page.
  */
 const nextView = () => {
-  WEBVIEW.viewActive = (WEBVIEW.viewActive + 1) % WEBVIEW.views.length || 1;
+  if (WEBVIEW.viewActive < WEBVIEW.views.length - 1) WEBVIEW.viewActive++;
   updateView();
 };
 
@@ -360,32 +399,42 @@ const windowEvents = () => {
   WEBVIEW.window.on("enter-full-screen", update);
   WEBVIEW.window.on("leave-full-screen", update);
 
-  // Handle window touch events for activity tracking
+  // Handle global shortcut events
+  globalShortcut.register("F5", () => {
+    reloadView();
+  });
+  globalShortcut.register("Control+Left", () => {
+    previousView();
+  });
+  globalShortcut.register("Control+Right", () => {
+    nextView();
+  });
+  globalShortcut.register("Control+numsub", () => {
+    zoomMinus();
+  });
+  globalShortcut.register("Control+numadd", () => {
+    zoomPlus();
+  });
+  globalShortcut.register("Alt+Left", () => {
+    historyBackward();
+  });
+  globalShortcut.register("Alt+Right", () => {
+    historyForward();
+  });
+
+  // Handle window touch events
   setInterval(() => {
     const now = new Date();
     const then = WEBVIEW.pointer.time;
     const delta = Math.abs(now - then) / 1000;
-    const posNew = screen.getCursorScreenPoint();
-    const posOld = WEBVIEW.pointer.position;
 
-    // Cursor movement detected
-    if (posOld.x !== posNew.x || posOld.y !== posNew.y) {
-      WEBVIEW.pointer.time = now;
-
-      // Update integration sensor
-      if (delta > 30) {
-        console.log("Update Last Active");
-        integration.update();
-      }
-    } else if (delta > 60) {
+    // Auto-hide navigation
+    if (delta > 60) {
       const navigation = WEBVIEW.navigation.getBounds();
-
-      // Auto-hide navigation
       if (navigation.height > 0) {
         toggleNavigation();
       }
     }
-    WEBVIEW.pointer.position = posNew;
   }, 1000);
 };
 
@@ -534,7 +583,11 @@ const navigationEvents = () => {
   ipcMain.on("button-click", (e, button) => {
     const view = WEBVIEW.views[WEBVIEW.viewActive];
     switch (button.id) {
-      case "pager":
+      case "previous":
+        previousView();
+        hardware.setKeyboardVisibility("OFF");
+        break;
+      case "next":
         nextView();
         hardware.setKeyboardVisibility("OFF");
         break;
@@ -543,14 +596,12 @@ const navigationEvents = () => {
         hardware.setKeyboardVisibility("OFF");
         break;
       case "minus":
-        view.webContents.setZoomFactor(Math.max(0.25, view.webContents.getZoomFactor() - 0.1));
+        zoomMinus();
         hardware.setKeyboardVisibility("OFF");
-        updateView();
         break;
       case "plus":
-        view.webContents.setZoomFactor(Math.min(4.0, view.webContents.getZoomFactor() + 0.1));
+        zoomPlus();
         hardware.setKeyboardVisibility("OFF");
-        updateView();
         break;
       case "backward":
         historyBackward();
@@ -565,9 +616,9 @@ const navigationEvents = () => {
 };
 
 /**
- * Register dom events and handler.
+ * Register view events and handler.
  */
-const domEvents = () => {
+const viewEvents = () => {
   const ready = [];
   WEBVIEW.views.forEach((view, i) => {
     // Enable webview touch emulation
@@ -622,6 +673,33 @@ const domEvents = () => {
     });
     view.webContents.on("did-navigate", () => {
       update();
+    });
+
+    // Handle webview mouse events
+    view.webContents.on("before-mouse-event", (event, mouse) => {
+      const now = new Date();
+      const then = WEBVIEW.pointer.time;
+      const delta = Math.abs(now - then) / 1000;
+      WEBVIEW.pointer.time = now;
+
+      switch (mouse.type) {
+        case "mouseMove":
+          if (delta > 30) {
+            console.log("Update Last Active");
+            integration.update();
+          }
+          break;
+        case "mouseDown":
+          switch (mouse.button) {
+            case "back":
+              historyBackward();
+              break;
+            case "forward":
+              historyForward();
+              break;
+          }
+          break;
+      }
     });
   });
 };
