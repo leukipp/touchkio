@@ -109,16 +109,16 @@ For example:
 touchkio --web-url=http://192.168.1.42:8123 --web-theme=light --web-zoom=1.0
 ```
 
-> <a href="#ref1">↩ </a><a id="foot1"></a>**[1]:** Not necessarily a Home Assistant Url.  
-> You can load multiple pages by separating them with a comma:
-> `touchkio --web-url=https://demo.home-assistant.io,https://imvbh.github.io/FlipClock`.
+> <a id="foot1"></a><a href="#ref1">[1]</a>: This doesn't necessarily have to be a Home Assistant Url.
+> You can configure multiple pages by separating them with a comma:
+> `touchkio --web-url=https://demo.home-assistant.io,https://demo.immichkiosk.app`.
 
 In the `~/.config/touchkio/Arguments.json` file: 
 ```json
 {
   "web_url": [
     "https://demo.home-assistant.io",
-    "https://imvbh.github.io/FlipClock"
+    "https://demo.immichkiosk.app"
   ]
 }
 ```
@@ -139,6 +139,29 @@ For example:
 ```bash
 touchkio --web-url=http://192.168.1.42:8123 --mqtt-url=mqtt://192.168.1.42:1883 --mqtt-user=kiosk --mqtt-password=password
 ```
+
+## User Interface
+TouchKio provides a simple webview window designed specifically for Touch Displays. Electron apps are known to be resource intensive due to their architecture and the inclusion of a full web browser environment. If you just run the kiosk application without other heavy loads, everything should run smoothly.
+
+### Controls
+Additional controls can be found along the right edge of the kiosk application. For more details, you may want to have a closer look here:
+| Name         | Description                                              |
+| ------------ | -------------------------------------------------------- |
+| `Widget`     | [See #16](https://github.com/leukipp/touchkio/issues/16) |
+| `Navigation` | [See #45](https://github.com/leukipp/touchkio/issues/45) |
+| `Pager`      | [See #64](https://github.com/leukipp/touchkio/issues/64) |
+
+
+### Keyboard Shortcuts
+The application also supports basic shortcuts to enhance navigation and usability for users who prefer or require non-touch input methods:
+| Name                        | Description                 |
+| --------------------------- | --------------------------- |
+| `Control+Left`              | Navigate to previous page   |
+| `Control+Right`             | Navigate to next page       |
+| `Control+Num_Subtract`      | Decrease the page zoom      |
+| `Control+Num_Add`           | Increase the page zoom      |
+| `Alt+Left`/`Mouse+Back`     | Navigate back in history    |
+| `Alt+Right`/`Mouse+Forward` | Navigate forward in history |
 
 ## Development
 To create your own local build, you first need to install [Node.js](https://pimylifeup.com/raspberry-pi-nodejs) and [Yarn](https://classic.yarnpkg.com/lang/en/docs/install).
@@ -226,8 +249,6 @@ This way, the first click only turns the screen on and focuses the window, allow
 Additionally, to address the problem that scrolling only works with the **web browser scrollbar** on the right, the application is configured to **simulate a touch device** using `Emulation.setEmitTouchEventsForMouse`.
 This adjustment provides a user experience similar to that of a proper mobile device.
 
-Electron apps are known to be **resource intensive** due to their architecture and the inclusion of a full web browser environment. If you just run the kiosk application without other heavy loads, everything should run smoothly.
-
 </div></details>
 
 ## Issues
@@ -238,13 +259,19 @@ Please have a look into the [hardware](https://github.com/leukipp/touchkio/blob/
 
 **Extended features** become available when the `--mqtt-*` arguments are provided and the hardware is supported:
 - If your hardware is not fully compatible there should be no crashes, but you may miss some sensors.
-    - On some Debian based systems (e.g. Ubuntu), the display status control may only be available when using X11.
+    - On some Debian based systems (e.g. Ubuntu GNOME), the display status control may only be available when using X11.
+- The following commands are currently implemented to modify the display status.
+  - `wlopm --[on]/[off] *` (Raspberry Pi OS, Wayland) 
+  - `kscreen-doctor --dpms [on]/[off]` (Debian KDE, Wayland) 
+  - `xset dpms force [on]/[off]` (Generic, X11) 
 
 **Known Issues** that are by-design or for which there isn't a solution so far:
-- You can use Raspberry Pi's build-in screen blanking functionality, however, if the screen is turned on through Home Assistant after being automatically turned off, it will remain on indefinitely.
+- You can use Raspberry Pi's build-in [screen blanking](https://www.raspberrypi.com/documentation/computers/configuration.html#screen-blanking-3) functionality, however, if the screen is turned on through Home Assistant after being automatically turned off, it will remain on indefinitely.
   - It's recommended to either use the built-in screen blanking feature or implement a Home Assistant automation (e.g. presence detection) to manage the screen status.
 - When using a Raspberry Pi, the on-screen keyboard doesn't automatically pop-out when entering a text field inside the webview.
   - As a current [workaround](https://github.com/leukipp/touchkio/issues/4) you can use the side [widget](https://github.com/leukipp/touchkio/issues/16) to toggle the keyboard visibility.
+- Certain commands from the MQTT integration may require elevated privileges to work correctly.
+  - Ensure that your local user has the [necessary permissions](https://github.com/leukipp/touchkio/issues/39) to run `sudo` without being prompted for a password. 
 - On the terminal you may see some *ERROR:gbm_wrapper.cc* messages.
   -  This appears to be a [known issue](https://github.com/electron/electron/issues/42322) that currently lacks a fix, but the webview still works.
 
