@@ -152,8 +152,8 @@ const updateView = () => {
   if (!WEBVIEW.viewActive) {
     return;
   }
-  const title = `TouchKio - ${new URL(WEBVIEW.viewUrls[WEBVIEW.viewActive]).host}`;
-  console.log(`Update View: ${title} (${WEBVIEW.viewActive})`);
+  const title = `TouchKio - ${new URL(WEBVIEW.viewUrls[WEBVIEW.viewActive]).host} (${WEBVIEW.viewActive})`;
+  console.log(`Update View: ${title}`);
   WEBVIEW.window.setTitle(title);
 
   // Hide all other webviews and show only the active one
@@ -199,6 +199,16 @@ const updateNavigation = () => {
     id: "url",
     text: currentUrl.startsWith("data:") ? "" : currentUrl,
     placeholder: defaultUrl.startsWith("data:") ? "" : defaultUrl,
+  });
+
+  // Disable zoom buttons
+  WEBVIEW.navigation.webContents.send("button-disabled", {
+    id: "minus",
+    disabled: view.webContents.getZoomFactor().toFixed(2) <= 0.25,
+  });
+  WEBVIEW.navigation.webContents.send("button-disabled", {
+    id: "plus",
+    disabled: view.webContents.getZoomFactor().toFixed(2) >= 4.0,
   });
 
   // Disable history buttons
@@ -522,6 +532,7 @@ const navigationEvents = () => {
 
   // Handle navigation button click events
   ipcMain.on("button-click", (e, button) => {
+    const view = WEBVIEW.views[WEBVIEW.viewActive];
     switch (button.id) {
       case "pager":
         nextView();
@@ -530,6 +541,16 @@ const navigationEvents = () => {
       case "home":
         reloadView();
         hardware.setKeyboardVisibility("OFF");
+        break;
+      case "minus":
+        view.webContents.setZoomFactor(Math.max(0.25, view.webContents.getZoomFactor() - 0.1));
+        hardware.setKeyboardVisibility("OFF");
+        updateView();
+        break;
+      case "plus":
+        view.webContents.setZoomFactor(Math.min(4.0, view.webContents.getZoomFactor() + 0.1));
+        hardware.setKeyboardVisibility("OFF");
+        updateView();
         break;
       case "backward":
         historyBackward();

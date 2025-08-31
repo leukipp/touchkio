@@ -473,10 +473,10 @@ const initPageZoom = () => {
     state_topic: `${root}/state`,
     value_template: "{{ value | int }}",
     mode: "slider",
-    min: 5,
-    max: 500,
+    min: 25,
+    max: 400,
     unit_of_measurement: "%",
-    icon: "mdi:magnify-plus-outline",
+    icon: "mdi:magnify-plus",
     device: INTEGRATION.device,
   };
   publishConfig("number", config)
