@@ -57,7 +57,7 @@ const init = async () => {
 
   // Client connected
   INTEGRATION.client
-    .on("connect", () => {
+    .once("connect", () => {
       console.log(`MQTT Connected: ${url.toString()}\n`);
 
       // Init client controls
@@ -89,7 +89,7 @@ const init = async () => {
       INTEGRATION.initialized = true;
     })
     .on("error", (error) => {
-      console.error("MQTT:", error);
+      console.error("MQTT", error.message);
     });
 
   // Update sensor states from events
