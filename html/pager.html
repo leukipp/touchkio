@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+  <head>
+    <style>
+      [data-theme="hidden"] {
+        --primary-color: rgba(0, 0, 0, 0);
+        --border-color: rgba(0, 0, 0, 0);
+        --background-color: rgba(0, 0, 0, 0);
+      }
+      ::-webkit-scrollbar {
+        display: none;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        cursor: none;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        width: 100vw;
+        height: 100vh;
+      }
+      menu {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100vw;
+        height: 100vh;
+        list-style-type: none;
+        background: var(--background-color);
+      }
+      li {
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+      }
+      button {
+        width: 100vw;
+        height: 50vh;
+        border: none;
+        background-color: transparent;
+      }
+      #previous {
+        cursor: w-resize;
+      }
+      #next {
+        cursor: e-resize;
+      }
+    </style>
+  </head>
+  <body>
+    <menu>
+      <li>
+        <button id="previous"></button>
+      </li>
+      <li>
+        <button id="next"></button>
+      </li>
+    </menu>
+    <script>
+      const { ipcRenderer } = require("electron");
+
+      const registerSendEvents = () => {
+        document.querySelectorAll("button").forEach((button) => {
+          button.addEventListener("click", (e) => {
+            ipcRenderer.send("button-click", { id: e.target.id });
+          });
+        });
+      };
+
+      const registerReceiveEvents = () => {
+        ipcRenderer.on("data-theme", (e, data) => {
+          document.documentElement.setAttribute("data-theme", data.theme);
+        });
+      };
+
+      registerSendEvents();
+      registerReceiveEvents();
+    </script>
+  </body>
+</html>

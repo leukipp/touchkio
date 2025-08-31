@@ -43,6 +43,7 @@ const init = async () => {
   WEBVIEW.viewUrls = urls;
   WEBVIEW.viewZoom = zoom;
   WEBVIEW.viewTheme = theme;
+  WEBVIEW.pagerEnabled = widget;
   WEBVIEW.widgetTheme = theme;
   WEBVIEW.widgetEnabled = widget;
   WEBVIEW.navigationTheme = theme;
@@ -79,6 +80,18 @@ const init = async () => {
       view.webContents.loadURL(url);
     });
   });
+
+  // Init global pager
+  WEBVIEW.pager = new WebContentsView({
+    transparent: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+  WEBVIEW.pager.setBackgroundColor("#00000000");
+  WEBVIEW.window.contentView.addChildView(WEBVIEW.pager);
+  WEBVIEW.pager.webContents.loadFile(path.join(app.getAppPath(), "html", "pager.html"));
 
   // Init global widget
   WEBVIEW.widget = new WebContentsView({
@@ -151,7 +164,11 @@ const updateView = () => {
   if (!WEBVIEW.viewActive) {
     return;
   }
-  const title = `TouchKio - ${new URL(WEBVIEW.viewUrls[WEBVIEW.viewActive]).host} (${WEBVIEW.viewActive})`;
+  const url = WEBVIEW.views[WEBVIEW.viewActive].webContents.getURL();
+  const host = url.startsWith("data:") ? "whoopsie" : new URL(url).host;
+  const title = `TouchKio - ${host} (${WEBVIEW.viewActive})`;
+
+  // Update window title
   console.log(`Update View: ${title}`);
   WEBVIEW.window.setTitle(title);
 
@@ -250,6 +267,11 @@ const toggleNavigation = () => {
     width: window.width,
     height: height,
   });
+  if (height > 0) {
+    WEBVIEW.navigation.webContents.focus();
+  } else {
+    WEBVIEW.views[WEBVIEW.viewActive].webContents.focus();
+  }
 
   // Resize webview
   resizeView();
@@ -310,7 +332,30 @@ const nextView = () => {
 };
 
 /**
- * Reloads the current or default url on the active webview.
+ * Reloads the default url and settings on the active webview.
+ */
+const homeView = () => {
+  const view = WEBVIEW.views[WEBVIEW.viewActive];
+  const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
+  const currentUrl = view.webContents.getURL();
+
+  // Reload the default url or refresh the page
+  if (currentUrl != defaultUrl) {
+    view.webContents.loadURL(defaultUrl);
+  } else {
+    view.webContents.reloadIgnoringCache();
+  }
+
+  // Reset page zoom and history
+  view.webContents.setZoomFactor(WEBVIEW.viewZoom);
+  setTimeout(() => {
+    view.webContents.navigationHistory.clear();
+    update();
+  }, 2000);
+};
+
+/**
+ * Reloads the current url on the active webview.
  */
 const reloadView = () => {
   const view = WEBVIEW.views[WEBVIEW.viewActive];
@@ -318,7 +363,7 @@ const reloadView = () => {
   const currentUrl = view.webContents.getURL();
 
   // Reload the default url or refresh the page
-  if (currentUrl != defaultUrl) {
+  if (currentUrl.startsWith("data:")) {
     view.webContents.loadURL(defaultUrl);
   } else {
     view.webContents.reloadIgnoringCache();
@@ -332,6 +377,7 @@ const reloadView = () => {
 const resizeView = () => {
   const window = WEBVIEW.window.getBounds();
   const navigation = WEBVIEW.navigation.getBounds();
+  const pager = { width: 20, height: window.height };
   const widget = { width: 60, height: 200 };
 
   // Update view size
@@ -344,10 +390,21 @@ const resizeView = () => {
     });
   });
 
+  // Update pager size
+  if (WEBVIEW.pagerEnabled) {
+    WEBVIEW.pager.setBounds({
+      x: window.width - pager.width,
+      y: 0,
+      width: pager.width,
+      height: pager.height,
+    });
+    WEBVIEW.pager.webContents.send("data-theme", { theme: "hidden" });
+  }
+
   // Update widget size
   if (WEBVIEW.widgetEnabled) {
     WEBVIEW.widget.setBounds({
-      x: window.width - 15,
+      x: window.width - 20,
       y: parseInt(window.height / 2 - widget.height / 2, 10),
       width: widget.width,
       height: widget.height,
@@ -400,9 +457,6 @@ const windowEvents = () => {
   WEBVIEW.window.on("leave-full-screen", update);
 
   // Handle global shortcut events
-  globalShortcut.register("F5", () => {
-    reloadView();
-  });
   globalShortcut.register("Control+Left", () => {
     previousView();
   });
@@ -468,7 +522,7 @@ const widgetEvents = () => {
 
     // Hide widget
     WEBVIEW.widget.setBounds({
-      x: window.width - 15,
+      x: window.width - 20,
       y: widget.y,
       width: widget.width,
       height: widget.height,
@@ -481,7 +535,6 @@ const widgetEvents = () => {
     switch (button.id) {
       case "keyboard":
         const toggle = hardware.getKeyboardVisibility() === "ON" ? "OFF" : "ON";
-        hardware.setKeyboardVisibility(toggle);
         switch (toggle) {
           case "OFF":
             WEBVIEW.window.restore();
@@ -494,6 +547,9 @@ const widgetEvents = () => {
             WEBVIEW.window.maximize();
             break;
         }
+        hardware.setKeyboardVisibility(toggle, () => {
+          WEBVIEW.views[WEBVIEW.viewActive].webContents.focus();
+        });
         break;
       case "fullscreen":
         if (WEBVIEW.window.isFullScreen()) {
@@ -505,7 +561,9 @@ const widgetEvents = () => {
           WEBVIEW.window.unmaximize();
           WEBVIEW.window.setFullScreen(true);
         }
-        hardware.setKeyboardVisibility("OFF");
+        hardware.setKeyboardVisibility("OFF", () => {
+          WEBVIEW.views[WEBVIEW.viewActive].webContents.focus();
+        });
         break;
       case "minimize":
         WEBVIEW.window.restore();
@@ -583,16 +641,20 @@ const navigationEvents = () => {
   ipcMain.on("button-click", (e, button) => {
     const view = WEBVIEW.views[WEBVIEW.viewActive];
     switch (button.id) {
+      case "home":
+        homeView();
+        hardware.setKeyboardVisibility("OFF");
+        break;
+      case "refresh":
+        reloadView();
+        hardware.setKeyboardVisibility("OFF");
+        break;
       case "previous":
         previousView();
         hardware.setKeyboardVisibility("OFF");
         break;
       case "next":
         nextView();
-        hardware.setKeyboardVisibility("OFF");
-        break;
-      case "home":
-        reloadView();
         hardware.setKeyboardVisibility("OFF");
         break;
       case "minus":
@@ -668,20 +730,19 @@ const viewEvents = () => {
     // Webview url changed
     view.webContents.on("did-navigate-in-page", (e, url, mainframe) => {
       if (mainframe) {
-        update();
+        updateView();
       }
     });
     view.webContents.on("did-navigate", () => {
-      update();
+      updateView();
     });
 
     // Handle webview mouse events
-    view.webContents.on("before-mouse-event", (event, mouse) => {
+    view.webContents.on("before-mouse-event", (e, mouse) => {
       const now = new Date();
       const then = WEBVIEW.pointer.time;
       const delta = Math.abs(now - then) / 1000;
       WEBVIEW.pointer.time = now;
-
       switch (mouse.type) {
         case "mouseMove":
           if (delta > 30) {

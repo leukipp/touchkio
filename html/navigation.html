@@ -46,11 +46,19 @@
       li.dynamic {
         flex: 1 1 0%;
       }
+      li.separator {
+        height: 32px;
+        border: 1px solid var(--border-color);
+      }
+      li.separator:has(+ li.hidden) {
+        display: none;
+      }
       li.hidden {
         display: none;
       }
       li.disabled {
         opacity: 0.5;
+        cursor: not-allowed;
         pointer-events: none;
       }
       button {
@@ -62,12 +70,13 @@
       input {
         width: 100%;
         min-width: 0;
-        margin: 0 10px;
+        margin: 0 5px;
         padding: 6px 10px;
         border-radius: 4px;
         font-size: 18px;
         outline: none;
         border: none;
+        cursor: text;
         box-sizing: border-box;
         color: var(--primary-color);
         background-color: var(--border-color);
@@ -91,6 +100,17 @@
         </button>
       </li>
       <li>
+        <button id="refresh">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <title>refresh-circle</title>
+            <path
+              d="M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2M18 11H13L14.81 9.19A3.94 3.94 0 0 0 12 8A4 4 0 1 0 15.86 13H17.91A6 6 0 1 1 12 6A5.91 5.91 0 0 1 16.22 7.78L18 6Z"
+            />
+          </svg>
+        </button>
+      </li>
+      <li class="separator"></li>
+      <li>
         <button id="previous">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
             <title>page-previous</title>
@@ -110,9 +130,32 @@
           </svg>
         </button>
       </li>
+      <li class="separator"></li>
       <li class="dynamic">
         <input id="url" type="text" spellcheck="false" />
       </li>
+      <li class="separator"></li>
+      <li>
+        <button id="backward">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <title>history</title>
+            <path
+              d="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3"
+            />
+          </svg>
+        </button>
+      </li>
+      <li>
+        <button id="forward">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <title>update</title>
+            <path
+              d="M21,10.12H14.22L16.96,7.3C14.23,4.6 9.81,4.5 7.08,7.2C4.35,9.91 4.35,14.28 7.08,17C9.81,19.7 14.23,19.7 16.96,17C18.32,15.65 19,14.08 19,12.1H21C21,14.08 20.12,16.65 18.36,18.39C14.85,21.87 9.15,21.87 5.64,18.39C2.14,14.92 2.11,9.28 5.62,5.81C9.13,2.34 14.76,2.34 18.27,5.81L21,3V10.12M12.5,8V12.25L16,14.33L15.28,15.54L11,13V8H12.5Z"
+            />
+          </svg>
+        </button>
+      </li>
+      <li class="separator"></li>
       <li>
         <button id="minus">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -129,26 +172,6 @@
             <title>magnify-plus</title>
             <path
               d="M9,2A7,7 0 0,1 16,9C16,10.57 15.5,12 14.61,13.19L15.41,14H16L22,20L20,22L14,16V15.41L13.19,14.61C12,15.5 10.57,16 9,16A7,7 0 0,1 2,9A7,7 0 0,1 9,2M8,5V8H5V10H8V13H10V10H13V8H10V5H8Z"
-            />
-          </svg>
-        </button>
-      </li>
-      <li>
-        <button id="backward">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <title>arrow-left-circle</title>
-            <path
-              d="M2,12A10,10 0 0,1 12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12M18,11H10L13.5,7.5L12.08,6.08L6.16,12L12.08,17.92L13.5,16.5L10,13H18V11Z"
-            />
-          </svg>
-        </button>
-      </li>
-      <li>
-        <button id="forward">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <title>arrow-right-circle</title>
-            <path
-              d="M22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2A10,10 0 0,1 22,12M6,13H14L10.5,16.5L11.92,17.92L17.84,12L11.92,6.08L10.5,7.5L14,11H6V13Z"
             />
           </svg>
         </button>
