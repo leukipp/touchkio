@@ -756,7 +756,7 @@ const dbusCall = (path, method, values, callback = null) => {
   try {
     const output = cpr.execSync([cmd, ...args].join(" ").trim(), { encoding: "utf8" });
     if (typeof callback === "function") {
-      callback(output.trim().replace(/\0/g, "").split("\n").slice(1).join("\n").trim(), null);
+      callback(output.trim().replace(/\0/g, ""), null);
     }
   } catch (error) {
     console.error("Call D-Bus:", error.message);
