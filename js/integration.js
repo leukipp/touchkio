@@ -186,6 +186,9 @@ const publishState = (path, state) => {
  * Initializes the shutdown button and handles the execute logic.
  */
 const initShutdown = () => {
+  if (!HARDWARE.support.sudoRights) {
+    return;
+  }
   const root = `${INTEGRATION.root}/shutdown`;
   const config = {
     name: "Shutdown",
@@ -209,6 +212,9 @@ const initShutdown = () => {
  * Initializes the reboot button and handles the execute logic.
  */
 const initReboot = () => {
+  if (!HARDWARE.support.sudoRights) {
+    return;
+  }
   const root = `${INTEGRATION.root}/reboot`;
   const config = {
     name: "Reboot",

@@ -42,10 +42,6 @@ const init = async () => {
     console.warn("Operating system is not supported\n");
     return false;
   }
-  if (!sessionRights()) {
-    console.warn(`User "${sessionUser()}" is missing password-less sudo rights\n`);
-    return false;
-  }
 
   // Init globals
   HARDWARE.session.user = sessionUser();
@@ -60,7 +56,7 @@ const init = async () => {
   HARDWARE.initialized = true;
 
   // Show supported features
-  console.log(`Supported: ${JSON.stringify(HARDWARE.support, null, 2)}`);
+  console.log(`\nSupported: ${JSON.stringify(HARDWARE.support, null, 2)}`);
 
   // Show session infos
   console.log("\nUser:", HARDWARE.session.user);
@@ -162,19 +158,6 @@ const compatibleSystem = () => {
 };
 
 /**
- * Verifies user rights to run sudo commands without a password.
- *
- * @returns {bool} Returns true if password-less sudo rights exists.
- */
-const sessionRights = () => {
-  if (!commandExists("sudo")) {
-    return false;
-  }
-  const result = execSyncCommand("sudo", ["-n", "true"]);
-  return result !== null && !result.includes("password is required");
-};
-
-/**
  * Gets the session user name using `os.userInfo()`.
  *
  * @returns {string|null} Returns session user name or null if an error occurs.
@@ -223,11 +206,13 @@ const checkSupport = () => {
   const status = HARDWARE.display.status;
   const brightness = HARDWARE.display.brightness;
   const keyboard = processRuns("squeekboard");
+  const sudo = sudoRights();
   return {
     batteryLevel: battery.path !== null,
     displayStatus: status.path !== null && status.command !== null,
-    displayBrightness: brightness.path !== null && brightness.max !== null,
-    keyboardVisibility: keyboard === true,
+    displayBrightness: sudo && brightness.path !== null && brightness.max !== null,
+    keyboardVisibility: keyboard,
+    sudoRights: sudo,
   };
 };
 
@@ -240,7 +225,7 @@ const getModel = () => {
   const paths = ["/sys/firmware/devicetree/base/model", "/sys/class/dmi/id/product_name"];
   for (const path of paths) {
     if (fs.existsSync(path)) {
-      return execSyncCommand("sudo", ["cat", path]) || "Generic";
+      return execSyncCommand("cat", [path]) || "Generic";
     }
   }
   return "Generic";
@@ -255,7 +240,7 @@ const getVendor = () => {
   const paths = ["/sys/class/dmi/id/board_vendor"];
   for (const path of paths) {
     if (fs.existsSync(path)) {
-      return execSyncCommand("sudo", ["cat", path]) || "Generic";
+      return execSyncCommand("cat", [path]) || "Generic";
     }
   }
   const model = getModel();
@@ -266,22 +251,22 @@ const getVendor = () => {
 };
 
 /**
- * Gets the serial number using `/sys/firmware/devicetree/base/serial-number` or `/sys/class/dmi/id/product_serial`.
+ * Gets the serial number using `/sys/firmware/devicetree/base/serial-number`.
  *
- * @returns {string} The serial number of the device or '123456' if not found.
+ * @returns {string} The serial number or machine id parts of the device or '123456' if not found.
  */
 const getSerialNumber = () => {
-  const paths = ["/sys/firmware/devicetree/base/serial-number", "/sys/class/dmi/id/product_serial"];
+  const paths = ["/sys/firmware/devicetree/base/serial-number"];
   for (const path of paths) {
     if (fs.existsSync(path)) {
-      return execSyncCommand("sudo", ["cat", path]) || "123456";
+      return execSyncCommand("cat", [path]) || "123456";
     }
   }
-  return "123456";
+  return getMachineId().slice(-6);
 };
 
 /**
- * Gets the host machine id using `/etc/machine-id`.
+ * Gets the machine id using `/etc/machine-id`.
  *
  * @returns {string} The machine id of the system or '123456' if not found.
  */
@@ -289,7 +274,7 @@ const getMachineId = () => {
   const paths = ["/etc/machine-id"];
   for (const path of paths) {
     if (fs.existsSync(path)) {
-      return execSyncCommand("sudo", ["cat", path]) || "123456";
+      return execSyncCommand("cat", [path]) || "123456";
     }
   }
   return "123456";
@@ -451,22 +436,22 @@ const getDisplayStatus = () => {
     case "wlopm":
       const wlopm = execSyncCommand("wlopm", []);
       if (wlopm !== null) {
-        const out = wlopm.split("\n")[0].split(" ");
-        return out.pop().toUpperCase();
+        const output = wlopm.split("\n")[0].split(" ");
+        return output.pop().toUpperCase();
       }
       break;
     case "kscreen-doctor":
       const kdoc = execSyncCommand("kscreen-doctor", ["--dpms", "show"]);
       if (kdoc !== null) {
-        const out = kdoc.split("\n")[0].split(" ");
-        return out.pop().toUpperCase();
+        const output = kdoc.split("\n")[0].split(" ");
+        return output.pop().toUpperCase();
       }
       break;
     case "xset":
       const xset = execSyncCommand("xset", ["-q"]);
       if (xset !== null) {
-        const on = /Monitor is On/.test(xset);
-        return on ? "ON" : "OFF";
+        const output = /Monitor is On/.test(xset);
+        return output ? "ON" : "OFF";
       }
       break;
   }
@@ -641,6 +626,10 @@ const checkPackageUpgrades = () => {
  * @param {Function} callback - A callback function that receives the output or error.
  */
 const shutdownSystem = (callback = null) => {
+  if (!HARDWARE.support.sudoRights) {
+    if (typeof callback === "function") callback(null, "Not supported");
+    return;
+  }
   execAsyncCommand("sudo", ["shutdown", "-h", "now"], callback);
 };
 
@@ -653,7 +642,24 @@ const shutdownSystem = (callback = null) => {
  * @param {Function} callback - A callback function that receives the output or error.
  */
 const rebootSystem = (callback = null) => {
+  if (!HARDWARE.support.sudoRights) {
+    if (typeof callback === "function") callback(null, "Not supported");
+    return;
+  }
   execAsyncCommand("sudo", ["reboot"], callback);
+};
+
+/**
+ * Checks if sudo commands can run without a password.
+ *
+ * @returns {bool} Returns true if password-less sudo rights exists.
+ */
+const sudoRights = () => {
+  try {
+    const output = cpr.execSync(`sudo -n true`, { encoding: "utf8" });
+    return output !== null && !output.includes("password is required");
+  } catch {}
+  return false;
 };
 
 /**
