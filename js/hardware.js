@@ -67,6 +67,7 @@ const init = async () => {
   console.log("\nModel:", getModel());
   console.log("Vendor:", getVendor());
   console.log("Serial Number:", getSerialNumber());
+  console.log("Network Addresses:", getNetworkAddresses());
   console.log("Host Name:", getHostName());
 
   // Show system infos
@@ -278,6 +279,32 @@ const getMachineId = () => {
     }
   }
   return "123456";
+};
+
+/**
+ * Gets the network interfaces addresses using `os.networkInterfaces()`.
+ *
+ * @returns {Object} The network addresses of all interfaces.
+ */
+const getNetworkAddresses = () => {
+  const addresses = {};
+  for (const [key, interfaces] of Object.entries(os.networkInterfaces())) {
+    for (const interface of interfaces) {
+      if (interface.internal || !interface.family || !interface.address) {
+        continue;
+      }
+      const name = key.charAt(0).toUpperCase() + key.slice(1);
+      if (!addresses[name]) {
+        addresses[name] = {};
+      }
+      const family = interface.family;
+      if (!addresses[name][family]) {
+        addresses[name][family] = [];
+      }
+      addresses[name][family].push(interface.address);
+    }
+  }
+  return addresses;
 };
 
 /**
@@ -845,6 +872,7 @@ module.exports = {
   getVendor,
   getSerialNumber,
   getMachineId,
+  getNetworkAddresses,
   getHostName,
   getUpTime,
   getMemorySize,

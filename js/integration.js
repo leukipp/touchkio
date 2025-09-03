@@ -47,6 +47,7 @@ const init = async () => {
     serial_number: serialNumber,
     identifiers: [INTEGRATION.node],
     sw_version: `${app.getName()}-v${app.getVersion()}`,
+    configuration_url: "https://github.com/leukipp/touchkio",
   };
 
   // Connection settings
@@ -75,6 +76,7 @@ const init = async () => {
       initModel();
       initSerialNumber();
       initHostName();
+      initNetworkAddress();
       initUpTime();
       initMemorySize();
       initMemoryUsage();
@@ -128,6 +130,7 @@ const update = async () => {
   updatePageNumber();
   updatePageZoom();
   updatePageUrl();
+  updateNetworkAddress();
   updateUpTime();
   updateLastActive();
   updateMemoryUsage();
@@ -594,6 +597,36 @@ const updateSerialNumber = () => {
 };
 
 /**
+ * Initializes the network address sensor.
+ */
+const initNetworkAddress = () => {
+  const root = `${INTEGRATION.root}/network_address`;
+  const config = {
+    name: "Network Address",
+    unique_id: `${INTEGRATION.node}_network_address`,
+    state_topic: `${root}/state`,
+    json_attributes_topic: `${root}/attributes`,
+    value_template: "{{ value }}",
+    icon: "mdi:ip-network",
+    device: INTEGRATION.device,
+  };
+  publishConfig("sensor", config);
+  updateNetworkAddress();
+};
+
+/**
+ * Updates the network address sensor via the mqtt connection.
+ */
+const updateNetworkAddress = () => {
+  const networkAddresses = hardware.getNetworkAddresses();
+  const [name] = Object.keys(networkAddresses);
+  const [family] = name ? Object.keys(networkAddresses[name]) : [];
+  const networkAddress = networkAddresses[name]?.[family]?.[0] || null;
+  publishState("network_address", networkAddress);
+  publishAttributes("network_address", networkAddresses);
+};
+
+/**
  * Initializes the host name sensor.
  */
 const initHostName = () => {
@@ -804,8 +837,8 @@ const updatePackageUpgrades = () => {
     total: packages.length,
     packages: packages.map((pkg) => pkg.replace(/\s*\[.*?\]\s*/g, "").trim()),
   };
-  publishAttributes("package_upgrades", attributes);
   publishState("package_upgrades", attributes.total);
+  publishAttributes("package_upgrades", attributes);
 };
 
 /**
