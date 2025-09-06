@@ -65,7 +65,7 @@ module.exports = {
           if (artifact.includes(".zip")) {
             const [name, platform, arch] = path.basename(artifact).split("-");
             const buildFile = path.join(`${name}-${platform}-${arch}`, "resources", "app", "build.json");
-            const zip = await jszip.loadAsync(fs.readFileSync(artifact));
+            const zip = await jszip.loadAsync(fs.readFileSync(artifact, "utf8"));
             zip.file(buildFile, generateBuildFile(platform, arch, "zip"));
             fs.writeFileSync(artifact, await zip.generateAsync({ type: "nodebuffer" }));
           }
