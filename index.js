@@ -117,6 +117,12 @@ const initArgs = async () => {
     args = readArgs(argsFilePath);
   }
 
+  // Check arguments object
+  if (!Object.keys(args).length) {
+    console.error(`No arguments provided`);
+    return app.quit();
+  }
+
   // Split url arguments
   args.web_url = args.web_url || [];
   if (!Array.isArray(args.web_url)) {
@@ -258,11 +264,15 @@ const promptArgs = async (proc) => {
  * @param {Object} args - The arguments object.
  */
 const writeArgs = (path, args) => {
-  const argc = Object.assign({}, args);
-  if ("mqtt_password" in argc) {
-    argc.mqtt_password = encrypt(argc.mqtt_password);
+  try {
+    const argc = Object.assign({}, args);
+    if ("mqtt_password" in argc) {
+      argc.mqtt_password = encrypt(argc.mqtt_password);
+    }
+    fs.writeFileSync(path, JSON.stringify(argc, null, 2));
+  } catch (error) {
+    console.error(`Failed to write ${path}:`, error.message);
   }
-  fs.writeFileSync(path, JSON.stringify(argc, null, 2));
 };
 
 /**
@@ -272,11 +282,16 @@ const writeArgs = (path, args) => {
  * @returns {Object} The arguments object.
  */
 const readArgs = (path) => {
-  const args = JSON.parse(fs.readFileSync(path));
-  if ("mqtt_password" in args) {
-    args.mqtt_password = decrypt(args.mqtt_password);
+  try {
+    const args = JSON.parse(fs.readFileSync(path, "utf8"));
+    if ("mqtt_password" in args) {
+      args.mqtt_password = decrypt(args.mqtt_password);
+    }
+    return args;
+  } catch (error) {
+    console.error(`Failed to parse ${path}:`, error.message);
   }
-  return args;
+  return {};
 };
 
 /**
