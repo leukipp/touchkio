@@ -7,6 +7,7 @@ const hardware = require("./js/hardware");
 const webview = require("./js/webview");
 const { app } = require("electron");
 
+global.APP = global.APP || {};
 global.ARGS = global.ARGS || {};
 
 if (!process.env.DISPLAY) {
@@ -23,20 +24,85 @@ if (!process.env.DISPLAY) {
  * initialization tasks.
  */
 app.whenReady().then(async () => {
-  const lock = app.requestSingleInstanceLock();
-  if (!lock) {
-    console.error("TouchKio is already running");
+  if (!(await initApp()) || !(await initArgs())) {
+    return;
+  }
+
+  // Show used arguments
+  console.log(`Arguments: ${JSON.stringify(ARGS, null, 2)}`);
+
+  // Chained init functions
+  const chained = [webview.init, hardware.init, integration.init];
+  for (const init of chained) {
+    if (!(await init())) {
+      break;
+    }
+  }
+});
+
+/**
+ * Initializes the global app object.
+ *
+ * @returns {bool} Returns true if the initialization was successful.
+ */
+const initApp = async () => {
+  const packageJsonPath = path.join(app.getAppPath(), "package.json");
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+
+  const buildJsonPath = path.join(app.getAppPath(), "build.json");
+  const buildFileExists = fs.existsSync(buildJsonPath);
+
+  // Set required app infos
+  APP.name = app.getName();
+  APP.title = packageJson.title;
+  APP.version = app.getVersion();
+  APP.path = app.getAppPath();
+  APP.config = app.getPath("userData");
+
+  // Set additional update infos
+  APP.homepage = `https://github.com/${packageJson.author}/${packageJson.name}`;
+  APP.releases = {
+    url: `https://api.github.com/repos/${packageJson.author}/${packageJson.name}/releases`,
+    latest: null,
+  };
+  APP.scripts = {
+    install: `https://raw.githubusercontent.com/${packageJson.author}/${packageJson.name}/main/install.sh`,
+  };
+
+  // Set additional build infos
+  APP.build = {};
+  if (buildFileExists) {
+    APP.build = JSON.parse(fs.readFileSync(buildJsonPath, "utf8"));
+  }
+
+  // Request single app instance lock
+  if (!app.requestSingleInstanceLock()) {
+    console.error(`${APP.title} is already running`);
     return app.quit();
   }
+
+  return true;
+};
+
+/**
+ * Initializes the global args object.
+ *
+ * @returns {bool} Returns true if the initialization was successful.
+ */
+const initArgs = async () => {
   let args = parseArgs(process);
   let argsProvided = !!Object.keys(args).length;
 
-  let argsFilePath = path.join(app.getPath("userData"), "Arguments.json");
+  let argsFilePath = path.join(APP.config, "Arguments.json");
   let argsFileExists = fs.existsSync(argsFilePath);
 
   // Show version and release info
   if ("help" in args || "version" in args) {
-    console.log(`${app.getName()}-v${app.getVersion()}, https://github.com/leukipp/touchkio`);
+    let build = "";
+    if (APP.build.id) {
+      build = ` (${APP.build.id}), built on ${APP.build.date} (${APP.build.platform}-${APP.build.arch}-${APP.build.maker})`;
+    }
+    console.log(`${APP.name}-v${APP.version}${build}\n${APP.homepage}`);
     return app.quit();
   }
 
@@ -56,19 +122,10 @@ app.whenReady().then(async () => {
   if (!Array.isArray(args.web_url)) {
     args.web_url = args.web_url.split(",").map((url) => url.trim());
   }
-  global.ARGS = args;
+  ARGS = args;
 
-  // Show used arguments
-  console.log(`Arguments: ${JSON.stringify(global.ARGS, null, 2)}`);
-
-  // Chained init functions
-  const chained = [webview.init, hardware.init, integration.init];
-  for (const init of chained) {
-    if (!(await init())) {
-      break;
-    }
-  }
-});
+  return true;
+};
 
 /**
  * Parses command-line arguments from the given process object.
@@ -155,34 +212,41 @@ const promptArgs = async (proc) => {
   // Prompt questions and wait for the answers
   let args = {};
   let ignore = [];
-  for (const { key, question, fallback } of prompts) {
-    if (key === "mqtt") {
-      const prompt = `${question} (${fallback}): `;
-      const answer = await read.question(prompt);
-      const value = (answer.trim() || fallback.match(/[YN]/)[0]).toLowerCase();
-      if (!["y", "yes"].includes(value)) {
-        ignore = ignore.concat(["mqtt_url", "mqtt_user", "mqtt_password", "mqtt_discovery"]);
-      }
-    } else if (key === "check") {
-      const json = JSON.stringify(args, null, 2);
-      const prompt = `${question}\n${json}\n(${fallback}): `;
-      const answer = await read.question(prompt);
-      const value = (answer.trim() || fallback.match(/[YN]/)[0]).toLowerCase();
-      if (!["y", "yes"].includes(value)) {
-        args = {};
-      }
-    } else if (!ignore.includes(key)) {
-      const prompt = `${question} (${fallback}): `;
-      const answer = await read.question(prompt);
-      const value = answer.trim() || fallback;
-      if (key === "web_url") {
-        args[key] = value.split(",").map((v) => v.trim());
-      } else {
-        args[key] = value;
+  try {
+    for (const { key, question, fallback } of prompts) {
+      if (key === "mqtt") {
+        const prompt = `${question} (${fallback}): `;
+        const answer = await read.question(prompt);
+        const value = (answer.trim() || fallback.match(/[YN]/)[0]).toLowerCase();
+        if (!["y", "yes"].includes(value)) {
+          ignore = ignore.concat(["mqtt_url", "mqtt_user", "mqtt_password", "mqtt_discovery"]);
+        }
+      } else if (key === "check") {
+        const json = JSON.stringify(args, null, 2);
+        const prompt = `${question}\n${json}\n(${fallback}): `;
+        const answer = await read.question(prompt);
+        const value = (answer.trim() || fallback.match(/[YN]/)[0]).toLowerCase();
+        if (!["y", "yes"].includes(value)) {
+          args = {};
+        }
+      } else if (!ignore.includes(key)) {
+        const prompt = `${question} (${fallback}): `;
+        const answer = await read.question(prompt);
+        const value = answer.trim() || fallback;
+        if (key === "web_url") {
+          args[key] = value.split(",").map((v) => v.trim());
+        } else {
+          args[key] = value;
+        }
       }
     }
+  } catch (error) {
+    console.error(`\n${error.message}`);
+    args = {};
+    app.quit();
+  } finally {
+    read.close();
   }
-  read.close();
 
   return args;
 };
@@ -223,7 +287,7 @@ const readArgs = (path) => {
  */
 const encrypt = (value) => {
   const iv = crypto.randomBytes(16);
-  const key = crypto.scryptSync(hardware.getMachineId(), app.getName(), 32);
+  const key = crypto.scryptSync(hardware.getMachineId(), APP.name, 32);
   const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
   let encrypted = cipher.update(value, "utf8", "hex");
   encrypted += cipher.final("hex");
@@ -239,7 +303,7 @@ const encrypt = (value) => {
 const decrypt = (value) => {
   const p = Buffer.from(value, "base64").toString("utf8").split(":");
   const iv = Buffer.from(p.shift(), "hex");
-  const key = crypto.scryptSync(hardware.getMachineId(), app.getName(), 32);
+  const key = crypto.scryptSync(hardware.getMachineId(), APP.name, 32);
   const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
   const buffer = Buffer.from(p.join(":"), "hex");
   let decrypted = decipher.update(buffer, "binary", "utf8");
