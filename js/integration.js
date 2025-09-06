@@ -39,15 +39,15 @@ const init = async () => {
   // Init globals
   INTEGRATION.discovery = discovery;
   INTEGRATION.node = `rpi_${deviceId}`;
-  INTEGRATION.root = `${app.getName()}/${INTEGRATION.node}`;
+  INTEGRATION.root = `${APP.name}/${INTEGRATION.node}`;
   INTEGRATION.device = {
-    name: `TouchKio ${deviceName}`,
+    name: `${APP.title} ${deviceName}`,
     model: model,
     manufacturer: vendor,
     serial_number: serialNumber,
     identifiers: [INTEGRATION.node],
-    sw_version: `${app.getName()}-v${app.getVersion()}`,
-    configuration_url: "https://github.com/leukipp/touchkio",
+    sw_version: `${APP.name}-v${APP.version}`,
+    configuration_url: APP.homepage,
   };
 
   // Connection settings
@@ -62,6 +62,7 @@ const init = async () => {
       console.log(`MQTT Connected: ${url.toString()}\n`);
 
       // Init client controls
+      initApp();
       initShutdown();
       initReboot();
       initRefresh();
@@ -109,8 +110,9 @@ const init = async () => {
     update();
   }, 60 * 1000);
 
-  // Update package sensors periodically (60min)
+  // Update upgrade sensors periodically (1h)
   setInterval(() => {
+    updateApp();
     updatePackageUpgrades();
   }, 3600 * 1000);
 
@@ -183,6 +185,57 @@ const publishState = (path, state) => {
   }
   const root = `${INTEGRATION.root}/${path}/state`;
   return INTEGRATION.client.publish(root, `${state}`, { qos: 1, retain: true });
+};
+
+/**
+ * Initializes the app update entity and handles the execute logic.
+ */
+const initApp = () => {
+  if (!HARDWARE.support.appUpdate) {
+    return;
+  }
+  const root = `${INTEGRATION.root}/app`;
+  const config = {
+    name: "App",
+    unique_id: `${INTEGRATION.node}_app`,
+    command_topic: `${root}/install`,
+    state_topic: `${root}/version/state`,
+    payload_install: "update",
+    device: INTEGRATION.device,
+  };
+  publishConfig("update", config)
+    .on("message", (topic, message) => {
+      if (topic === config.command_topic) {
+        console.log("Update App...");
+        hardware.setDisplayStatus("ON");
+        const args = ["-c", `bash <(wget -qO- ${APP.scripts.install}) update`];
+        hardware.execScriptCommand("bash", args, (progress, error) => {
+          updateApp(progress);
+        });
+      }
+    })
+    .subscribe(config.command_topic);
+  updateApp();
+};
+
+/**
+ * Updates the app update entity via the mqtt connection.
+ */
+const updateApp = async (progress = 0) => {
+  const latest = APP.releases.latest;
+  if (!latest) {
+    return;
+  }
+  const version = {
+    title: latest.title,
+    latest_version: latest.version,
+    installed_version: APP.version,
+    release_summary: latest.summary.slice(0, 250) + "...",
+    release_url: latest.url,
+    update_percentage: progress || null,
+    in_progress: progress && progress > 0 && progress < 100,
+  };
+  publishState("app/version", JSON.stringify(version));
 };
 
 /**
@@ -314,7 +367,7 @@ const initKiosk = () => {
 /**
  * Updates the kiosk status via the mqtt connection.
  */
-const updateKiosk = () => {
+const updateKiosk = async () => {
   const kiosk = WEBVIEW.status;
   publishState("kiosk", kiosk);
 };
@@ -373,7 +426,7 @@ const initDisplay = () => {
 /**
  * Updates the display status, brightness via the mqtt connection.
  */
-const updateDisplay = () => {
+const updateDisplay = async () => {
   const status = hardware.getDisplayStatus();
   const brightness = hardware.getDisplayBrightness();
   publishState("display/power", status);
@@ -423,7 +476,7 @@ const initKeyboard = () => {
 /**
  * Updates the keyboard visibility via the mqtt connection.
  */
-const updateKeyboard = () => {
+const updateKeyboard = async () => {
   const visibility = hardware.getKeyboardVisibility();
   publishState("keyboard", visibility);
 };
@@ -432,7 +485,7 @@ const updateKeyboard = () => {
  * Initializes the page number and handles the execute logic.
  */
 const initPageNumber = () => {
-  if (WEBVIEW.viewUrls.length < 3) {
+  if (WEBVIEW.viewUrls.length <= 2) {
     return;
   }
   const root = `${INTEGRATION.root}/page_number`;
@@ -465,7 +518,7 @@ const initPageNumber = () => {
 /**
  * Updates the page number via the mqtt connection.
  */
-const updatePageNumber = () => {
+const updatePageNumber = async () => {
   const pageNumber = WEBVIEW.viewActive || 1;
   publishState("page_number", pageNumber);
 };
@@ -504,7 +557,7 @@ const initPageZoom = () => {
 /**
  * Updates the page zoom via the mqtt connection.
  */
-const updatePageZoom = () => {
+const updatePageZoom = async () => {
   const pageZoom = Math.round(WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.getZoomFactor() * 100.0);
   publishState("page_zoom", pageZoom);
 };
@@ -539,7 +592,7 @@ const initPageUrl = () => {
 /**
  * Updates the page url via the mqtt connection.
  */
-const updatePageUrl = () => {
+const updatePageUrl = async () => {
   const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive || 1];
   const currentUrl = WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.getURL();
   const pageUrl = !currentUrl || currentUrl.startsWith("data:") ? defaultUrl : currentUrl;
@@ -555,6 +608,7 @@ const initModel = () => {
     name: "Model",
     unique_id: `${INTEGRATION.node}_model`,
     state_topic: `${root}/state`,
+    json_attributes_topic: `${root}/attributes`,
     value_template: "{{ value }}",
     icon: "mdi:raspberry-pi",
     device: INTEGRATION.device,
@@ -566,9 +620,10 @@ const initModel = () => {
 /**
  * Updates the model sensor via the mqtt connection.
  */
-const updateModel = () => {
+const updateModel = async () => {
   const model = hardware.getModel();
   publishState("model", model);
+  publishAttributes("model", HARDWARE.support);
 };
 
 /**
@@ -591,7 +646,7 @@ const initSerialNumber = () => {
 /**
  * Updates the serial number sensor via the mqtt connection.
  */
-const updateSerialNumber = () => {
+const updateSerialNumber = async () => {
   const serialNumber = hardware.getSerialNumber();
   publishState("serial_number", serialNumber);
 };
@@ -617,7 +672,7 @@ const initNetworkAddress = () => {
 /**
  * Updates the network address sensor via the mqtt connection.
  */
-const updateNetworkAddress = () => {
+const updateNetworkAddress = async () => {
   const networkAddresses = hardware.getNetworkAddresses();
   const [name] = Object.keys(networkAddresses);
   const [family] = name ? Object.keys(networkAddresses[name]) : [];
@@ -646,7 +701,7 @@ const initHostName = () => {
 /**
  * Updates the host name sensor via the mqtt connection.
  */
-const updateHostName = () => {
+const updateHostName = async () => {
   const hostName = hardware.getHostName();
   publishState("host_name", hostName);
 };
@@ -672,7 +727,7 @@ const initUpTime = () => {
 /**
  * Updates the up time sensor via the mqtt connection.
  */
-const updateUpTime = () => {
+const updateUpTime = async () => {
   const upTime = hardware.getUpTime();
   publishState("up_time", upTime);
 };
@@ -698,7 +753,7 @@ const initMemorySize = () => {
 /**
  * Updates the memory size sensor via the mqtt connection.
  */
-const updateMemorySize = () => {
+const updateMemorySize = async () => {
   const memorySize = hardware.getMemorySize();
   publishState("memory_size", memorySize);
 };
@@ -724,7 +779,7 @@ const initMemoryUsage = () => {
 /**
  * Updates the memory usage sensor via the mqtt connection.
  */
-const updateMemoryUsage = () => {
+const updateMemoryUsage = async () => {
   const memoryUsage = hardware.getMemoryUsage();
   publishState("memory_usage", memoryUsage);
 };
@@ -750,7 +805,7 @@ const initProcessorUsage = () => {
 /**
  * Updates the processor usage sensor via the mqtt connection.
  */
-const updateProcessorUsage = () => {
+const updateProcessorUsage = async () => {
   const processorUsage = hardware.getProcessorUsage();
   publishState("processor_usage", processorUsage);
 };
@@ -776,7 +831,7 @@ const initProcessorTemperature = () => {
 /**
  * Updates the processor temperature sensor via the mqtt connection.
  */
-const updateProcessorTemperature = () => {
+const updateProcessorTemperature = async () => {
   const processorTemperature = hardware.getProcessorTemperature();
   publishState("processor_temperature", processorTemperature);
 };
@@ -805,7 +860,7 @@ const initBatteryLevel = () => {
 /**
  * Updates the battery level sensor via the mqtt connection.
  */
-const updateBatteryLevel = () => {
+const updateBatteryLevel = async () => {
   const batteryLevel = hardware.getBatteryLevel();
   publishState("battery_level", batteryLevel);
 };
@@ -831,7 +886,7 @@ const initPackageUpgrades = () => {
 /**
  * Updates the package upgrades sensor via the mqtt connection.
  */
-const updatePackageUpgrades = () => {
+const updatePackageUpgrades = async () => {
   const packages = hardware.checkPackageUpgrades();
   const attributes = {
     total: packages.length,
@@ -861,7 +916,7 @@ const initHeartbeat = () => {
 /**
  * Updates the heartbeat sensor via the mqtt connection.
  */
-const updateHeartbeat = () => {
+const updateHeartbeat = async () => {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60 * 1000);
   const heartbeat = local.toISOString().replace(/\.\d{3}Z$/, "");
@@ -889,7 +944,7 @@ const initLastActive = () => {
 /**
  * Updates the last active sensor via the mqtt connection.
  */
-const updateLastActive = () => {
+const updateLastActive = async () => {
   const now = new Date();
   const then = WEBVIEW.pointer.time;
   const lastActive = Math.abs(now - then) / (1000 * 60);

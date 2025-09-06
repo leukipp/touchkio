@@ -198,7 +198,7 @@ const sessionDesktop = () => {
 };
 
 /**
- * Checks supported features based on global properties.
+ * Checks supported features based on hardware and software.
  *
  * @returns {Object} Returns support object with boolean values.
  */
@@ -207,13 +207,16 @@ const checkSupport = () => {
   const status = HARDWARE.display.status;
   const brightness = HARDWARE.display.brightness;
   const keyboard = processRuns("squeekboard");
+  const service = serviceRuns(APP.name);
   const sudo = sudoRights();
+  const deb = APP.build.maker === "deb";
   return {
-    batteryLevel: battery.path !== null,
-    displayStatus: status.path !== null && status.command !== null,
-    displayBrightness: sudo && brightness.path !== null && brightness.max !== null,
+    batteryLevel: !!battery.path,
+    displayStatus: !!status.path && !!status.command,
+    displayBrightness: sudo && !!brightness.path && !!brightness.max,
     keyboardVisibility: keyboard,
     sudoRights: sudo,
+    appUpdate: sudo && service && deb,
   };
 };
 
@@ -690,6 +693,19 @@ const sudoRights = () => {
 };
 
 /**
+ * Checks if a service is running using `systemctl`.
+ *
+ * @param {string} name - The service name to check.
+ * @returns {bool} Returns true if the service runs.
+ */
+const serviceRuns = (name) => {
+  try {
+    return !!cpr.execSync(`systemctl --user is-active ${name}`, { encoding: "utf8" });
+  } catch {}
+  return false;
+};
+
+/**
  * Checks if a process is running using `pidof`.
  *
  * @param {string} name - The process name to check.
@@ -765,12 +781,59 @@ const execAsyncCommand = (cmd, args = [], callback = null) => {
       }
     } catch (error) {
       console.error("Execute Async:", error.message);
-      if (typeof callback === "function") {
-        callback(null, error.message);
-      }
+      if (typeof callback === "function") callback(null, error.message);
     }
   });
   return proc;
+};
+
+/**
+ * Executes a script command asynchronously.
+ *
+ * @param {string} cmd - The script to execute.
+ * @param {Array<string>} args - The arguments for the command.
+ * @param {Function} callback - A callback function that receives the progress or error.
+ * @returns {Object} The spawned process object.
+ */
+const execScriptCommand = (cmd, args = [], callback = null) => {
+  let progress = 10;
+  let proc = cpr.spawn(cmd, args);
+  if (typeof callback === "function") callback(progress, null);
+  proc.stdout.on("data", (data) => {
+    if (data) {
+      const lines = data.toString().trim();
+      const output = lines.replace(/\n+/g, "\n").replace(/^\n+|\n+$|\0/g, "");
+      if (output) {
+        console.log(output);
+      }
+    }
+  });
+  proc.stderr.on("data", (data) => {
+    if (data) {
+      const lines = data.toString().trim();
+      const output = lines.replace(/\n+/g, "\n").replace(/^\n+|\n+$|\0/g, "");
+      if (output) {
+        const matches = output.match(/(\d{1,3})%/g);
+        if (matches) {
+          const match = Math.max(...matches.map((p) => parseInt(p)));
+          const percent = Math.floor(match / 10) * 10;
+          if (percent > 10 && percent > progress) {
+            progress = percent;
+            if (typeof callback === "function") callback(progress - 10, null);
+          }
+        }
+      }
+    }
+  });
+  proc.on("close", (code) => {
+    if (code !== 0) {
+      console.log(`Script exited with error code ${code}.`);
+      if (typeof callback === "function") callback(null, code);
+    } else {
+      console.log("Script exited successfully.");
+      if (typeof callback === "function") callback(100, null);
+    }
+  });
 };
 
 /**
@@ -788,14 +851,10 @@ const dbusCall = (path, method, values, callback = null) => {
   const args = ["--print-reply", "--type=method_call", `--dest=${dest}`];
   try {
     const output = cpr.execSync([cmd, ...args].join(" ").trim(), { encoding: "utf8" });
-    if (typeof callback === "function") {
-      callback(output.trim().replace(/\0/g, ""), null);
-    }
+    if (typeof callback === "function") callback(output.trim().replace(/\0/g, ""), null);
   } catch (error) {
     console.error("Call D-Bus:", error.message);
-    if (typeof callback === "function") {
-      callback(null, error.message);
-    }
+    if (typeof callback === "function") callback(null, error.message);
   }
 };
 
@@ -829,17 +888,13 @@ const dbusMonitor = (path, callback) => {
       }
     } catch (error) {
       console.error("Monitor D-Bus:", error.message);
-      if (typeof callback === "function") {
-        callback(null, error.message);
-      }
+      if (typeof callback === "function") callback(null, error.message);
     }
   });
   proc.stderr.on("data", (data) => {
     if (data) {
       console.error("Monitor D-Bus:", data.toString());
-      if (typeof callback === "function") {
-        callback(null, data.toString());
-      }
+      if (typeof callback === "function") callback(null, data.toString());
     }
   });
   return proc;
@@ -889,4 +944,7 @@ module.exports = {
   checkPackageUpgrades,
   shutdownSystem,
   rebootSystem,
+  execSyncCommand,
+  execAsyncCommand,
+  execScriptCommand,
 };

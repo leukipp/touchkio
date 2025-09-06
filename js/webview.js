@@ -54,8 +54,8 @@ const init = async () => {
 
   // Init global root window
   WEBVIEW.window = new BaseWindow({
-    title: "TouchKio",
-    icon: path.join(__dirname, "..", "img", "icon.png"),
+    title: APP.title,
+    icon: path.join(APP.path, "img", "icon.png"),
   });
   WEBVIEW.window.setMenuBarVisibility(false);
   WEBVIEW.window.setFullScreen(fullscreen);
@@ -91,7 +91,7 @@ const init = async () => {
   });
   WEBVIEW.pager.setBackgroundColor("#00000000");
   WEBVIEW.window.contentView.addChildView(WEBVIEW.pager);
-  WEBVIEW.pager.webContents.loadFile(path.join(app.getAppPath(), "html", "pager.html"));
+  WEBVIEW.pager.webContents.loadFile(path.join(APP.path, "html", "pager.html"));
 
   // Init global widget
   WEBVIEW.widget = new WebContentsView({
@@ -103,7 +103,7 @@ const init = async () => {
   });
   WEBVIEW.widget.setBackgroundColor("#00000000");
   WEBVIEW.window.contentView.addChildView(WEBVIEW.widget);
-  WEBVIEW.widget.webContents.loadFile(path.join(app.getAppPath(), "html", "widget.html"));
+  WEBVIEW.widget.webContents.loadFile(path.join(APP.path, "html", "widget.html"));
 
   // Init global navigation
   WEBVIEW.navigation = new WebContentsView({
@@ -115,14 +115,14 @@ const init = async () => {
   });
   WEBVIEW.navigation.setBackgroundColor("#00000000");
   WEBVIEW.window.contentView.addChildView(WEBVIEW.navigation);
-  WEBVIEW.navigation.webContents.loadFile(path.join(app.getAppPath(), "html", "navigation.html"));
+  WEBVIEW.navigation.webContents.loadFile(path.join(APP.path, "html", "navigation.html"));
 
   // Register events
-  windowEvents();
-  widgetEvents();
-  navigationEvents();
-  viewEvents();
-  appEvents();
+  await windowEvents();
+  await widgetEvents();
+  await navigationEvents();
+  await viewEvents();
+  await appEvents();
 
   return true;
 };
@@ -166,7 +166,7 @@ const updateView = () => {
   }
   const url = WEBVIEW.views[WEBVIEW.viewActive].webContents.getURL();
   const host = url.startsWith("data:") ? "whoopsie" : new URL(url).host;
-  const title = `TouchKio - ${host} (${WEBVIEW.viewActive})`;
+  const title = `${APP.title} - ${host} (${WEBVIEW.viewActive})`;
 
   // Update window title
   console.log(`Update View: ${title}`);
@@ -427,7 +427,7 @@ const resizeView = () => {
 /**
  * Register window events and handler.
  */
-const windowEvents = () => {
+const windowEvents = async () => {
   // Handle window resize events
   WEBVIEW.window.on("ready-to-show", resizeView);
   WEBVIEW.window.on("resize", resizeView);
@@ -476,7 +476,7 @@ const windowEvents = () => {
     historyForward();
   });
 
-  // Handle window touch events
+  // Check for window touch events (1s)
   setInterval(() => {
     const now = new Date();
     const then = WEBVIEW.pointer.time;
@@ -495,7 +495,7 @@ const windowEvents = () => {
 /**
  * Register widget events and handler.
  */
-const widgetEvents = () => {
+const widgetEvents = async () => {
   if (!WEBVIEW.widgetEnabled) {
     return;
   }
@@ -581,7 +581,7 @@ const widgetEvents = () => {
 /**
  * Register navigation events and handler.
  */
-const navigationEvents = () => {
+const navigationEvents = async () => {
   if (!WEBVIEW.navigationEnabled) {
     return;
   }
@@ -680,7 +680,7 @@ const navigationEvents = () => {
 /**
  * Register view events and handler.
  */
-const viewEvents = () => {
+const viewEvents = async () => {
   const ready = [];
   WEBVIEW.views.forEach((view, i) => {
     // Enable webview touch emulation
@@ -768,7 +768,7 @@ const viewEvents = () => {
 /**
  * Register app events and handler.
  */
-const appEvents = () => {
+const appEvents = async () => {
   // Handle signal and exit events
   process.on("SIGINT", app.quit);
   app.on("before-quit", () => {
@@ -784,8 +784,35 @@ const appEvents = () => {
     WEBVIEW.window.focus();
   });
 
+  // Check for latest release infos (2h)
+  setInterval(() => {
+    latestRelease();
+  }, 7200 * 1000);
+  await latestRelease();
+
   // Webview initialized
   WEBVIEW.initialized = true;
+};
+
+/**
+ * Fetches the latest app release infos from github.
+ */
+const latestRelease = async () => {
+  try {
+    const response = await axios.get(`${APP.releases.url}/latest`);
+    const data = response ? response.data : null;
+    if (!data || data.draft || data.prerelease) {
+      return;
+    }
+    APP.releases.latest = {
+      title: APP.title,
+      version: (data.tag_name || data.name || "").replace(/^v/i, ""),
+      summary: data.body || "",
+      url: data.html_url || "",
+    };
+  } catch (error) {
+    console.warn("Github Error:", error.message);
+  }
 };
 
 /**
