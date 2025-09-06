@@ -43,7 +43,7 @@ For a comprehensive guide on setting up MQTT with Home Assistant, please refer t
 
 ## Installation
 On the first run of the application, you may encounter a **setup procedure** and the Home Assistant **login screen**.
-It's recommended to create a **dedicated user** (local access only) for your kiosk device.
+It's recommended to create a dedicated Home Assistant user (local access only) for your kiosk device.
 
 You might also need a physical keyboard or remote VNC access to input these credentials once.
 If your hardware is [supported](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md) you may be able to activate the on-screen keyboard using the side [widget](https://github.com/leukipp/touchkio/issues/16).
@@ -56,7 +56,6 @@ bash <(wget -qO- https://raw.githubusercontent.com/leukipp/touchkio/main/install
 ```
 Make sure that you run this with your **standard user** and not with root (sudo).
 If you are paranoid, or smart, or both, have a look into the [install.sh](https://github.com/leukipp/touchkio/blob/main/install.sh) script before executing external code on your machine.
-This command can also be re-run to **update** an existing installation to the latest version.
 
 The systemd **user service** is enabled by default and the kiosk application should start automatically the next time you boot.
 If you need manual control use:
@@ -88,6 +87,14 @@ yarn build
 ```
 
 </div></details>
+
+#### Update
+If you have already installed TouchKio and want to upgrade to the latest version, simply install the newer version over the existing one.
+
+The [install.sh](https://github.com/leukipp/touchkio/blob/main/install.sh) script can also be run to update an existing installation to the **latest version**. The setup procedure can be skipped to use the existing default arguments from the configuration file:
+```bash
+bash <(wget -qO- https://raw.githubusercontent.com/leukipp/touchkio/main/install.sh) update
+```
 
 ## Configuration
 Running `touchkio --setup` will prompt you to enter arguments that will be used when the application starts without any specified arguments.
@@ -143,7 +150,7 @@ touchkio --web-url=http://192.168.1.42:8123 --mqtt-url=mqtt://192.168.1.42:1883 
 ## User Interface
 TouchKio provides a simple webview window designed specifically for Touch Displays. Electron apps are known to be resource intensive due to their architecture and the inclusion of a full web browser environment. If you just run the kiosk application without other heavy loads, everything should run smoothly.
 
-### Controls
+### Touch Controls
 Additional controls can be found along the right edge of the kiosk application. For more details, you may want to have a closer look here:
 | Name         | Description                                              |
 | ------------ | -------------------------------------------------------- |
@@ -154,14 +161,14 @@ Additional controls can be found along the right edge of the kiosk application. 
 
 ### Keyboard Shortcuts
 The application also supports basic shortcuts to enhance navigation and usability for users who prefer or require non-touch input methods:
-| Name                        | Description                 |
-| --------------------------- | --------------------------- |
-| `Control+Left`              | Navigate to previous page   |
-| `Control+Right`             | Navigate to next page       |
-| `Control+Num_Subtract`      | Decrease the page zoom      |
-| `Control+Num_Add`           | Increase the page zoom      |
-| `Alt+Left`/`Mouse+Back`     | Navigate back in history    |
-| `Alt+Right`/`Mouse+Forward` | Navigate forward in history |
+| Name                        | Description                  |
+| --------------------------- | ---------------------------- |
+| `Control+Left`              | Navigate to previous page    |
+| `Control+Right`             | Navigate to next page        |
+| `Control+Num_Subtract`      | Decrease the page zoom       |
+| `Control+Num_Add`           | Increase the page zoom       |
+| `Alt+Left`/`Mouse+Back`     | Navigate backward in history |
+| `Alt+Right`/`Mouse+Forward` | Navigate forward in history  |
 
 ## Development
 To create your own local build, you first need to install [Node.js](https://pimylifeup.com/raspberry-pi-nodejs) and [Yarn](https://classic.yarnpkg.com/lang/en/docs/install).
@@ -268,12 +275,15 @@ Please have a look into the [hardware](https://github.com/leukipp/touchkio/blob/
 **Known Issues** that are by-design or for which there isn't a solution so far:
 - You can use Raspberry Pi's build-in [screen blanking](https://www.raspberrypi.com/documentation/computers/configuration.html#screen-blanking-3) functionality, however, if the screen is turned on through Home Assistant after being automatically turned off, it will remain on indefinitely.
   - It's recommended to either use the built-in screen blanking feature or implement a Home Assistant automation (e.g. presence detection) to manage the screen status.
-- When using a Raspberry Pi, the on-screen keyboard doesn't automatically pop-out when entering a text field inside the webview.
-  - As a current [workaround](https://github.com/leukipp/touchkio/issues/4) you can use the side [widget](https://github.com/leukipp/touchkio/issues/16) to toggle the keyboard visibility.
+- When using a Raspberry Pi, the on-screen keyboard doesn't [automatically pop-out](https://github.com/leukipp/touchkio/issues/4) when entering a text field inside the webview.
+  - As a current workaround you can use the side [widget](https://github.com/leukipp/touchkio/issues/16) to toggle the keyboard visibility.
 - Certain commands from the MQTT integration may require elevated privileges to work correctly.
   - Ensure that your local user has the [necessary permissions](https://github.com/leukipp/touchkio/issues/39) to run `sudo` without being prompted for a password. 
 - On the terminal you may see some *ERROR:gbm_wrapper.cc* messages.
   -  This appears to be a [known issue](https://github.com/electron/electron/issues/42322) that currently lacks a fix, but the webview still works.
+
+For debugging, stop the service and run `touchkio` directly on the terminal to view the log outputs.
+If you encounter any problems, please [create an issue](https://github.com/leukipp/touchkio/issues) and include the output of `touchkio --version` along with your system setup and any additional terminal logs.
 
 ## Credits
 Thanks to Sebastian ([@pdsccode](https://github.com/pdsccode)) for his contributions on issues and [community](https://community.home-assistant.io/t/kiosk-mode-for-raspberry-pi-with-touch-display/821196) discussions.
