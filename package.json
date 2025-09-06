@@ -1,5 +1,6 @@
 {
     "name": "touchkio",
+    "title": "TouchKio",
     "description": "Home Assistant Touch Kiosk",
     "homepage": "https://github.com/leukipp/touchkio",
     "author": "leukipp",
@@ -18,11 +19,12 @@
         "@electron-forge/maker-deb": "^7.8.3",
         "@electron-forge/maker-zip": "^7.8.3",
         "@electron-forge/publisher-github": "^7.8.3",
-        "electron": "^37.4.0",
+        "electron": "^38.0.0",
+        "jszip": "^3.10.1",
         "prettier": "^3.6.2"
     },
     "dependencies": {
         "axios": "^1.11.0",
-        "mqtt": "^5.14.0"
+        "mqtt": "^5.14.1"
     }
 }
