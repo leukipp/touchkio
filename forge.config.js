@@ -62,7 +62,8 @@ module.exports = {
       for (const result of results) {
         const artifacts = [];
         for (const artifact of result.artifacts) {
-          if (artifact.includes(".zip")) {
+          // Currently disabled for zip files as it seems to corrupt them
+          if (artifact.includes(".zip") && false) {
             const [name, platform, arch] = path.basename(artifact).split("-");
             const buildFile = path.join(`${name}-${platform}-${arch}`, "resources", "app", "build.json");
             const zip = await jszip.loadAsync(fs.readFileSync(artifact, "utf8"));
