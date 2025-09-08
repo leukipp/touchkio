@@ -32,7 +32,11 @@ app.whenReady().then(async () => {
   }
 
   // Show used arguments
-  console.log(`Arguments: ${JSON.stringify(ARGS, null, 2)}`);
+  const args = Object.assign({}, ARGS);
+  if ("mqtt_password" in args) {
+    args.mqtt_password = "*".repeat((args.mqtt_password || "").length);
+  }
+  console.log(`Arguments: ${JSON.stringify(args, null, 2)}`);
 
   // Chained init functions
   const chained = [webview.init, hardware.init, integration.init];
