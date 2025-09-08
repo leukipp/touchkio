@@ -3,13 +3,11 @@ const fs = require("fs");
 const path = require("path");
 const fsp = require("fs/promises");
 const cpr = require("child_process");
-const Events = require("events");
 
 global.HARDWARE = global.HARDWARE || {
   initialized: false,
-  events: new Events(),
-  session: {},
   support: {},
+  session: {},
   battery: {
     level: {
       path: null,
@@ -106,12 +104,13 @@ const init = async () => {
         return;
       }
       HARDWARE.keyboard.visibility = property.Visible === "true";
-      HARDWARE.events.emit("updateKeyboard");
+      EVENTS.emit("updateKeyboard");
     });
   });
 
   // Check for display changes
   interval(update, 1000);
+  setDisplayStatus("ON");
 
   return true;
 };
@@ -130,7 +129,7 @@ const update = async () => {
     if (status !== HARDWARE.display.status.value) {
       console.log("Update Display Status:", getDisplayStatus());
       HARDWARE.display.status.value = status;
-      HARDWARE.events.emit("updateDisplay");
+      EVENTS.emit("updateDisplay");
     }
   }
 
@@ -140,7 +139,7 @@ const update = async () => {
     if (brightness !== HARDWARE.display.brightness.value) {
       console.log("Update Display Brightness:", getDisplayBrightness());
       HARDWARE.display.brightness.value = brightness;
-      HARDWARE.events.emit("updateDisplay");
+      EVENTS.emit("updateDisplay");
     }
   }
 };

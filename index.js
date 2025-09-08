@@ -6,9 +6,11 @@ const integration = require("./js/integration");
 const hardware = require("./js/hardware");
 const webview = require("./js/webview");
 const { app } = require("electron");
+const Events = require("events");
 
 global.APP = global.APP || {};
 global.ARGS = global.ARGS || {};
+global.EVENTS = global.EVENTS || new Events();
 
 if (!process.env.DISPLAY) {
   console.error(`\n$DISPLAY variable not set to run the GUI application, are you connected via SSH?\n`);

@@ -1,11 +1,9 @@
 const mqtt = require("mqtt");
 const hardware = require("./hardware");
 const { app } = require("electron");
-const Events = require("events");
 
 global.INTEGRATION = global.INTEGRATION || {
   initialized: false,
-  events: new Events(),
 };
 
 /**
@@ -96,8 +94,8 @@ const init = async () => {
     });
 
   // Update sensor states from events
-  HARDWARE.events.on("updateDisplay", updateDisplay);
-  HARDWARE.events.on("updateKeyboard", updateKeyboard);
+  EVENTS.on("updateDisplay", updateDisplay);
+  EVENTS.on("updateKeyboard", updateKeyboard);
 
   // Update time sensors periodically (30s)
   setInterval(() => {
@@ -307,7 +305,7 @@ const initRefresh = () => {
       if (topic === config.command_topic) {
         console.log("Refreshing webview...");
         hardware.setDisplayStatus("ON");
-        WEBVIEW.events.emit("reloadView");
+        EVENTS.emit("reloadView");
       }
     })
     .subscribe(config.command_topic);
@@ -333,7 +331,6 @@ const initKiosk = () => {
       if (topic === config.command_topic) {
         const status = message.toString();
         console.log("Set Kiosk Status:", status);
-        hardware.setDisplayStatus("ON");
         switch (status) {
           case "Framed":
             WEBVIEW.window.restore();
@@ -368,7 +365,7 @@ const initKiosk = () => {
  * Updates the kiosk status via the mqtt connection.
  */
 const updateKiosk = async () => {
-  const kiosk = WEBVIEW.status;
+  const kiosk = WEBVIEW.tracker.status;
   publishState("kiosk", kiosk);
 };
 
@@ -400,20 +397,20 @@ const initDisplay = () => {
         const status = message.toString();
         console.log("Set Display Status:", status);
         hardware.setDisplayStatus(status, (reply, error) => {
-          if (error) {
-            console.warn("Failed:", error);
-          } else {
+          if (!error) {
             hardware.update();
+          } else {
+            console.warn("Failed:", error);
           }
         });
       } else if (topic === config.brightness_command_topic) {
         const brightness = parseInt(message, 10);
         console.log("Set Display Brightness:", brightness);
         hardware.setDisplayBrightness(brightness, (reply, error) => {
-          if (error) {
-            console.warn("Failed:", error);
-          } else {
+          if (!error) {
             hardware.update();
+          } else {
+            console.warn("Failed:", error);
           }
         });
       }
@@ -508,7 +505,7 @@ const initPageNumber = () => {
         const number = parseInt(message, 10);
         console.log("Set Page Number:", number);
         WEBVIEW.viewActive = number || 1;
-        WEBVIEW.events.emit("updateView");
+        EVENTS.emit("updateView");
       }
     })
     .subscribe(config.command_topic);
@@ -547,7 +544,7 @@ const initPageZoom = () => {
         const zoom = parseInt(message, 10);
         console.log("Set Page Zoom:", zoom);
         WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.setZoomFactor(zoom / 100.0);
-        WEBVIEW.events.emit("updateView");
+        EVENTS.emit("updateView");
       }
     })
     .subscribe(config.command_topic);
@@ -946,8 +943,8 @@ const initLastActive = () => {
  */
 const updateLastActive = async () => {
   const now = new Date();
-  const then = WEBVIEW.pointer.time;
-  const lastActive = Math.abs(now - then) / (1000 * 60);
+  const then = WEBVIEW.tracker.pointer.time;
+  const lastActive = (now - then) / (1000 * 60);
   publishState("last_active", lastActive);
 };
 

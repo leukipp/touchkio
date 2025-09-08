@@ -3,16 +3,16 @@ const axios = require("axios");
 const hardware = require("./hardware");
 const integration = require("./integration");
 const { app, nativeTheme, globalShortcut, ipcMain, session, BaseWindow, WebContentsView } = require("electron");
-const Events = require("events");
 
 global.WEBVIEW = global.WEBVIEW || {
   initialized: false,
-  events: new Events(),
-  status: null,
-  locked: false,
-  pointer: {
-    position: {},
-    time: new Date(),
+  tracker: {
+    pointer: {
+      position: {},
+      time: new Date(),
+    },
+    display: {},
+    status: null,
   },
 };
 
@@ -50,8 +50,6 @@ const init = async () => {
   WEBVIEW.navigationTheme = theme;
   WEBVIEW.navigationEnabled = widget;
   nativeTheme.themeSource = WEBVIEW.viewTheme;
-  WEBVIEW.events.on("reloadView", reloadView);
-  WEBVIEW.events.on("updateView", updateView);
 
   // Init global root window
   WEBVIEW.window = new BaseWindow({
@@ -118,7 +116,17 @@ const init = async () => {
   WEBVIEW.window.contentView.addChildView(WEBVIEW.navigation);
   WEBVIEW.navigation.webContents.loadFile(path.join(APP.path, "html", "navigation.html"));
 
-  // Register events
+  // Register global events
+  EVENTS.on("reloadView", reloadView);
+  EVENTS.on("updateView", updateView);
+  EVENTS.on("updateDisplay", () => {
+    const status = hardware.getDisplayStatus();
+    if (status) {
+      WEBVIEW.tracker.display[status.toLowerCase()] = new Date();
+    }
+  });
+
+  // Register local events
   await windowEvents();
   await widgetEvents();
   await navigationEvents();
@@ -136,15 +144,15 @@ const update = async () => {
     return;
   }
 
-  // Update windows status
+  // Update window status
   if (WEBVIEW.window.isFullScreen()) {
-    WEBVIEW.status = "Fullscreen";
+    WEBVIEW.tracker.status = "Fullscreen";
   } else if (WEBVIEW.window.isMinimized()) {
-    WEBVIEW.status = "Minimized";
+    WEBVIEW.tracker.status = "Minimized";
   } else if (WEBVIEW.window.isMaximized()) {
-    WEBVIEW.status = "Maximized";
+    WEBVIEW.tracker.status = "Maximized";
   } else {
-    WEBVIEW.status = "Framed";
+    WEBVIEW.tracker.status = "Framed";
   }
 
   // Update widget status
@@ -154,7 +162,7 @@ const update = async () => {
   updateNavigation();
 
   // Update integration sensor
-  console.log("Update Kiosk Status:", WEBVIEW.status);
+  console.log("Update Kiosk Status:", WEBVIEW.tracker.status);
   integration.update();
 };
 
@@ -434,21 +442,6 @@ const windowEvents = async () => {
   WEBVIEW.window.on("resize", resizeView);
   resizeView();
 
-  // Handle window focus events
-  WEBVIEW.window.on("focus", () => {
-    if (WEBVIEW.locked) {
-      hardware.setDisplayStatus("ON");
-      WEBVIEW.window.blur();
-    }
-    WEBVIEW.locked = false;
-  });
-  HARDWARE.events.on("updateDisplay", () => {
-    WEBVIEW.locked = hardware.getDisplayStatus() === "OFF";
-    if (WEBVIEW.locked) {
-      WEBVIEW.window.blur();
-    }
-  });
-
   // Handle window status updates
   WEBVIEW.window.on("minimize", update);
   WEBVIEW.window.on("restore", update);
@@ -480,8 +473,8 @@ const windowEvents = async () => {
   // Check for window touch events (1s)
   setInterval(() => {
     const now = new Date();
-    const then = WEBVIEW.pointer.time;
-    const delta = Math.abs(now - then) / 1000;
+    const then = WEBVIEW.tracker.pointer.time;
+    const delta = (now - then) / 1000;
 
     // Auto-hide navigation
     if (delta > 60) {
@@ -741,18 +734,19 @@ const viewEvents = async () => {
     // Handle webview mouse events
     view.webContents.on("before-mouse-event", (e, mouse) => {
       const now = new Date();
-      const then = WEBVIEW.pointer.time;
-      const delta = Math.abs(now - then) / 1000;
+      const then = WEBVIEW.tracker.pointer.time;
+      const delta = (now - then) / 1000;
       switch (mouse.type) {
         case "mouseMove":
           const posNew = { x: mouse.globalX, y: mouse.globalY };
           if (posNew.x < 0 || posNew.y < 0) {
             break;
           }
-          const posOld = WEBVIEW.pointer.position;
+          // Update last active on pointer position change
+          const posOld = WEBVIEW.tracker.pointer.position;
           if (posOld.x !== posNew.x || posOld.y !== posNew.y) {
-            WEBVIEW.pointer.time = now;
-            WEBVIEW.pointer.position = posNew;
+            WEBVIEW.tracker.pointer.time = now;
+            WEBVIEW.tracker.pointer.position = posNew;
             if (delta > 30) {
               console.log("Update Last Active");
               integration.update();
@@ -761,6 +755,17 @@ const viewEvents = async () => {
           break;
         case "mouseDown":
           switch (mouse.button) {
+            case "left":
+              // Ignore touch event if display was off
+              if (WEBVIEW.tracker.display.off > WEBVIEW.tracker.display.on) {
+                console.log("Display Touch Event: Ignored");
+                e.preventDefault();
+              }
+              // Turn display on if it was off
+              if (hardware.getDisplayStatus() === "OFF") {
+                hardware.setDisplayStatus("ON");
+              }
+              break;
             case "back":
               historyBackward();
               break;
@@ -781,7 +786,7 @@ const appEvents = async () => {
   // Handle signal and exit events
   process.on("SIGINT", app.quit);
   app.on("before-quit", () => {
-    WEBVIEW.status = "Terminated";
+    WEBVIEW.tracker.status = "Terminated";
     integration.update();
   });
 
