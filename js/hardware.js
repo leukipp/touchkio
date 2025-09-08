@@ -798,24 +798,24 @@ const execAsyncCommand = (cmd, args = [], callback = null) => {
  * @returns {Object} The spawned process object.
  */
 const execScriptCommand = (cmd, args = [], callback = null) => {
-  let progress = 10;
+  let progress = 1;
   let proc = cpr.spawn(cmd, args);
   if (typeof callback === "function") callback(progress, null);
   proc.stdout.on("data", (data) => {
     if (data) {
-      const lines = data.toString().trim();
-      const output = lines.replace(/\n+/g, "\n").replace(/^\n+|\n+$|\0/g, "");
-      if (output) {
-        console.log(output);
+      const output = data.toString().trim();
+      const lines = output.replace(/\n+/g, "\n").replace(/^\n+|\n+$|\0/g, "");
+      for (const line of lines.split("\n").filter(Boolean)) {
+        console.log(line);
       }
     }
   });
   proc.stderr.on("data", (data) => {
     if (data) {
-      const lines = data.toString().trim();
-      const output = lines.replace(/\n+/g, "\n").replace(/^\n+|\n+$|\0/g, "");
-      if (output) {
-        const matches = output.match(/(\d{1,3})%/g);
+      const output = data.toString().trim();
+      const lines = output.replace(/\n+/g, "\n").replace(/^\n+|\n+$|\0/g, "");
+      for (const line of lines.split("\n").filter(Boolean)) {
+        const matches = line.match(/(\d{1,3})%/g);
         if (matches) {
           const match = Math.max(...matches.map((p) => parseInt(p)));
           const percent = Math.floor(match / 10) * 10;

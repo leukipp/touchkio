@@ -209,6 +209,9 @@ const initApp = () => {
         hardware.setDisplayStatus("ON");
         const args = ["-c", `bash <(wget -qO- ${APP.scripts.install}) update`];
         hardware.execScriptCommand("bash", args, (progress, error) => {
+          if (progress) {
+            console.log(`Progress: ${progress}%`);
+          }
           updateApp(progress);
         });
       }

@@ -783,13 +783,6 @@ const viewEvents = async () => {
  * Register app events and handler.
  */
 const appEvents = async () => {
-  // Handle signal and exit events
-  process.on("SIGINT", app.quit);
-  app.on("before-quit", () => {
-    WEBVIEW.tracker.status = "Terminated";
-    integration.update();
-  });
-
   // Handle multiple instances
   app.on("second-instance", () => {
     if (WEBVIEW.window.isMinimized()) {
@@ -797,6 +790,14 @@ const appEvents = async () => {
     }
     WEBVIEW.window.focus();
   });
+
+  // Handle signal and exit events
+  app.on("before-quit", () => {
+    WEBVIEW.tracker.status = "Terminated";
+    console.warn(`${APP.title} Terminated`);
+    integration.update();
+  });
+  process.on("SIGINT", app.quit);
 
   // Webview initialized
   WEBVIEW.initialized = true;
