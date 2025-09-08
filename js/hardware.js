@@ -37,7 +37,7 @@ global.HARDWARE = global.HARDWARE || {
  */
 const init = async () => {
   if (!compatibleSystem()) {
-    console.warn("Operating system is not supported\n");
+    console.error("Operating system is not supported");
     return false;
   }
 
@@ -54,33 +54,35 @@ const init = async () => {
   HARDWARE.initialized = true;
 
   // Show supported features
-  console.log(`\nSupported: ${JSON.stringify(HARDWARE.support, null, 2)}`);
+  process.stdout.write("\n");
+  console.log(`Supported: ${JSON.stringify(HARDWARE.support, null, 2)}`);
 
   // Show session infos
-  console.log("\nUser:", HARDWARE.session.user);
+  process.stdout.write("\n");
+  console.log("User:", HARDWARE.session.user);
   console.log("Session:", HARDWARE.session.type);
   console.log("Desktop:", HARDWARE.session.desktop);
 
   // Show device infos
-  console.log("\nModel:", getModel());
+  process.stdout.write("\n");
+  console.log("Model:", getModel());
   console.log("Vendor:", getVendor());
   console.log("Serial Number:", getSerialNumber());
   console.log("Network Addresses:", getNetworkAddresses());
   console.log("Host Name:", getHostName());
 
   // Show system infos
-  console.log("\nUp Time:", getUpTime());
+  process.stdout.write("\n");
+  console.log("Up Time:", getUpTime());
   console.log("Memory Size:", getMemorySize());
   console.log("Memory Usage:", getMemoryUsage());
   console.log("Processor Usage:", getProcessorUsage());
   console.log("Processor Temperature:", getProcessorTemperature());
 
   // Show hardware infos
+  process.stdout.write("\n");
   const unsupported = "unsupported";
-  console.log(
-    `\nBattery Level [${HARDWARE.battery.level.path || unsupported}]:`,
-    `${getBatteryLevel() || unsupported}`,
-  );
+  console.log(`Battery Level [${HARDWARE.battery.level.path || unsupported}]:`, `${getBatteryLevel() || unsupported}`);
   console.log(
     `Display Status [${HARDWARE.display.status.path || unsupported}]:`,
     `${getDisplayStatus() || unsupported} (${HARDWARE.display.status.command || unsupported})`,
@@ -91,10 +93,11 @@ const init = async () => {
   );
   console.log(
     `Keyboard Visibility [${HARDWARE.support.keyboardVisibility ? "squeekboard" : unsupported}]:`,
-    `${getKeyboardVisibility() || unsupported}\n`,
+    `${getKeyboardVisibility() || unsupported}`,
   );
 
   // Check for keyboard visibility
+  process.stdout.write("\n");
   setKeyboardVisibility("OFF", (reply, error) => {
     if (!reply || error) {
       return;

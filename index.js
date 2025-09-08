@@ -5,6 +5,7 @@ const readline = require("readline/promises");
 const integration = require("./js/integration");
 const hardware = require("./js/hardware");
 const webview = require("./js/webview");
+const log = require("electron-log");
 const { app } = require("electron");
 const Events = require("events");
 
@@ -26,7 +27,7 @@ if (!process.env.DISPLAY) {
  * initialization tasks.
  */
 app.whenReady().then(async () => {
-  if (!(await initApp()) || !(await initArgs())) {
+  if (!(await initApp()) || !(await initArgs()) || !(await initLog())) {
     return;
   }
 
@@ -60,6 +61,7 @@ const initApp = async () => {
   APP.version = app.getVersion();
   APP.path = app.getAppPath();
   APP.config = app.getPath("userData");
+  APP.log = path.join(app.getPath("logs"), "main.log");
 
   // Set additional update infos
   APP.homepage = `https://github.com/${packageJson.author}/${packageJson.name}`;
@@ -131,6 +133,29 @@ const initArgs = async () => {
     args.web_url = args.web_url.split(",").map((url) => url.trim());
   }
   ARGS = args;
+
+  return true;
+};
+
+/**
+ * Initializes the global log object.
+ *
+ * @returns {bool} Returns true if the initialization was successful.
+ */
+const initLog = async () => {
+  try {
+    if (fs.existsSync(APP.log)) {
+      fs.unlinkSync(APP.log);
+    }
+  } catch (error) {
+    console.error("Failed to delete log file:", error.message);
+  }
+
+  // Overwrite console log settings
+  log.transports.file.resolvePathFn = () => {
+    return APP.log;
+  };
+  Object.assign(console, log.functions);
 
   return true;
 };

@@ -57,7 +57,8 @@ const init = async () => {
   // Client connected
   INTEGRATION.client
     .once("connect", () => {
-      console.log(`MQTT Connected: ${url.toString()}\n`);
+      console.log(`MQTT Connected: ${url.toString()}`);
+      process.stdout.write("\n");
 
       // Init client controls
       initApp();
