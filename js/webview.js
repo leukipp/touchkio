@@ -11,6 +11,7 @@ global.WEBVIEW = global.WEBVIEW || {
   status: null,
   locked: false,
   pointer: {
+    position: {},
     time: new Date(),
   },
 };
@@ -742,12 +743,20 @@ const viewEvents = async () => {
       const now = new Date();
       const then = WEBVIEW.pointer.time;
       const delta = Math.abs(now - then) / 1000;
-      WEBVIEW.pointer.time = now;
       switch (mouse.type) {
         case "mouseMove":
-          if (delta > 30) {
-            console.log("Update Last Active");
-            integration.update();
+          const posNew = { x: mouse.globalX, y: mouse.globalY };
+          if (posNew.x < 0 || posNew.y < 0) {
+            break;
+          }
+          const posOld = WEBVIEW.pointer.position;
+          if (posOld.x !== posNew.x || posOld.y !== posNew.y) {
+            WEBVIEW.pointer.time = now;
+            WEBVIEW.pointer.position = posNew;
+            if (delta > 30) {
+              console.log("Update Last Active");
+              integration.update();
+            }
           }
           break;
         case "mouseDown":
@@ -784,14 +793,14 @@ const appEvents = async () => {
     WEBVIEW.window.focus();
   });
 
+  // Webview initialized
+  WEBVIEW.initialized = true;
+
   // Check for latest release infos (2h)
   setInterval(() => {
     latestRelease();
   }, 7200 * 1000);
   await latestRelease();
-
-  // Webview initialized
-  WEBVIEW.initialized = true;
 };
 
 /**
@@ -799,7 +808,7 @@ const appEvents = async () => {
  */
 const latestRelease = async () => {
   try {
-    const response = await axios.get(`${APP.releases.url}/latest`);
+    const response = await axios.get(`${APP.releases.url}/latest`, { timeout: 10000 });
     const data = response ? response.data : null;
     if (!data || data.draft || data.prerelease) {
       return;
