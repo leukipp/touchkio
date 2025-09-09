@@ -821,9 +821,9 @@ const latestRelease = async () => {
     }
     APP.releases.latest = {
       title: APP.title,
-      version: (data.tag_name || data.name || "").replace(/^v/i, ""),
-      summary: data.body || "",
-      url: data.html_url || "",
+      version: (data.tag_name || data.name || " ").replace(/^v/i, ""),
+      summary: data.body || " ",
+      url: data.html_url || " ",
     };
   } catch (error) {
     console.warn("Github Error:", error.message);

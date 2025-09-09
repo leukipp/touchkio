@@ -226,14 +226,15 @@ const initApp = () => {
  */
 const updateApp = async (progress = 0) => {
   const latest = APP.releases.latest;
-  if (!latest) {
+  if (!latest || !latest.summary) {
     return;
   }
+  const summary = latest.summary.length > 250 ? latest.summary.slice(0, 250) + "..." : latest.summary;
   const version = {
     title: latest.title,
     latest_version: latest.version,
     installed_version: APP.version,
-    release_summary: latest.summary.slice(0, 250) + "...",
+    release_summary: summary,
     release_url: latest.url,
     update_percentage: progress || null,
     in_progress: progress && progress > 0 && progress < 100,
