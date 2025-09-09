@@ -17,13 +17,14 @@ Moreover, the device running the **kiosk application** also offers several **Hom
 - [x] Configurable browser zoom and theme support. 
 - [x] Extended touch screen wake-up functionality.
 - [x] Remote controllable via MQTT.
-  - [x] Manage kiosk window status.
   - [x] Toggle the on-screen keyboard.
   - [x] Touch display power and brightness.
+  - [x] Manage kiosk window status and zoom.
+  - [x] Show network interfaces and addresses.
+  - [x] List all available system package upgrades.
   - [x] Multi-webpage switching and url navigation.
   - [x] Monitor temperature, processor and memory usage.
   - [x] Execute system reboot and shutdown commands.
-  - [x] Show available system package upgrades.
 
 The kiosk application can be executed with command line arguments to load a **Home Assistant dashboard in fullscreen** mode.
 Additionally, a **MQTT endpoint** can be defined, allowing the application to provide controls and sensors for the Linux device and the connected Touch Display.
@@ -91,7 +92,8 @@ yarn build
 #### Update
 If you have already installed TouchKio and want to upgrade to the latest version, simply install the newer version over the existing one.
 
-The [install.sh](https://github.com/leukipp/touchkio/blob/main/install.sh) script can also be run to update an existing installation to the **latest version**. The setup procedure can be skipped to use the existing default arguments from the configuration file:
+The [install.sh](https://github.com/leukipp/touchkio/blob/main/install.sh) script can also be run to update an existing installation to the **latest version**.
+The setup procedure can be skipped to use the existing default arguments from the configuration file:
 ```bash
 bash <(wget -qO- https://raw.githubusercontent.com/leukipp/touchkio/main/install.sh) update
 ```
@@ -249,9 +251,10 @@ Implementing stronger **security measures** would complicate the setup process a
 When using the kiosk application without initializing the default arguments, you will need to provide them with every command.
 This means that the password may be stored as plain text in various files, such as `touchkio.service`, `~/.bash_history`, etc.
 
-To resolve the issue where the first **touch** on a **turned-off screen** triggers a **click event**  (which could inadvertently activate Home Assistant actions), a workaround needed to be implemented.
-When the screen **turns off** the **focus** is removed from the kiosk window.
-This way, the first click only turns the screen on and focuses the window, allowing subsequent clicks to work as expected.
+To address the problem where the first **touch** on a **turned-off screen** may trigger a **click event** (which could inadvertently activate Home Assistant actions), a workaround needed to be implemented.
+When the screen **turns on/off**, the timestamps of these events are recorded.
+If a touch event is detected and the **timestamp** of the **last screen-off** is more recent than the **last screen-on** timestamp, the touch event is discarded and the screen is turned on instead.
+From that point onward, subsequent touch interactions will function normally as expected.
 
 Additionally, to address the problem that scrolling only works with the **web browser scrollbar** on the right, the application is configured to **simulate a touch device** using `Emulation.setEmitTouchEventsForMouse`.
 This adjustment provides a user experience similar to that of a proper mobile device.
@@ -259,7 +262,7 @@ This adjustment provides a user experience similar to that of a proper mobile de
 </div></details>
 
 ## Issues
-Please have a look into the [hardware](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md) documentation if you ran into any issues. 
+Please review the [hardware](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md) documentation first if you encounter any problems.
 
 **Minimal features** are designed to run on any system without issues:
 - A webview kiosk window launched in fullscreen mode and loading the specified `--web-url` website should not cause any problems.
@@ -282,8 +285,10 @@ Please have a look into the [hardware](https://github.com/leukipp/touchkio/blob/
 - On the terminal you may see some *ERROR:gbm_wrapper.cc* messages.
   -  This appears to be a [known issue](https://github.com/electron/electron/issues/42322) that currently lacks a fix, but the webview still works.
 
-For debugging, stop the service and run `touchkio` directly on the terminal to view the log outputs.
-If you encounter any problems, please [create an issue](https://github.com/leukipp/touchkio/issues) and include the output of `touchkio --version` along with your system setup and any additional terminal logs.
+For debugging, stop the service and launch `touchkio` directly on the terminal to monitor the log output in real-time.
+This output is also written into `~/.config/touchkio/logs/main.log` for review.
+
+If you encounter any problems, please [create an issue](https://github.com/leukipp/touchkio/issues) and include the output of `touchkio --version`, additional information's about your system (such as operating system, hardware specs, etc.) and any relevant log files.
 
 ## Credits
 Thanks to Sebastian ([@pdsccode](https://github.com/pdsccode)) for his contributions on issues and [community](https://community.home-assistant.io/t/kiosk-mode-for-raspberry-pi-with-touch-display/821196) discussions.
