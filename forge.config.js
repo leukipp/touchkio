@@ -65,9 +65,10 @@ module.exports = {
           if (artifact.includes(".zip")) {
             const [name, platform, arch] = path.basename(artifact).split("-");
             const buildFile = path.join(`${name}-${platform}-${arch}`, "resources", "app", "build.json");
+            const options = { type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 9 } };
             const zip = await jszip.loadAsync(fs.readFileSync(artifact));
             zip.file(buildFile, generateBuildFile(platform, arch, "zip"));
-            fs.writeFileSync(artifact, await zip.generateAsync({ type: "nodebuffer" }));
+            fs.writeFileSync(artifact, await zip.generateAsync(options));
           }
           if (artifact.includes("amd64")) {
             const renamed = artifact.replace("amd64", "x64");
