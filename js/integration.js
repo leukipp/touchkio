@@ -206,13 +206,14 @@ const initApp = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         console.log("Update App...");
-        hardware.setDisplayStatus("ON");
-        const args = ["-c", `bash <(wget -qO- ${APP.scripts.install}) update`];
-        hardware.execScriptCommand("bash", args, (progress, error) => {
-          if (progress) {
-            console.log(`Progress: ${progress}%`);
-          }
-          updateApp(progress);
+        hardware.setDisplayStatus("ON", () => {
+          const args = ["-c", `bash <(wget -qO- ${APP.scripts.install}) update`];
+          hardware.execScriptCommand("bash", args, (progress, error) => {
+            if (progress) {
+              console.log(`Progress: ${progress}%`);
+            }
+            updateApp(progress);
+          });
         });
       }
     })
@@ -259,8 +260,9 @@ const initShutdown = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         console.log("Shutdown system...");
-        hardware.setDisplayStatus("ON");
-        hardware.shutdownSystem();
+        hardware.setDisplayStatus("ON", () => {
+          hardware.shutdownSystem();
+        });
       }
     })
     .subscribe(config.command_topic);
@@ -285,8 +287,9 @@ const initReboot = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         console.log("Rebooting system...");
-        hardware.setDisplayStatus("ON");
-        hardware.rebootSystem();
+        hardware.setDisplayStatus("ON", () => {
+          hardware.rebootSystem();
+        });
       }
     })
     .subscribe(config.command_topic);
@@ -308,8 +311,9 @@ const initRefresh = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         console.log("Refreshing webview...");
-        hardware.setDisplayStatus("ON");
-        EVENTS.emit("reloadView");
+        hardware.setDisplayStatus("ON", () => {
+          EVENTS.emit("reloadView");
+        });
       }
     })
     .subscribe(config.command_topic);
@@ -335,30 +339,32 @@ const initKiosk = () => {
       if (topic === config.command_topic) {
         const status = message.toString();
         console.log("Set Kiosk Status:", status);
-        switch (status) {
-          case "Framed":
-            WEBVIEW.window.restore();
-            WEBVIEW.window.unmaximize();
-            WEBVIEW.window.setFullScreen(false);
-            break;
-          case "Fullscreen":
-            WEBVIEW.window.restore();
-            WEBVIEW.window.unmaximize();
-            WEBVIEW.window.setFullScreen(true);
-            break;
-          case "Maximized":
-            WEBVIEW.window.restore();
-            WEBVIEW.window.setFullScreen(false);
-            WEBVIEW.window.maximize();
-            break;
-          case "Minimized":
-            WEBVIEW.window.restore();
-            WEBVIEW.window.setFullScreen(false);
-            WEBVIEW.window.minimize();
-            break;
-          case "Terminated":
-            app.quit();
-        }
+        hardware.setDisplayStatus("ON", () => {
+          switch (status) {
+            case "Framed":
+              WEBVIEW.window.restore();
+              WEBVIEW.window.unmaximize();
+              WEBVIEW.window.setFullScreen(false);
+              break;
+            case "Fullscreen":
+              WEBVIEW.window.restore();
+              WEBVIEW.window.unmaximize();
+              WEBVIEW.window.setFullScreen(true);
+              break;
+            case "Maximized":
+              WEBVIEW.window.restore();
+              WEBVIEW.window.setFullScreen(false);
+              WEBVIEW.window.maximize();
+              break;
+            case "Minimized":
+              WEBVIEW.window.restore();
+              WEBVIEW.window.setFullScreen(false);
+              WEBVIEW.window.minimize();
+              break;
+            case "Terminated":
+              app.quit();
+          }
+        });
       }
     })
     .subscribe(config.command_topic);
@@ -455,19 +461,21 @@ const initKeyboard = () => {
       if (topic === config.command_topic) {
         const status = message.toString();
         console.log("Set Keyboard Visibility:", status);
-        hardware.setKeyboardVisibility(status);
-        switch (status) {
-          case "OFF":
-            WEBVIEW.window.restore();
-            WEBVIEW.window.unmaximize();
-            WEBVIEW.window.setFullScreen(true);
-            break;
-          case "ON":
-            WEBVIEW.window.restore();
-            WEBVIEW.window.setFullScreen(false);
-            WEBVIEW.window.maximize();
-            break;
-        }
+        hardware.setDisplayStatus("ON", () => {
+          switch (status) {
+            case "OFF":
+              WEBVIEW.window.restore();
+              WEBVIEW.window.unmaximize();
+              WEBVIEW.window.setFullScreen(true);
+              break;
+            case "ON":
+              WEBVIEW.window.restore();
+              WEBVIEW.window.setFullScreen(false);
+              WEBVIEW.window.maximize();
+              break;
+          }
+          hardware.setKeyboardVisibility(status);
+        });
       }
     })
     .subscribe(config.command_topic);

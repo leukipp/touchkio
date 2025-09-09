@@ -112,8 +112,9 @@ const init = async () => {
   });
 
   // Check for display changes
-  interval(update, 1000);
-  setDisplayStatus("ON");
+  setDisplayStatus("ON", () => {
+    interval(update, 1000);
+  });
 
   return true;
 };
