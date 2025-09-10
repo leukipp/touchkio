@@ -372,7 +372,7 @@ const getProcessorTemperature = () => {
       continue;
     }
     const type = fs.readFileSync(typeFile, "utf8").trim();
-    if (["cpu-thermal", "x86_pkg_temp", "k10temp", "acpitz"].includes(type)) {
+    if (["cpu-thermal", "x86_pkg_temp", "k10temp", "acpitz", "cpu"].includes(type)) {
       return parseFloat(fs.readFileSync(tempFile, "utf8").trim()) / 1000;
     }
   }
