@@ -41,6 +41,7 @@ If you are running Linux with a graphical user interface (Wayland or X11), you s
 | Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [ELECROW Portable Monitor 10.1" (1280x800)](https://www.amazon.co.uk/dp/B0BHHQLKPY)                                   | 🟨      |
 | Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | Generic Non-Touch                                                                                                     | 🟨      |
 | Generic PC (x64)          | Debian KDE (64-bit), Wayland, X11      | Generic Non-Touch                                                                                                     | 🟧      |
+| Generic PC (x64)          | Ubuntu XFCE (64-bit), X11              | Generic Non-Touch                                                                                                     | 🟧      |
 | Generic PC (x64)          | Ubuntu GNOME (64-bit), X11             | Generic Non-Touch                                                                                                     | 🟧      |
 | Generic PC (x64)          | Ubuntu GNOME (64-bit), Wayland         | Generic Non-Touch                                                                                                     | 🟥      |
 
