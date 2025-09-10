@@ -141,6 +141,22 @@ const update = async () => {
 };
 
 /**
+ * Removes the auto-discovery config via the mqtt connection.
+ *
+ *  @param {string} type - The entity type name.
+ *  @param {Object} config - The configuration object.
+ *  @returns {Object} Instance of the mqtt client.
+ */
+const removeConfig = (type, config) => {
+  if (type === null || config === null) {
+    return INTEGRATION.client;
+  }
+  const path = config.unique_id.replace(`${INTEGRATION.node}_`, "");
+  const root = `${INTEGRATION.discovery}/${type}/${INTEGRATION.node}/${path}/config`;
+  return INTEGRATION.client.publish(root, null, { qos: 1, retain: true });
+};
+
+/**
  * Publishes the auto-discovery config via the mqtt connection.
  *
  *  @param {string} type - The entity type name.
@@ -190,9 +206,6 @@ const publishState = (path, state) => {
  * Initializes the app update entity and handles the execute logic.
  */
 const initApp = () => {
-  if (!HARDWARE.support.appUpdate) {
-    return;
-  }
   const root = `${INTEGRATION.root}/app`;
   const config = {
     name: "App",
@@ -202,6 +215,10 @@ const initApp = () => {
     payload_install: "update",
     device: INTEGRATION.device,
   };
+  if (!HARDWARE.support.appUpdate) {
+    removeConfig("update", config);
+    return;
+  }
   publishConfig("update", config)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
@@ -226,7 +243,7 @@ const initApp = () => {
  */
 const updateApp = async (progress = 0) => {
   const latest = APP.releases.latest;
-  if (!latest || !latest.summary) {
+  if (!HARDWARE.support.appUpdate || !latest || !latest.summary) {
     return;
   }
   const summary = latest.summary.length > 250 ? latest.summary.slice(0, 250) + "..." : latest.summary;
@@ -246,9 +263,6 @@ const updateApp = async (progress = 0) => {
  * Initializes the shutdown button and handles the execute logic.
  */
 const initShutdown = () => {
-  if (!HARDWARE.support.sudoRights) {
-    return;
-  }
   const root = `${INTEGRATION.root}/shutdown`;
   const config = {
     name: "Shutdown",
@@ -257,6 +271,10 @@ const initShutdown = () => {
     icon: "mdi:power",
     device: INTEGRATION.device,
   };
+  if (!HARDWARE.support.sudoRights) {
+    removeConfig("button", config);
+    return;
+  }
   publishConfig("button", config)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
@@ -273,9 +291,6 @@ const initShutdown = () => {
  * Initializes the reboot button and handles the execute logic.
  */
 const initReboot = () => {
-  if (!HARDWARE.support.sudoRights) {
-    return;
-  }
   const root = `${INTEGRATION.root}/reboot`;
   const config = {
     name: "Reboot",
@@ -284,6 +299,10 @@ const initReboot = () => {
     icon: "mdi:restart",
     device: INTEGRATION.device,
   };
+  if (!HARDWARE.support.sudoRights) {
+    removeConfig("button", config);
+    return;
+  }
   publishConfig("button", config)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
@@ -384,9 +403,6 @@ const updateKiosk = async () => {
  * Initializes the display status, brightness and handles the execute logic.
  */
 const initDisplay = () => {
-  if (!HARDWARE.support.displayStatus) {
-    return;
-  }
   const root = `${INTEGRATION.root}/display`;
   const config = {
     name: "Display",
@@ -402,6 +418,10 @@ const initDisplay = () => {
       brightness_scale: 100,
     }),
   };
+  if (!HARDWARE.support.displayStatus) {
+    removeConfig("light", config);
+    return;
+  }
   publishConfig("light", config)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
@@ -445,9 +465,6 @@ const updateDisplay = async () => {
  * Initializes the keyboard visibility and handles the execute logic.
  */
 const initKeyboard = () => {
-  if (!HARDWARE.support.keyboardVisibility) {
-    return;
-  }
   const root = `${INTEGRATION.root}/keyboard`;
   const config = {
     name: "Keyboard",
@@ -457,6 +474,10 @@ const initKeyboard = () => {
     icon: "mdi:keyboard-close-outline",
     device: INTEGRATION.device,
   };
+  if (!HARDWARE.support.keyboardVisibility) {
+    removeConfig("switch", config);
+    return;
+  }
   publishConfig("switch", config)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
@@ -495,9 +516,6 @@ const updateKeyboard = async () => {
  * Initializes the page number and handles the execute logic.
  */
 const initPageNumber = () => {
-  if (WEBVIEW.viewUrls.length <= 2) {
-    return;
-  }
   const root = `${INTEGRATION.root}/page_number`;
   const config = {
     name: "Page Number",
@@ -512,6 +530,10 @@ const initPageNumber = () => {
     icon: "mdi:page-next",
     device: INTEGRATION.device,
   };
+  if (WEBVIEW.viewUrls.length <= 2) {
+    removeConfig("number", config);
+    return;
+  }
   publishConfig("number", config)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
@@ -529,7 +551,7 @@ const initPageNumber = () => {
  * Updates the page number via the mqtt connection.
  */
 const updatePageNumber = async () => {
-  const pageNumber = WEBVIEW.viewActive || 1;
+  const pageNumber = WEBVIEW.viewUrls.length <= 2 ? null : WEBVIEW.viewActive || 1;
   publishState("page_number", pageNumber);
 };
 
@@ -850,9 +872,6 @@ const updateProcessorTemperature = async () => {
  * Initializes the battery level sensor.
  */
 const initBatteryLevel = () => {
-  if (!HARDWARE.support.batteryLevel) {
-    return;
-  }
   const root = `${INTEGRATION.root}/battery_level`;
   const config = {
     name: "Battery Level",
@@ -863,6 +882,10 @@ const initBatteryLevel = () => {
     icon: "mdi:battery-medium",
     device: INTEGRATION.device,
   };
+  if (!HARDWARE.support.batteryLevel) {
+    removeConfig("sensor", config);
+    return;
+  }
   publishConfig("sensor", config);
   updateBatteryLevel();
 };
@@ -898,12 +921,12 @@ const initPackageUpgrades = () => {
  */
 const updatePackageUpgrades = async () => {
   const packages = hardware.checkPackageUpgrades();
-  const attributes = {
+  const upgrades = {
     total: packages.length,
     packages: packages.map((pkg) => pkg.replace(/\s*\[.*?\]\s*/g, "").trim()),
   };
-  publishState("package_upgrades", attributes.total);
-  publishAttributes("package_upgrades", attributes);
+  publishState("package_upgrades", upgrades.total);
+  publishAttributes("package_upgrades", upgrades);
 };
 
 /**
