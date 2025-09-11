@@ -270,7 +270,7 @@ Please review the [hardware](https://github.com/leukipp/touchkio/blob/main/HARDW
 **Extended features** become available when the `--mqtt-*` arguments are provided and the hardware is supported:
 - If your hardware is not fully compatible there should be no crashes, but you may miss some sensors.
     - On some Debian based systems (e.g. Ubuntu GNOME), the display status control may only be available when using X11.
-- The following commands are currently implemented to modify the display status.
+- The following commands are currently implemented to modify the display status. Make sure that one of these works for your display when you run it directly on the terminal, otherwise the MQTT switch will not work either.
   - `wlopm --[on]/[off] *` (Raspberry Pi OS, Wayland) 
   - `kscreen-doctor --dpms [on]/[off]` (Debian KDE, Wayland) 
   - `xset dpms force [on]/[off]` (Generic, X11) 
