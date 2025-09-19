@@ -8,23 +8,23 @@
     "license": "MIT",
     "main": "index.js",
     "scripts": {
-        "start": "electron . --web-url=https://demo.home-assistant.io,https://demo.immichkiosk.app --app-debug=false --trace-warnings",
+        "start": "electron . --web-url=https://demo.home-assistant.io,https://demo.immichkiosk.app --app-debug=false --trace-warnings --ignore-certificate-errors",
         "build": "electron-forge make"
     },
     "prettier": {
         "printWidth": 120
     },
     "devDependencies": {
-        "@electron-forge/cli": "^7.8.3",
-        "@electron-forge/maker-deb": "^7.8.3",
-        "@electron-forge/maker-zip": "^7.8.3",
-        "@electron-forge/publisher-github": "^7.8.3",
-        "electron": "^38.0.0",
+        "@electron-forge/cli": "^7.9.0",
+        "@electron-forge/maker-deb": "^7.9.0",
+        "@electron-forge/maker-zip": "^7.9.0",
+        "@electron-forge/publisher-github": "^7.9.0",
+        "electron": "^38.1.2",
         "jszip": "^3.10.1",
         "prettier": "^3.6.2"
     },
     "dependencies": {
-        "axios": "^1.11.0",
+        "axios": "^1.12.2",
         "electron-log": "^5.4.3",
         "mqtt": "^5.14.1"
     }
