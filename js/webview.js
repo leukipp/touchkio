@@ -1,5 +1,6 @@
 const path = require("path");
 const axios = require("axios");
+const https = require("https");
 const hardware = require("./hardware");
 const integration = require("./integration");
 const { app, nativeTheme, globalShortcut, ipcMain, session, BaseWindow, WebContentsView } = require("electron");
@@ -845,7 +846,8 @@ const onlineStatus = (url, interval = 1000, timeout = 60000) => {
       const elapsed = Date.now() - start;
       try {
         if (!url.startsWith("data:")) {
-          await axios.get(url, { timeout: 10000 });
+          const agent = new https.Agent({ rejectUnauthorized: !("ignore_certificate_errors" in ARGS) });
+          await axios.get(url, { httpsAgent: agent, timeout: 10000 });
         }
         resolve(true);
       } catch (error) {
@@ -853,6 +855,9 @@ const onlineStatus = (url, interval = 1000, timeout = 60000) => {
           console.warn(`Checking Connection: ${url}`, error.message);
         }
         if (elapsed >= timeout) {
+          if (error.message?.includes("certificate")) {
+            console.error("Certificate Error: See https://github.com/leukipp/touchkio/issues/76");
+          }
           resolve(false);
         } else {
           setTimeout(check, interval);

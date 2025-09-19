@@ -49,8 +49,9 @@ const init = async () => {
   };
 
   // Connection settings
-  const options = user === null || password === null ? null : { username: user, password: password };
-  const masked = password === null ? "null" : "*".repeat(password.length);
+  const masked = password === null ? null : "*".repeat(password.length);
+  const options = user === null || password === null ? {} : { username: user, password: password };
+  options.rejectUnauthorized = !("ignore_certificate_errors" in ARGS);
   console.log("MQTT Connecting:", `${user}:${masked}@${url.toString()}`);
   INTEGRATION.client = mqtt.connect(url.toString(), options);
 
