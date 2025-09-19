@@ -291,9 +291,14 @@ This output is also written into `~/.config/touchkio/logs/main.log` for review.
 If you encounter any problems, please [create an issue](https://github.com/leukipp/touchkio/issues) and include the output of `touchkio --version`, additional information's about your system (such as operating system, hardware specs, etc.) and any relevant log files.
 
 ## Credits
-Thanks to Sebastian ([@pdsccode](https://github.com/pdsccode)) for his contributions on issues and [community](https://community.home-assistant.io/t/kiosk-mode-for-raspberry-pi-with-touch-display/821196) discussions.
 
 [Inspired by](https://www.jeffgeerling.com/blog/2024/home-assistant-and-carplay-pi-touch-display-2) the one and only Raspberry Pi Master, Jeff Geerling ([@geerlingguy](https://github.com/geerlingguy)).
+
+Thanks to Sebastian ([@pdsccode](https://github.com/pdsccode)) for his contributions on issues and [community](https://community.home-assistant.io/t/kiosk-mode-for-raspberry-pi-with-touch-display/821196) discussions.
+
+If you are looking for hardware or a well-designed mounting solution for the Raspberry Pi Display, check out the [blog post](https://www.thestockpot.net/videos/home-assistant-wall-display) from Dillan Stock ([@TheStockPot-AU](https://www.youtube.com/channel/UCmlzNHg8QiWVutUyFOV2UdQ)).
+
+[![What My Smart Home Was Missing](https://img.youtube.com/vi/uTxURzmrVtA/maxresdefault.jpg)](https://www.youtube.com/watch?v=uTxURzmrVtA)
 
 ## License
 [MIT](https://github.com/leukipp/touchkio/blob/main/LICENSE)
