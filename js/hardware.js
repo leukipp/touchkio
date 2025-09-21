@@ -746,7 +746,7 @@ const execSyncCommand = (cmd, args = []) => {
     const output = cpr.execSync([cmd, ...args].join(" "), { encoding: "utf8" });
     return output.trim().replace(/\0/g, "");
   } catch (error) {
-    console.error("Execute Sync:", error.message);
+    console.error(`Execute Sync: '${[cmd, ...args].join(" ")}' --> ${error.message}`);
   }
   return null;
 };
@@ -774,17 +774,13 @@ const execAsyncCommand = (cmd, args = [], callback = null) => {
     }
   });
   proc.on("close", (code) => {
-    try {
-      if (typeof callback === "function") {
-        if (code === 0) {
-          callback(successOutput.trim().replace(/\0/g, ""), null);
-        } else {
-          callback(null, errorOutput.trim().replace(/\0/g, ""));
-        }
-      }
-    } catch (error) {
-      console.error("Execute Async:", error.message);
-      if (typeof callback === "function") callback(null, error.message);
+    const error = errorOutput.trim().replace(/\0/g, "");
+    const reply = successOutput.trim().replace(/\0/g, "");
+    if (code !== 0 || error) {
+      console.error(`Execute Async: '${[cmd, ...args].join(" ")}' --> ${error} (${code})`);
+      if (typeof callback === "function") callback(null, error);
+    } else {
+      if (typeof callback === "function") callback(reply, null);
     }
   });
   return proc;
@@ -830,7 +826,7 @@ const execScriptCommand = (cmd, args = [], callback = null) => {
   });
   proc.on("close", (code) => {
     if (code !== 0) {
-      console.log(`Script exited with error code ${code}.`);
+      console.error(`Script exited with error code (${code}).`);
       if (typeof callback === "function") callback(null, code);
     } else {
       console.log("Script exited successfully.");

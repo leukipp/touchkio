@@ -432,7 +432,7 @@ const initDisplay = () => {
           if (!error) {
             hardware.update();
           } else {
-            console.warn("Failed:", error);
+            console.warn("Command Failed:", error);
           }
         });
       } else if (topic === config.brightness_command_topic) {
@@ -442,7 +442,7 @@ const initDisplay = () => {
           if (!error) {
             hardware.update();
           } else {
-            console.warn("Failed:", error);
+            console.warn("Command Failed:", error);
           }
         });
       }
