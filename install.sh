@@ -19,12 +19,14 @@ case "$(uname -m)" in
     x86_64)
         ARCH="x64"
         ;;
+    armv7l|armv6l|armv8l)
+        ARCH="armhf"
+        ;;
     *)
         { echo "Architecture $(uname -m) running $BITS-bit operating system is not supported."; exit 1; }
         ;;
 esac
 
-[ "$BITS" -eq 64 ] || { echo "Architecture $ARCH running $BITS-bit operating system is not supported."; exit 1; }
 echo "Architecture $ARCH running $BITS-bit operating system is supported."
 
 # Download the latest .deb package

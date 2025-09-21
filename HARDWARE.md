@@ -19,6 +19,7 @@ If you are running Linux with a graphical user interface (Wayland or X11), you s
 ### DSI
 | Device                 | System                                 | Display                                                                                                   | Status |
 | ---------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------ |
+| Raspberry Pi 2 (armhf) | Raspberry Pi OS (32-bit), Wayland, X11 | [Official 7" Touch Display 1 (800x480)](https://www.raspberrypi.com/products/raspberry-pi-touch-display/) | ⬜      |
 | Raspberry Pi 3 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 1 (800x480)](https://www.raspberrypi.com/products/raspberry-pi-touch-display/) | ⬜      |
 | Raspberry Pi 3 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 2 (720x1280)](https://www.raspberrypi.com/products/touch-display-2/)           | ⬜      |
 | Raspberry Pi 4 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 1 (800x480)](https://www.raspberrypi.com/products/raspberry-pi-touch-display/) | 🟩      |

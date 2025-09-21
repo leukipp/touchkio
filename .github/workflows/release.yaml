@@ -27,4 +27,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          yarn electron-forge publish --arch arm64,x64
+          yarn electron-forge publish --arch arm64,x64,armv7l

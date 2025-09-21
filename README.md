@@ -31,8 +31,8 @@ Additionally, a **MQTT endpoint** can be defined, allowing the application to pr
 
 ## Setup
 Before you begin, make sure that you have a Linux device configured and operational with a [compatible](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md) Touch Display.
-This guide assumes that you are using a Raspberry Pi with the latest version of Raspberry Pi OS **(64-bit)**, along with a desktop environment (preferred using **labwc**).
-However, the **.deb** setup procedure is also compatible with any other Debian based 64-bit system.
+This guide assumes that you are using a Raspberry Pi with the latest version of Raspberry Pi OS, along with a desktop environment (preferred using **labwc**).
+However, the **.deb** setup procedure is also compatible with any other Debian based 64-bit or 32-bit system.
 
 ### Optional
 To utilize the sensor features of your device through Home Assistant, it's essential to have a **MQTT broker running** and the **MQTT integration installed** on your Home Assistant instance.
@@ -50,7 +50,7 @@ You might also need a physical keyboard or remote VNC access to input these cred
 If your hardware is [supported](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md) you may be able to activate the on-screen keyboard using the side [widget](https://github.com/leukipp/touchkio/issues/16).
 
 #### Option 1 - The easy way
-Run this command to download and install the latest **.deb** (arm64 or x64) release.
+Run this command to download and install the latest **.deb** (arm64, armhf or x64) release.
 It will also create a systemd user file for auto-startup and will guide you through the setup process:
 ```bash
 bash <(wget -qO- https://raw.githubusercontent.com/leukipp/touchkio/main/install.sh)
@@ -69,7 +69,7 @@ systemctl --user start|stop|status|restart touchkio.service
 #### Option 2 - The standard way
 When connected via SSH, it's necessary to export the display variables first, as outlined in the [development](https://github.com/leukipp/touchkio?tab=readme-ov-file#development) section.
 The [install.sh](https://github.com/leukipp/touchkio/blob/main/install.sh) script mentioned above performs the following tasks (and you just have to do it manually):
-- [Download](https://github.com/leukipp/touchkio/releases/latest) the latest version file that is suitable for your architecture (arm64 or x64).
+- [Download](https://github.com/leukipp/touchkio/releases/latest) the latest version file that is suitable for your architecture (arm64, armhf or x64).
   - Debian (**deb**): Open a terminal and execute the following command to install the application, e.g:
 `sudo apt install ./touchkio_1.x.x_arm64.deb && touchkio --setup`
   - Others (**zip**): Extract the archive and run the binary, e.g:  `unzip touchkio-linux-x64-1.x.x.zip && cd touchkio-linux-x64 && ./touchkio --setup`
@@ -79,7 +79,7 @@ The [install.sh](https://github.com/leukipp/touchkio/blob/main/install.sh) scrip
 - If you need the application to be automatically started on boot, create a systemd file.
 
 #### Option 3 - The hard way
-Pre-built release files are available for arm64 and x64 Linux systems.
+Pre-built release files are available for arm64, armhf and x64 Linux systems.
 If you are using a different architecture, you can still utilize this repository to build your own application.
 
 For more information please refer to the [development](https://github.com/leukipp/touchkio?tab=readme-ov-file#development) section, however this will do the job:
