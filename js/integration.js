@@ -68,6 +68,7 @@ const init = async () => {
       initRefresh();
       initKiosk();
       initDisplay();
+      initVolume();
       initKeyboard();
       initPageNumber();
       initPageZoom();
@@ -97,6 +98,7 @@ const init = async () => {
 
   // Update sensor states from events
   EVENTS.on("updateDisplay", updateDisplay);
+  EVENTS.on("updateVolume", updateVolume);
   EVENTS.on("updateKeyboard", updateKeyboard);
 
   // Update time sensors periodically (30s)
@@ -460,6 +462,48 @@ const updateDisplay = async () => {
   const brightness = hardware.getDisplayBrightness();
   publishState("display/power", status);
   publishState("display/brightness", brightness);
+};
+
+/**
+ * Initializes the audio volume and handles the execute logic.
+ */
+const initVolume = () => {
+  const root = `${INTEGRATION.root}/volume`;
+  const config = {
+    name: "Volume",
+    unique_id: `${INTEGRATION.node}_volume`,
+    command_topic: `${root}/set`,
+    state_topic: `${root}/state`,
+    value_template: "{{ value | int }}",
+    mode: "slider",
+    min: 0,
+    max: 100,
+    unit_of_measurement: "%",
+    icon: "mdi:volume-high",
+    device: INTEGRATION.device,
+  };
+  if (!HARDWARE.support.audioVolume) {
+    removeConfig("number", config);
+    return;
+  }
+  publishConfig("number", config)
+    .on("message", (topic, message) => {
+      if (topic === config.command_topic) {
+        const volume = parseInt(message, 10);
+        console.log("Set Audio Volume:", volume);
+        hardware.setAudioVolume(volume);
+      }
+    })
+    .subscribe(config.command_topic);
+  updateVolume();
+};
+
+/**
+ * Updates the audio volume via the mqtt connection.
+ */
+const updateVolume = async () => {
+  const volume = hardware.getAudioVolume();
+  publishState("volume", volume);
 };
 
 /**

@@ -28,6 +28,9 @@ global.HARDWARE = global.HARDWARE || {
   keyboard: {
     visible: null,
   },
+  audio: {
+    device: null,
+  },
 };
 
 /**
@@ -50,6 +53,7 @@ const init = async () => {
   HARDWARE.display.status.command = getDisplayStatusCommand();
   HARDWARE.display.brightness.path = getDisplayBrightnessPath();
   HARDWARE.display.brightness.max = getDisplayBrightnessMax();
+  HARDWARE.audio.device = getAudioDevice();
   HARDWARE.support = checkSupport();
   HARDWARE.initialized = true;
 
@@ -92,24 +96,44 @@ const init = async () => {
     `${getDisplayBrightness() || unsupported}`,
   );
   console.log(
+    `Audio Volume [${HARDWARE.support.audioVolume ? HARDWARE.audio.device : unsupported}]:`,
+    `${getAudioVolume() || unsupported}`,
+  );
+  console.log(
     `Keyboard Visibility [${HARDWARE.support.keyboardVisibility ? "squeekboard" : unsupported}]:`,
     `${getKeyboardVisibility() || unsupported}`,
   );
-
-  // Check for keyboard visibility
   process.stdout.write("\n");
-  setKeyboardVisibility("OFF", (reply, error) => {
-    if (!reply || error) {
-      return;
-    }
-    dbusMonitor("/sm/puri/OSK0", (property, error) => {
-      if (!property || error) {
+
+  // Monitor audio volume
+  if (HARDWARE.support.audioVolume) {
+    commandMonitor("pactl", ["subscribe"], (reply, error) => {
+      if (!reply || error) {
         return;
       }
-      HARDWARE.keyboard.visibility = property.Visible === "true";
-      EVENTS.emit("updateKeyboard");
+      if (reply.includes("'change' on sink")) {
+        console.log("Update Audio Volume:", getAudioVolume());
+        EVENTS.emit("updateVolume");
+      }
     });
-  });
+  }
+
+  // Monitor keyboard visibility
+  if (HARDWARE.support.keyboardVisibility) {
+    setKeyboardVisibility("OFF", (reply, error) => {
+      if (!reply || error) {
+        return;
+      }
+      dbusMonitor("/sm/puri/OSK0", (property, error) => {
+        if (!property || error) {
+          return;
+        }
+        HARDWARE.keyboard.visibility = property.Visible === "true";
+        console.log("Update Keyboard Visibility:", getKeyboardVisibility());
+        EVENTS.emit("updateKeyboard");
+      });
+    });
+  }
 
   // Check for display changes
   setDisplayStatus("ON", () => {
@@ -209,6 +233,7 @@ const checkSupport = () => {
   const battery = HARDWARE.battery.level;
   const status = HARDWARE.display.status;
   const brightness = HARDWARE.display.brightness;
+  const audio = HARDWARE.audio.device;
   const keyboard = processRuns("squeekboard");
   const service = serviceRuns(APP.name);
   const sudo = sudoRights();
@@ -218,8 +243,9 @@ const checkSupport = () => {
     displayStatus: !!status.path && !!status.command,
     displayBrightness: sudo && !!brightness.path && !!brightness.max,
     keyboardVisibility: keyboard,
+    audioVolume: !!audio,
     sudoRights: sudo,
-    appUpdate: sudo && service && deb,
+    appUpdate: service && sudo && deb,
   };
 };
 
@@ -483,7 +509,7 @@ const getDisplayStatus = () => {
     case "xset":
       const xset = execSyncCommand("xset", ["-q"]);
       if (xset !== null) {
-        const output = /Monitor is On/.test(xset);
+        const output = xset.includes("Monitor is On");
         return output ? "ON" : "OFF";
       }
       break;
@@ -600,6 +626,65 @@ const setDisplayBrightness = (brightness, callback = null) => {
 };
 
 /**
+ * Gets the default audio device using `pactl`.
+ *
+ * @returns {string|null} The default audio device or null if an error occurs.
+ */
+const getAudioDevice = () => {
+  if (!commandExists("pactl")) {
+    return null;
+  }
+  const output = execSyncCommand("pactl", ["get-default-sink"]);
+  if (!output) {
+    return null;
+  }
+  return !output.includes("auto_null") ? output.trim() : null;
+};
+
+/**
+ * Gets the default audio device volume using `pactl`.
+ *
+ * @returns {number|null} The default audio device volume as a percentage or null if an error occurs.
+ */
+const getAudioVolume = () => {
+  if (!HARDWARE.support.audioVolume) {
+    return null;
+  }
+  const mute = execSyncCommand("pactl", ["get-sink-mute", "@DEFAULT_SINK@"]);
+  const volume = execSyncCommand("pactl", ["get-sink-volume", "@DEFAULT_SINK@"]);
+  if (!mute || !volume) {
+    return null;
+  }
+  const match = volume.match(/\/(\s*(\d+)%)/);
+  if (match) {
+    return Math.max(0, Math.min(100, mute.includes("yes") ? 0 : parseInt(match[2])));
+  }
+  return null;
+};
+
+/**
+ * Sets the default audio device volume using `pactl`.
+ *
+ * This function takes a volume value between 0 to 100 percent and sends it to the device.
+ *
+ * @param {number} volume - The desired volume level (0-100).
+ * @param {Function} callback - A callback function that receives the output or error.
+ */
+const setAudioVolume = (volume, callback = null) => {
+  if (!HARDWARE.support.audioVolume) {
+    if (typeof callback === "function") callback(null, "Not supported");
+    return;
+  }
+  if (typeof volume !== "number" || volume < 0 || volume > 100) {
+    console.error("Volume must be a number between 0 and 100");
+    if (typeof callback === "function") callback(null, "Invalid volume");
+    return;
+  }
+  execAsyncCommand("pactl", ["set-sink-mute", "@DEFAULT_SINK@", volume === 0 ? "1" : "0"]);
+  execAsyncCommand("pactl", ["set-sink-volume", "@DEFAULT_SINK@", `${volume}%`], callback);
+};
+
+/**
  * Gets the keyboard visibility using global properties.
  *
  * @returns {string|null} The keyboard visibility as 'ON'/'OFF' or null if an error occurs.
@@ -689,8 +774,8 @@ const rebootSystem = (callback = null) => {
  */
 const sudoRights = () => {
   try {
-    const output = cpr.execSync(`sudo -n true`, { encoding: "utf8" });
-    return output !== null && !output.includes("password is required");
+    cpr.execSync(`sudo -n true`, { encoding: "utf8", stdio: "ignore" });
+    return true;
   } catch {}
   return false;
 };
@@ -703,7 +788,8 @@ const sudoRights = () => {
  */
 const serviceRuns = (name) => {
   try {
-    return !!cpr.execSync(`systemctl --user is-active ${name}`, { encoding: "utf8" });
+    cpr.execSync(`systemctl --user is-active ${name}`, { encoding: "utf8", stdio: "ignore" });
+    return true;
   } catch {}
   return false;
 };
@@ -716,7 +802,8 @@ const serviceRuns = (name) => {
  */
 const processRuns = (name) => {
   try {
-    return !!cpr.execSync(`pidof ${name}`, { encoding: "utf8" });
+    cpr.execSync(`pidof ${name}`, { encoding: "utf8", stdio: "ignore" });
+    return true;
   } catch {}
   return false;
 };
@@ -729,7 +816,8 @@ const processRuns = (name) => {
  */
 const commandExists = (name) => {
   try {
-    return !!cpr.execSync(`which ${name}`, { encoding: "utf8" });
+    cpr.execSync(`which ${name}`, { encoding: "utf8", stdio: "ignore" });
+    return true;
   } catch {}
   return false;
 };
@@ -741,7 +829,7 @@ const commandExists = (name) => {
  * @param {Array<string>} args - The arguments for the command.
  * @returns {string|null} The output of the command or null if an error occurs.
  */
-const execSyncCommand = (cmd, args = []) => {
+const execSyncCommand = (cmd, args) => {
   try {
     const output = cpr.execSync([cmd, ...args].join(" "), { encoding: "utf8" });
     return output.trim().replace(/\0/g, "");
@@ -759,7 +847,7 @@ const execSyncCommand = (cmd, args = []) => {
  * @param {Function} callback - A callback function that receives the output or error.
  * @returns {Object} The spawned process object.
  */
-const execAsyncCommand = (cmd, args = [], callback = null) => {
+const execAsyncCommand = (cmd, args, callback = null) => {
   let errorOutput = "";
   let successOutput = "";
   let proc = cpr.spawn(cmd, args);
@@ -794,7 +882,7 @@ const execAsyncCommand = (cmd, args = [], callback = null) => {
  * @param {Function} callback - A callback function that receives the progress or error.
  * @returns {Object} The spawned process object.
  */
-const execScriptCommand = (cmd, args = [], callback = null) => {
+const execScriptCommand = (cmd, args, callback = null) => {
   let progress = 1;
   let proc = cpr.spawn(cmd, args);
   if (typeof callback === "function") callback(progress, null);
@@ -836,25 +924,28 @@ const execScriptCommand = (cmd, args = [], callback = null) => {
 };
 
 /**
- * Executes a D-Bus method call synchronously using `dbus-send`.
+ * Monitors a command asynchronously.
  *
- * @param {string} path - The D-Bus object path.
- * @param {string} method - The D-Bus method name.
- * @param {Array<string>} values - The argument values for the D-Bus method.
+ * @param {string} cmd - The command to monitor.
+ * @param {Array<string>} args - The arguments for the command.
  * @param {Function} callback - A callback function that receives the output or error.
+ * @returns {Object} The spawned process object.
  */
-const dbusCall = (path, method, values, callback = null) => {
-  const cmd = "dbus-send";
-  const iface = path.slice(1).replace(/\//g, ".");
-  const dest = `${iface} ${path} ${iface}.${method} ${values.join(" ")}`;
-  const args = ["--print-reply", "--type=method_call", `--dest=${dest}`];
-  try {
-    const output = cpr.execSync([cmd, ...args].join(" ").trim(), { encoding: "utf8" });
-    if (typeof callback === "function") callback(output.trim().replace(/\0/g, ""), null);
-  } catch (error) {
-    console.error("Call D-Bus:", error.message);
-    if (typeof callback === "function") callback(null, error.message);
-  }
+const commandMonitor = (cmd, args, callback) => {
+  const proc = cpr.spawn(cmd, args);
+  proc.stdout.on("data", (data) => {
+    if (data) {
+      const output = data.toString().trim().replace(/\0/g, "");
+      if (typeof callback === "function") callback(output, null);
+    }
+  });
+  proc.stderr.on("data", (data) => {
+    if (data) {
+      const output = data.toString().trim().replace(/\0/g, "");
+      if (typeof callback === "function") callback(null, output);
+    }
+  });
+  return proc;
 };
 
 /**
@@ -900,6 +991,28 @@ const dbusMonitor = (path, callback) => {
 };
 
 /**
+ * Executes a D-Bus method call synchronously using `dbus-send`.
+ *
+ * @param {string} path - The D-Bus object path.
+ * @param {string} method - The D-Bus method name.
+ * @param {Array<string>} values - The argument values for the D-Bus method.
+ * @param {Function} callback - A callback function that receives the output or error.
+ */
+const dbusCall = (path, method, values, callback = null) => {
+  const cmd = "dbus-send";
+  const iface = path.slice(1).replace(/\//g, ".");
+  const dest = `${iface} ${path} ${iface}.${method} ${values.join(" ")}`;
+  const args = ["--print-reply", "--type=method_call", `--dest=${dest}`];
+  try {
+    const output = cpr.execSync([cmd, ...args].join(" ").trim(), { encoding: "utf8" });
+    if (typeof callback === "function") callback(output.trim().replace(/\0/g, ""), null);
+  } catch (error) {
+    console.error("Call D-Bus:", error.message);
+    if (typeof callback === "function") callback(null, error.message);
+  }
+};
+
+/**
  * Helper function for asynchronous interval calls.
  *
  * @param {Function} callback - An async callback function.
@@ -938,6 +1051,8 @@ module.exports = {
   setDisplayStatus,
   getDisplayBrightness,
   setDisplayBrightness,
+  getAudioVolume,
+  setAudioVolume,
   getKeyboardVisibility,
   setKeyboardVisibility,
   checkPackageUpgrades,
