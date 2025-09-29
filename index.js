@@ -19,6 +19,7 @@ if (!process.env.DISPLAY) {
   console.error(`  systemctl --user start touchkio.service`);
   console.error(`Alternatively export the variables first:`);
   console.error(`  export DISPLAY=":0" && export WAYLAND_DISPLAY="wayland-0" && touchkio\n`);
+  process.exit(1);
 }
 
 /**
@@ -86,7 +87,7 @@ const initApp = async () => {
   // Request single app instance lock
   if (!app.requestSingleInstanceLock()) {
     console.error(`${APP.title} is already running`);
-    return app.quit();
+    return app.exit(1);
   }
 
   return true;
@@ -111,24 +112,24 @@ const initArgs = async () => {
       build = ` (${APP.build.id}), built on ${APP.build.date} (${APP.build.platform}-${APP.build.arch}-${APP.build.maker})`;
     }
     console.log(`${APP.name}-v${APP.version}${build}\n${APP.homepage}`);
-    return app.quit();
+    return app.exit(0);
   }
 
   // Setup arguments from file path
-  if ("setup" in args || (!argsProvided && !argsFileExists)) {
+  if ((!argsProvided && !argsFileExists) || "setup" in args) {
     await sleep(3000);
     do {
       args = await promptArgs(process);
     } while (!Object.keys(args).length);
     writeArgs(argsFilePath, args);
-  } else if (!argsProvided && argsFileExists) {
-    args = readArgs(argsFilePath);
+  } else if (argsFileExists) {
+    args = { ...readArgs(argsFilePath), ...args };
   }
 
   // Check arguments object
   if (!Object.keys(args).length) {
     console.error(`No arguments provided`);
-    return app.quit();
+    return app.exit(1);
   }
 
   // Split url arguments
@@ -280,7 +281,7 @@ const promptArgs = async (proc) => {
   } catch (error) {
     console.error(`\n${error.message}`);
     args = {};
-    app.quit();
+    app.exit(1);
   } finally {
     read.close();
   }
