@@ -186,7 +186,10 @@
             ipcRenderer.send("button-click", { id: e.target.id });
           });
         });
-        document.querySelectorAll("input").forEach((input) => {
+        document.querySelectorAll("input").forEach((input) => {          
+          input.addEventListener("blur", (e) => {
+            ipcRenderer.send("input-blur", { id: e.target.id });
+          });
           input.addEventListener("focus", (e) => {
             ipcRenderer.send("input-focus", { id: e.target.id });
           });

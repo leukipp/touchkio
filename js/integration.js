@@ -363,30 +363,7 @@ const initKiosk = () => {
         const status = message.toString();
         console.log("Set Kiosk Status:", status);
         hardware.setDisplayStatus("ON", () => {
-          switch (status) {
-            case "Framed":
-              WEBVIEW.window.restore();
-              WEBVIEW.window.unmaximize();
-              WEBVIEW.window.setFullScreen(false);
-              break;
-            case "Fullscreen":
-              WEBVIEW.window.restore();
-              WEBVIEW.window.unmaximize();
-              WEBVIEW.window.setFullScreen(true);
-              break;
-            case "Maximized":
-              WEBVIEW.window.restore();
-              WEBVIEW.window.setFullScreen(false);
-              WEBVIEW.window.maximize();
-              break;
-            case "Minimized":
-              WEBVIEW.window.restore();
-              WEBVIEW.window.setFullScreen(false);
-              WEBVIEW.window.minimize();
-              break;
-            case "Terminated":
-              app.quit();
-          }
+          WEBVIEW.window.setStatus(status);
         });
       }
     })
@@ -529,18 +506,6 @@ const initKeyboard = () => {
         const status = message.toString();
         console.log("Set Keyboard Visibility:", status);
         hardware.setDisplayStatus("ON", () => {
-          switch (status) {
-            case "OFF":
-              WEBVIEW.window.restore();
-              WEBVIEW.window.unmaximize();
-              WEBVIEW.window.setFullScreen(true);
-              break;
-            case "ON":
-              WEBVIEW.window.restore();
-              WEBVIEW.window.setFullScreen(false);
-              WEBVIEW.window.maximize();
-              break;
-          }
           hardware.setKeyboardVisibility(status);
         });
       }
@@ -1010,6 +975,7 @@ const initLastActive = () => {
     name: "Last Active",
     unique_id: `${INTEGRATION.node}_last_active`,
     state_topic: `${root}/state`,
+    json_attributes_topic: `${root}/attributes`,
     value_template: "{{ (value | float) | round(0) }}",
     unit_of_measurement: "min",
     icon: "mdi:gesture-tap-hold",
@@ -1027,6 +993,7 @@ const updateLastActive = async () => {
   const then = WEBVIEW.tracker.pointer.time;
   const lastActive = (now - then) / (1000 * 60);
   publishState("last_active", lastActive);
+  publishAttributes("last_active", WEBVIEW.tracker.pointer);
 };
 
 module.exports = {

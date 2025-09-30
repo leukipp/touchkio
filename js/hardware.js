@@ -962,18 +962,20 @@ const dbusMonitor = (path, callback) => {
   proc.stdout.on("data", (data) => {
     try {
       const signal = data.toString();
-      if (signal.includes("member=PropertiesChanged") && signal.includes(`path=${path}`)) {
+      if (signal.includes(`string "Visible"`)) {
         const dicts = [...signal.matchAll(/dict entry\(\s*([^)]*?)\)/g)].map((dict) => dict[1].trim());
         if (dicts.length) {
           dicts.forEach((dict) => {
             const key = dict.match(/string "(.*?)"/);
             const value = dict.match(/(?<=variant\s+)(.*)/);
-            if (key && value && typeof callback === "function") {
-              callback({ [key[1].trim()]: value[1].trim().split(" ").pop() }, null);
+            if (key && value) {
+              const property = { [key[1].trim()]: value[1].trim().split(" ").pop() };
+              if (typeof callback === "function") callback(property, null);
             }
           });
         } else {
-          callback({ Visible: `${HARDWARE.keyboard.visibility}` }, null);
+          const property = { Visible: `${HARDWARE.keyboard.visibility}` };
+          if (typeof callback === "function") callback(property, null);
         }
       }
     } catch (error) {
