@@ -132,7 +132,7 @@
       </li>
       <li class="separator"></li>
       <li class="dynamic">
-        <input id="url" type="text" spellcheck="false" />
+        <input id="url" type="text" spellcheck="false" readonly="true" />
       </li>
       <li class="separator"></li>
       <li>
@@ -207,16 +207,20 @@
         });
         ipcRenderer.on("button-hidden", (e, button) => {
           document.getElementById(button.id).parentNode.classList.toggle("hidden", button.hidden);
-        });
-        ipcRenderer.on("input-blur", (e, input) => {
-          document.getElementById(input.id).blur();
-        });
-        ipcRenderer.on("input-select", (e, input) => {
-          document.getElementById(input.id).select();
+        });        
+        ipcRenderer.on("input-readonly", (e, input) => {
+          document.getElementById(input.id).readOnly = input.readonly;
         });
         ipcRenderer.on("input-text", (e, input) => {
           document.getElementById(input.id).value = input.text;
           document.getElementById(input.id).placeholder = input.placeholder;
+        });
+        ipcRenderer.on("input-select", (e, input) => {
+          if (input.select) {
+            document.getElementById(input.id).select();
+          } else {
+            window.getSelection()?.removeAllRanges();
+          }
         });
         ipcRenderer.on("data-theme", (e, data) => {
           document.documentElement.setAttribute("data-theme", data.theme);

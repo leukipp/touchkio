@@ -263,6 +263,10 @@ const updateNavigation = () => {
     text: currentUrl.startsWith("data:") ? "" : currentUrl,
     placeholder: defaultUrl.startsWith("data:") ? "" : defaultUrl,
   });
+  WEBVIEW.navigation.webContents.send("input-readonly", {
+    id: "url",
+    readonly: !!HARDWARE.support.keyboardVisibility,
+  });
 
   // Disable zoom buttons
   WEBVIEW.navigation.webContents.send("button-disabled", {
@@ -632,22 +636,17 @@ const navigationEvents = async () => {
     return;
   }
 
-  // Handle navigation blur events
-  let selected = false;
-  WEBVIEW.navigation.webContents.on("blur", () => {
-    const visibility = hardware.getKeyboardVisibility();
-    if (visibility === "ON" && selected) {
-      WEBVIEW.navigation.webContents.send("input-blur", { id: "url" });
-    }
-  });
-
   // Handle input blur events
+  let selected = false;
   ipcMain.on("input-blur", (e, input) => {
     const visibility = hardware.getKeyboardVisibility();
     switch (input.id) {
       case "url":
         if (visibility === "ON" && selected) {
-          hardware.setKeyboardVisibility("OFF");
+          hardware.setKeyboardVisibility("OFF", () => {
+            WEBVIEW.navigation.webContents.send("input-select", { id: "url", select: false });
+            WEBVIEW.navigation.webContents.send("input-readonly", { id: "url", readonly: true });
+          });
         }
         break;
     }
@@ -664,7 +663,8 @@ const navigationEvents = async () => {
             setTimeout(() => {
               selected = true;
               WEBVIEW.navigation.webContents.focus();
-              WEBVIEW.navigation.webContents.send("input-select", { id: "url" });
+              WEBVIEW.navigation.webContents.send("input-select", { id: "url", select: true });
+              WEBVIEW.navigation.webContents.send("input-readonly", { id: "url", readonly: false });
             }, 400);
           });
         }
