@@ -3,7 +3,17 @@ const axios = require("axios");
 const https = require("https");
 const hardware = require("./hardware");
 const integration = require("./integration");
-const { app, nativeTheme, globalShortcut, ipcMain, session, BaseWindow, WebContentsView } = require("electron");
+const {
+  app,
+  nativeTheme,
+  globalShortcut,
+  ipcMain,
+  dialog,
+  screen,
+  session,
+  BaseWindow,
+  WebContentsView,
+} = require("electron");
 
 global.WEBVIEW = global.WEBVIEW || {
   initialized: false,
@@ -34,7 +44,7 @@ const init = async () => {
   session.defaultSession.clearCache();
 
   // Parse arguments
-  const fullscreen = ARGS.app_debug !== "true";
+  const debug = ARGS.app_debug === "true";
   const widget = ARGS.web_widget ? ARGS.web_widget === "true" : true;
   const zoom = !isNaN(parseFloat(ARGS.web_zoom)) ? parseFloat(ARGS.web_zoom) : 1.25;
   const theme = ["light", "dark"].includes(ARGS.web_theme) ? ARGS.web_theme : "dark";
@@ -48,17 +58,24 @@ const init = async () => {
   WEBVIEW.pagerEnabled = widget;
   WEBVIEW.widgetTheme = theme;
   WEBVIEW.widgetEnabled = widget;
+  WEBVIEW.statusTheme = theme;
+  WEBVIEW.statusEnabled = true;
   WEBVIEW.navigationTheme = theme;
   WEBVIEW.navigationEnabled = widget;
   nativeTheme.themeSource = WEBVIEW.viewTheme;
 
   // Init global root window
+  WEBVIEW.display = screen.getPrimaryDisplay().workAreaSize;
   WEBVIEW.window = new BaseWindow({
     title: APP.title,
-    icon: path.join(APP.path, "img", "icon.png"),
-    fullscreen: fullscreen,
+    icon: APP.icon,
+    fullscreen: !debug,
     autoHideMenuBar: true,
-    frame: true,
+    frame: debug || !WEBVIEW.statusEnabled,
+    width: Math.floor(WEBVIEW.display.width * 0.9),
+    height: Math.floor(WEBVIEW.display.height * 0.9),
+    minWidth: 136,
+    minHeight: 136,
   });
   WEBVIEW.window.setMenuBarVisibility(false);
 
@@ -104,6 +121,18 @@ const init = async () => {
   WEBVIEW.window.contentView.addChildView(WEBVIEW.widget);
   WEBVIEW.widget.webContents.loadFile(path.join(APP.path, "html", "widget.html"));
 
+  // Init global status
+  WEBVIEW.status = new WebContentsView({
+    transparent: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+  WEBVIEW.status.setBackgroundColor("#00000000");
+  WEBVIEW.window.contentView.addChildView(WEBVIEW.status);
+  WEBVIEW.status.webContents.loadFile(path.join(APP.path, "html", "status.html"));
+
   // Init global navigation
   WEBVIEW.navigation = new WebContentsView({
     transparent: true,
@@ -116,36 +145,13 @@ const init = async () => {
   WEBVIEW.window.contentView.addChildView(WEBVIEW.navigation);
   WEBVIEW.navigation.webContents.loadFile(path.join(APP.path, "html", "navigation.html"));
 
-  // Register local events
+  // Register global events
   await windowEvents();
   await widgetEvents();
+  await statusEvents();
   await navigationEvents();
   await viewEvents();
   await appEvents();
-
-  // Register global events
-  EVENTS.on("reloadView", reloadView);
-  EVENTS.on("updateView", updateView);
-  EVENTS.on("updateDisplay", () => {
-    const status = hardware.getDisplayStatus();
-    if (status) {
-      WEBVIEW.tracker.display[status.toLowerCase()] = new Date();
-    }
-  });
-  EVENTS.on("updateStatus", () => {
-    const visibility = hardware.getKeyboardVisibility();
-    if (visibility === "ON" && (WEBVIEW.window.isFullScreen() || WEBVIEW.window.isMinimized())) {
-      hardware.setKeyboardVisibility("OFF");
-    }
-  });
-  EVENTS.on("updateKeyboard", () => {
-    const visibility = hardware.getKeyboardVisibility();
-    if (visibility === "ON" && WEBVIEW.window.isFullScreen()) {
-      WEBVIEW.window.setStatus("maximized");
-    } else if (visibility === "OFF" && WEBVIEW.window.isMaximized()) {
-      WEBVIEW.window.setStatus("fullscreen");
-    }
-  });
 
   return true;
 };
@@ -184,6 +190,10 @@ const updateView = () => {
 
   // Update window title
   console.log(`Update View: ${title}`);
+  WEBVIEW.status.webContents.send("text-content", {
+    id: "title",
+    content: title,
+  });
   WEBVIEW.window.setTitle(title);
 
   // Hide all other webviews and show only the active one
@@ -216,6 +226,12 @@ const updateStatus = () => {
  * Updates the widget control.
  */
 const updateWidget = () => {
+  // Hide status button
+  WEBVIEW.widget.webContents.send("button-hidden", {
+    id: "fullscreen",
+    hidden: !WEBVIEW.statusEnabled,
+  });
+
   // Hide keyboard button
   WEBVIEW.widget.webContents.send("button-hidden", {
     id: "keyboard",
@@ -291,24 +307,67 @@ const updateNavigation = () => {
 
 /**
  * Shows or hides the webview navigation bar.
+ *
+ * @param {string} force - Force the navigation bar visibility to 'ON' or 'OFF'.
  */
-const toggleNavigation = () => {
+const toggleNavigation = (force = null) => {
+  if (!WEBVIEW.navigationEnabled) {
+    return;
+  }
   const window = WEBVIEW.window.getBounds();
+  const status = WEBVIEW.status.getBounds();
   const navigation = WEBVIEW.navigation.getBounds();
-  const height = navigation.height > 0 ? 0 : 60;
+
+  // Calculate navigation height
+  const height = force === "ON" ? 50 : force === "OFF" ? 0 : navigation.height > 0 ? 0 : 50;
+  if (height === navigation.height) {
+    return;
+  }
 
   // Show or hide navigation based on height
   WEBVIEW.navigation.setBounds({
     x: 0,
-    y: window.height - height,
+    y: window.height - status.height - height,
     width: window.width,
     height: height,
   });
+
+  // Focus navigation or view
   if (height > 0) {
     WEBVIEW.navigation.webContents.focus();
   } else {
     WEBVIEW.views[WEBVIEW.viewActive].webContents.focus();
   }
+
+  // Resize webview
+  resizeView();
+};
+
+/**
+ * Shows or hides the webview status bar.
+ *
+ * @param {string} force - Force the status bar visibility to 'ON' or 'OFF'.
+ */
+const toggleStatus = (force = null) => {
+  if (!WEBVIEW.statusEnabled) {
+    return;
+  }
+  const window = WEBVIEW.window.getBounds();
+  const status = WEBVIEW.status.getBounds();
+
+  // Calculate status height
+  const height = force === "ON" ? 40 : force === "OFF" ? 0 : status.height > 0 ? 0 : 40;
+  if (height === status.height) {
+    return;
+  }
+
+  // Show or hide status based on height
+  WEBVIEW.status.setBounds({
+    x: 0,
+    y: 0,
+    width: window.width,
+    height: height,
+  });
 
   // Resize webview
   resizeView();
@@ -413,6 +472,7 @@ const reloadView = () => {
  */
 const resizeView = () => {
   const window = WEBVIEW.window.getBounds();
+  const status = WEBVIEW.status.getBounds();
   const navigation = WEBVIEW.navigation.getBounds();
   const pager = { width: 20, height: window.height };
   const widget = { width: 60, height: 200 };
@@ -421,9 +481,9 @@ const resizeView = () => {
   WEBVIEW.views.forEach((view) => {
     view.setBounds({
       x: 0,
-      y: 0,
+      y: status.height,
       width: window.width,
-      height: window.height - navigation.height,
+      height: window.height - status.height - navigation.height,
     });
   });
 
@@ -431,9 +491,9 @@ const resizeView = () => {
   if (WEBVIEW.pagerEnabled) {
     WEBVIEW.pager.setBounds({
       x: window.width - pager.width,
-      y: 0,
+      y: status.height,
       width: pager.width,
-      height: pager.height,
+      height: pager.height - status.height - navigation.height,
     });
     WEBVIEW.pager.webContents.send("data-theme", { theme: "hidden" });
   }
@@ -442,11 +502,22 @@ const resizeView = () => {
   if (WEBVIEW.widgetEnabled) {
     WEBVIEW.widget.setBounds({
       x: window.width - 20,
-      y: parseInt(window.height / 2 - widget.height / 2, 10),
+      y: status.height + parseInt((window.height - status.height - widget.height) / 2, 10),
       width: widget.width,
       height: widget.height,
     });
     WEBVIEW.widget.webContents.send("data-theme", { theme: "hidden" });
+  }
+
+  // Update status size
+  if (WEBVIEW.statusEnabled) {
+    WEBVIEW.status.setBounds({
+      x: 0,
+      y: 0,
+      width: window.width,
+      height: status.height,
+    });
+    WEBVIEW.status.webContents.send("data-theme", { theme: WEBVIEW.statusTheme });
   }
 
   // Update navigation size
@@ -472,15 +543,15 @@ const windowEvents = async () => {
 
   // Handle window status updates
   WEBVIEW.window.setStatus = async (status) => {
-    const apply = (f, ...args) => {
-      f.apply(WEBVIEW.window, args);
+    const apply = (func, ...args) => {
+      func.apply(WEBVIEW.window, args);
       return new Promise((r) => setTimeout(r, 50));
     };
     if (WEBVIEW.window.isMinimized()) {
       await apply(WEBVIEW.window.restore);
     }
-    switch (status.toLowerCase()) {
-      case "framed":
+    switch (status) {
+      case "Framed":
         if (WEBVIEW.window.isFullScreen()) {
           await apply(WEBVIEW.window.setFullScreen, false);
         }
@@ -488,7 +559,7 @@ const windowEvents = async () => {
           await apply(WEBVIEW.window.unmaximize);
         }
         break;
-      case "fullscreen":
+      case "Fullscreen":
         if (!WEBVIEW.window.isMaximized()) {
           await apply(WEBVIEW.window.maximize);
         }
@@ -496,7 +567,7 @@ const windowEvents = async () => {
           await apply(WEBVIEW.window.setFullScreen, true);
         }
         break;
-      case "maximized":
+      case "Maximized":
         if (WEBVIEW.window.isFullScreen()) {
           await apply(WEBVIEW.window.setFullScreen, false);
         }
@@ -504,7 +575,7 @@ const windowEvents = async () => {
           await apply(WEBVIEW.window.maximize);
         }
         break;
-      case "minimized":
+      case "Minimized":
         if (WEBVIEW.window.isFullScreen()) {
           await apply(WEBVIEW.window.setFullScreen, false);
         }
@@ -512,8 +583,9 @@ const windowEvents = async () => {
           await apply(WEBVIEW.window.minimize);
         }
         break;
-      case "terminated":
+      case "Terminated":
         app.quit();
+        break;
     }
   };
   WEBVIEW.window.onStatus = () => {
@@ -555,10 +627,7 @@ const windowEvents = async () => {
 
     // Auto-hide navigation
     if (delta > 60) {
-      const navigation = WEBVIEW.navigation.getBounds();
-      if (navigation.height > 0) {
-        toggleNavigation();
-      }
+      toggleNavigation("OFF");
     }
   }, 1000);
 };
@@ -610,19 +679,45 @@ const widgetEvents = async () => {
           WEBVIEW.views[WEBVIEW.viewActive].webContents.focus();
         });
         break;
+      case "navigation":
+        toggleNavigation();
+        break;
+    }
+  });
+};
+
+/**
+ * Register status events and handler.
+ */
+const statusEvents = async () => {
+  if (!WEBVIEW.statusEnabled) {
+    return;
+  }
+
+  // Handle status button click events
+  ipcMain.on("button-click", (e, button) => {
+    switch (button.id) {
       case "fullscreen":
         if (WEBVIEW.window.isFullScreen()) {
-          WEBVIEW.window.setStatus("framed");
+          WEBVIEW.window.setStatus("Framed");
         } else {
-          WEBVIEW.window.setStatus("fullscreen");
+          WEBVIEW.window.setStatus("Fullscreen");
         }
         WEBVIEW.views[WEBVIEW.viewActive].webContents.focus();
         break;
       case "minimize":
-        WEBVIEW.window.setStatus("minimized");
+        WEBVIEW.window.setStatus("Minimized");
         break;
-      case "navigation":
-        toggleNavigation();
+      case "terminate":
+        const button = dialog.showMessageBoxSync(WEBVIEW.window, {
+          type: "question",
+          title: "Confirm",
+          message: `\nExit ${APP.title}?`,
+          buttons: ["No", "Yes"],
+        });
+        if (button === 1) {
+          WEBVIEW.window.setStatus("Terminated");
+        }
         break;
     }
   });
@@ -832,6 +927,33 @@ const viewEvents = async () => {
  * Register app events and handler.
  */
 const appEvents = async () => {
+  // Handle global events
+  EVENTS.on("reloadView", reloadView);
+  EVENTS.on("updateView", updateView);
+  EVENTS.on("updateDisplay", () => {
+    const status = hardware.getDisplayStatus();
+    if (status) {
+      WEBVIEW.tracker.display[status.toLowerCase()] = new Date();
+    }
+  });
+  EVENTS.on("updateStatus", () => {
+    const status = WEBVIEW.tracker.status;
+    const visibility = hardware.getKeyboardVisibility();
+    if (visibility === "ON" && ["Fullscreen", "Minimized"].includes(status)) {
+      hardware.setKeyboardVisibility("OFF");
+    }
+    toggleStatus(["Framed", "Minimized"].includes(status) ? "ON" : "OFF");
+  });
+  EVENTS.on("updateKeyboard", () => {
+    const status = WEBVIEW.tracker.status;
+    const visibility = hardware.getKeyboardVisibility();
+    if (visibility === "ON" && ["Fullscreen"].includes(status)) {
+      WEBVIEW.window.setStatus("Maximized");
+    } else if (visibility === "OFF" && ["Maximized"].includes(status)) {
+      WEBVIEW.window.setStatus("Fullscreen");
+    }
+  });
+
   // Handle multiple instances
   app.on("second-instance", () => {
     if (WEBVIEW.window.isMinimized()) {
@@ -840,10 +962,10 @@ const appEvents = async () => {
     WEBVIEW.window.focus();
   });
 
-  // Handle signal and exit events
+  // Handle exit events
   app.on("before-quit", () => {
     WEBVIEW.tracker.status = "Terminated";
-    console.warn(`${APP.title} Terminated`);
+    console.warn(`${APP.title} ${WEBVIEW.tracker.status}`);
     integration.update();
   });
   process.on("SIGINT", app.quit);

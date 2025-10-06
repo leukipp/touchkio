@@ -65,8 +65,9 @@ const initApp = async () => {
   APP.title = packageJson.title;
   APP.version = app.getVersion();
   APP.path = app.getAppPath();
-  APP.config = app.getPath("userData");
+  APP.icon = path.join(app.getAppPath(), "img", "icon.png");
   APP.log = path.join(app.getPath("logs"), "main.log");
+  APP.config = app.getPath("userData");
 
   // Set additional update infos
   APP.homepage = `https://github.com/${packageJson.author}/${packageJson.name}`;

@@ -32,8 +32,8 @@
         align-items: center;
         width: 100vw;
         height: 100vh;
-        padding: 0 30px;
-        column-gap: 20px;
+        padding: 0 10px;
+        column-gap: 10px;
         list-style-type: none;
         border-top: 1px solid var(--border-color);
         background: var(--background-color);
@@ -74,6 +74,7 @@
         padding: 6px 10px;
         border-radius: 4px;
         font-size: 18px;
+        font-family: sans-serif;
         outline: none;
         border: none;
         cursor: text;
@@ -186,7 +187,7 @@
             ipcRenderer.send("button-click", { id: e.target.id });
           });
         });
-        document.querySelectorAll("input").forEach((input) => {          
+        document.querySelectorAll("input").forEach((input) => {
           input.addEventListener("blur", (e) => {
             ipcRenderer.send("input-blur", { id: e.target.id });
           });
@@ -207,7 +208,7 @@
         });
         ipcRenderer.on("button-hidden", (e, button) => {
           document.getElementById(button.id).parentNode.classList.toggle("hidden", button.hidden);
-        });        
+        });
         ipcRenderer.on("input-readonly", (e, input) => {
           document.getElementById(input.id).readOnly = input.readonly;
         });
@@ -216,10 +217,11 @@
           document.getElementById(input.id).placeholder = input.placeholder;
         });
         ipcRenderer.on("input-select", (e, input) => {
+          window.getSelection()?.removeAllRanges();
           if (input.select) {
             document.getElementById(input.id).select();
           } else {
-            window.getSelection()?.removeAllRanges();
+            document.getElementById(input.id).blur();
           }
         });
         ipcRenderer.on("data-theme", (e, data) => {

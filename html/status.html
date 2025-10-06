@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+  <head>
+    <style>
+      [data-theme="dark"] {
+        --primary-color: rgba(229, 229, 229, 1);
+        --background-color: rgba(66, 67, 68, 1);
+        --minimize-color: rgba(52, 199, 89, 1);
+        --fullscreen-color: rgba(255, 149, 0, 1);
+        --terminate-color: rgba(255, 59, 48, 1);
+      }
+      [data-theme="light"] {
+        --primary-color: rgba(26, 26, 26, 1);
+        --background-color: rgba(237, 236, 235, 1);
+        --minimize-color: rgba(52, 199, 89, 1);
+        --fullscreen-color: rgba(255, 149, 0, 1);
+        --terminate-color: rgba(255, 59, 48, 1);
+      }
+      ::-webkit-scrollbar {
+        display: none;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        cursor: pointer;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        width: 100vw;
+        height: 100vh;
+        background: var(--background-color);
+      }
+      header {
+        display: flex;
+        align-items: center;
+        flex: 1 1 0%;
+        height: 100vh;
+        -webkit-app-region: drag;
+      }
+      h1 {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        top: 50%;
+        left: 50%;
+        font-size: 18px;
+        font-weight: 500;
+        font-family: sans-serif;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        text-align: center;
+        user-select: none;
+        color: var(--primary-color);
+      }
+      menu {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        flex: 0 0 auto;
+        height: 100vh;
+        min-width: 116px;
+        padding: 0px 10px;
+        column-gap: 10px;
+        list-style-type: none;
+        background: var(--background-color);
+        position: relative;
+        z-index: 1;
+      }
+      li {
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+      }
+      button {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background-color: transparent;
+      }
+      svg {
+        pointer-events: none;
+      }
+      #minimize > svg {
+        fill: var(--minimize-color);
+      }
+      #fullscreen > svg {
+        fill: var(--fullscreen-color);
+      }
+      #terminate > svg {
+        fill: var(--terminate-color);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title"></h1>
+    </header>
+    <menu>
+      <li>
+        <button id="minimize">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <title>minus-circle</title>
+            <path d="M17,13H7V11H17M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z" />
+          </svg>
+        </button>
+      </li>
+      <li>
+        <button id="fullscreen">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <title>chevron-up-circle</title>
+            <path
+              d="M22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2A10,10 0 0,1 22,12M7.4,15.4L12,10.8L16.6,15.4L18,14L12,8L6,14L7.4,15.4Z"
+            />
+          </svg>
+        </button>
+      </li>
+      <li>
+        <button id="terminate">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <title>close-circle</title>
+            <path
+              d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z"
+            />
+          </svg>
+        </button>
+      </li>
+    </menu>
+    <script>
+      const { ipcRenderer } = require("electron");
+
+      const registerSendEvents = () => {
+        document.querySelectorAll("button").forEach((button) => {
+          button.addEventListener("click", (e) => {
+            ipcRenderer.send("button-click", { id: e.target.id });
+          });
+        });
+      };
+
+      const registerReceiveEvents = () => {
+        ipcRenderer.on("text-content", (e, text) => {
+          document.getElementById(text.id).textContent = text.content;
+        });
+        ipcRenderer.on("data-theme", (e, data) => {
+          document.documentElement.setAttribute("data-theme", data.theme);
+        });
+      };
+
+      registerSendEvents();
+      registerReceiveEvents();
+    </script>
+  </body>
+</html>
