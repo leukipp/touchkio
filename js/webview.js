@@ -378,7 +378,8 @@ const toggleStatus = (force = null) => {
  */
 const zoomMinus = () => {
   const view = WEBVIEW.views[WEBVIEW.viewActive];
-  view.webContents.setZoomFactor(Math.max(0.25, view.webContents.getZoomFactor() - 0.1));
+  const zoom = view.webContents.getZoomFactor() - 0.1;
+  view.webContents.setZoomFactor(Math.max(0.25, Math.round(zoom * 10) / 10));
   update();
 };
 
@@ -387,7 +388,8 @@ const zoomMinus = () => {
  */
 const zoomPlus = () => {
   const view = WEBVIEW.views[WEBVIEW.viewActive];
-  view.webContents.setZoomFactor(Math.min(4.0, view.webContents.getZoomFactor() + 0.1));
+  const zoom = view.webContents.getZoomFactor() + 0.1;
+  view.webContents.setZoomFactor(Math.min(4.0, Math.round(zoom * 10) / 10));
   update();
 };
 
