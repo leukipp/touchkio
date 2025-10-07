@@ -209,9 +209,12 @@ const updateView = () => {
   const url = WEBVIEW.views[WEBVIEW.viewActive].webContents.getURL();
   const host = url.startsWith("data:") ? "whoopsie" : new URL(url).host;
   const title = `${APP.title} - ${host} (${WEBVIEW.viewActive})`;
+  const previous = WEBVIEW.window.getTitle();
 
   // Update window title
-  console.log(`Update View: ${title}`);
+  if (previous !== title) {
+    console.info(`Update View: ${title}`);
+  }
   WEBVIEW.status.webContents.send("text-content", { id: "title", content: title });
   WEBVIEW.window.setTitle(title);
 
@@ -226,6 +229,9 @@ const updateView = () => {
  * Updates the window status.
  */
 const updateStatus = () => {
+  const previous = WEBVIEW.tracker.status;
+
+  // Set window status
   if (WEBVIEW.window.isFullScreen()) {
     WEBVIEW.tracker.status = "Fullscreen";
   } else if (WEBVIEW.window.isMinimized()) {
@@ -237,7 +243,9 @@ const updateStatus = () => {
   }
 
   // Update window status
-  console.log("Update Kiosk Status:", WEBVIEW.tracker.status);
+  if (previous !== WEBVIEW.tracker.status) {
+    console.info(`Update Kiosk Status: ${WEBVIEW.tracker.status}`);
+  }
   EVENTS.emit("updateStatus");
 };
 
@@ -456,6 +464,9 @@ const homeView = () => {
   const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
   const currentUrl = view.webContents.getURL();
 
+  // Reset log history
+  APP.logs = [];
+
   // Reload the default url or refresh the page
   if (currentUrl != defaultUrl) {
     view.webContents.loadURL(defaultUrl);
@@ -478,6 +489,9 @@ const reloadView = () => {
   const view = WEBVIEW.views[WEBVIEW.viewActive];
   const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
   const currentUrl = view.webContents.getURL();
+
+  // Reset log history
+  APP.logs = [];
 
   // Reload the default url or refresh the page
   if (currentUrl.startsWith("data:")) {
@@ -897,7 +911,14 @@ const viewEvents = async () => {
         if (WEBVIEW.viewActive === 0 && ready.length === WEBVIEW.views.length) {
           nextView();
         }
-        view.webContents.loadURL(errorHtml(code, text, url, WEBVIEW.theme.get()));
+        switch (code) {
+          case -3:
+            console.warn(`Load Warning: ${url}, ERR_ABORTED (${code})`);
+            break;
+          default:
+            console.error(`Load Error: ${url}, ${text} (${code})`);
+            view.webContents.loadURL(errorHtml(code, text, url, WEBVIEW.theme.get()));
+        }
       }
     });
 
@@ -928,7 +949,7 @@ const viewEvents = async () => {
             WEBVIEW.tracker.pointer.time = now;
             WEBVIEW.tracker.pointer.position = posNew;
             if (delta > 30) {
-              console.log("Update Last Active");
+              console.info("Update Last Active");
               integration.update();
             }
           }
@@ -938,7 +959,7 @@ const viewEvents = async () => {
             case "left":
               // Ignore touch event if display was off
               if (WEBVIEW.tracker.display.off > WEBVIEW.tracker.display.on) {
-                console.log("Display Touch Event: Ignored");
+                console.verbose("Display Touch Event: Ignored");
                 e.preventDefault();
               }
               // Turn display on if it was off

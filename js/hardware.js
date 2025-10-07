@@ -59,47 +59,47 @@ const init = async () => {
 
   // Show supported features
   process.stdout.write("\n");
-  console.log(`Supported: ${JSON.stringify(HARDWARE.support, null, 2)}`);
+  console.info(`Supported: ${JSON.stringify(HARDWARE.support, null, 2)}`);
 
   // Show session infos
   process.stdout.write("\n");
-  console.log("User:", HARDWARE.session.user);
-  console.log("Session:", HARDWARE.session.type);
-  console.log("Desktop:", HARDWARE.session.desktop);
+  console.info("User:", HARDWARE.session.user);
+  console.info("Session:", HARDWARE.session.type);
+  console.info("Desktop:", HARDWARE.session.desktop);
 
   // Show device infos
   process.stdout.write("\n");
-  console.log("Model:", getModel());
-  console.log("Vendor:", getVendor());
-  console.log("Serial Number:", getSerialNumber());
-  console.log("Network Addresses:", getNetworkAddresses());
-  console.log("Host Name:", getHostName());
+  console.info("Model:", getModel());
+  console.info("Vendor:", getVendor());
+  console.info("Serial Number:", getSerialNumber());
+  console.info("Network Addresses:", getNetworkAddresses());
+  console.info("Host Name:", getHostName());
 
   // Show system infos
   process.stdout.write("\n");
-  console.log("Up Time:", getUpTime());
-  console.log("Memory Size:", getMemorySize());
-  console.log("Memory Usage:", getMemoryUsage());
-  console.log("Processor Usage:", getProcessorUsage());
-  console.log("Processor Temperature:", getProcessorTemperature());
+  console.info("Up Time:", getUpTime());
+  console.info("Memory Size:", getMemorySize());
+  console.info("Memory Usage:", getMemoryUsage());
+  console.info("Processor Usage:", getProcessorUsage());
+  console.info("Processor Temperature:", getProcessorTemperature());
 
   // Show hardware infos
   process.stdout.write("\n");
   const unsupported = "unsupported";
-  console.log(`Battery Level [${HARDWARE.battery.level.path || unsupported}]:`, `${getBatteryLevel() || unsupported}`);
-  console.log(
+  console.info(`Battery Level [${HARDWARE.battery.level.path || unsupported}]:`, `${getBatteryLevel() || unsupported}`);
+  console.info(
     `Display Status [${HARDWARE.display.status.path || unsupported}]:`,
     `${getDisplayStatus() || unsupported} (${HARDWARE.display.status.command || unsupported})`,
   );
-  console.log(
+  console.info(
     `Display Brightness [${HARDWARE.display.brightness.path || unsupported}]:`,
     `${getDisplayBrightness() || unsupported}`,
   );
-  console.log(
+  console.info(
     `Audio Volume [${HARDWARE.support.audioVolume ? HARDWARE.audio.device : unsupported}]:`,
     `${getAudioVolume() || unsupported}`,
   );
-  console.log(
+  console.info(
     `Keyboard Visibility [${HARDWARE.support.keyboardVisibility ? "squeekboard" : unsupported}]:`,
     `${getKeyboardVisibility() || unsupported}`,
   );
@@ -112,7 +112,7 @@ const init = async () => {
         return;
       }
       if (reply.includes("'change' on sink")) {
-        console.log("Update Audio Volume:", getAudioVolume());
+        console.info("Update Audio Volume:", getAudioVolume());
         EVENTS.emit("updateVolume");
       }
     });
@@ -129,7 +129,7 @@ const init = async () => {
           return;
         }
         HARDWARE.keyboard.visibility = property.Visible === "true";
-        console.log("Update Keyboard Visibility:", getKeyboardVisibility());
+        console.info("Update Keyboard Visibility:", getKeyboardVisibility());
         EVENTS.emit("updateKeyboard");
       });
     });
@@ -155,7 +155,7 @@ const update = async () => {
   if (HARDWARE.support.displayStatus) {
     const status = (await fsp.readFile(`${HARDWARE.display.status.path}/dpms`, "utf8")).trim();
     if (status !== HARDWARE.display.status.value) {
-      console.log("Update Display Status:", getDisplayStatus());
+      console.info("Update Display Status:", getDisplayStatus());
       HARDWARE.display.status.value = status;
       EVENTS.emit("updateDisplay");
     }
@@ -165,7 +165,7 @@ const update = async () => {
   if (HARDWARE.support.displayBrightness) {
     const brightness = (await fsp.readFile(`${HARDWARE.display.brightness.path}/brightness`, "utf8")).trim();
     if (brightness !== HARDWARE.display.brightness.value) {
-      console.log("Update Display Brightness:", getDisplayBrightness());
+      console.info("Update Display Brightness:", getDisplayBrightness());
       HARDWARE.display.brightness.value = brightness;
       EVENTS.emit("updateDisplay");
     }
@@ -891,7 +891,7 @@ const execScriptCommand = (cmd, args, callback = null) => {
       const output = data.toString().trim();
       const lines = output.replace(/\n+/g, "\n").replace(/^\n+|\n+$|\0/g, "");
       for (const line of lines.split("\n").filter(Boolean)) {
-        console.log(line);
+        console.info(line);
       }
     }
   });
@@ -917,7 +917,7 @@ const execScriptCommand = (cmd, args, callback = null) => {
       console.error(`Script exited with error code (${code}).`);
       if (typeof callback === "function") callback(null, code);
     } else {
-      console.log("Script exited successfully.");
+      console.info("Script exited successfully.");
       if (typeof callback === "function") callback(100, null);
     }
   });

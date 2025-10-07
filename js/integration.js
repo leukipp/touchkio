@@ -55,14 +55,14 @@ const init = async () => {
   options.rejectUnauthorized = !("ignore_certificate_errors" in ARGS);
 
   // Client connect
-  console.log("MQTT Connecting:", `${user}:${masked}@${url.toString()}`);
+  console.info("MQTT Connecting:", `${user}:${masked}@${url.toString()}`);
   INTEGRATION.client = mqtt.connect(url.toString(), options);
   INTEGRATION.client.setMaxListeners(20);
 
   // Client connected
   INTEGRATION.client
     .once("connect", () => {
-      console.log(`MQTT Connected: ${url.toString()}`);
+      console.info(`MQTT Connected: ${url.toString()}`);
       process.stdout.write("\n");
 
       // Init client controls
@@ -91,30 +91,35 @@ const init = async () => {
       initProcessorTemperature();
       initBatteryLevel();
       initPackageUpgrades();
-      initHeartbeat();
       initLastActive();
+
+      // Init client diagnostic
+      initHeartbeat();
+      initErrors();
 
       // Integration initialized
       INTEGRATION.initialized = true;
+
+      // Register global events
+      EVENTS.on("updateStatus", updateKiosk);
+      EVENTS.on("updateTheme", updateTheme);
+      EVENTS.on("updateDisplay", updateDisplay);
+      EVENTS.on("updateVolume", updateVolume);
+      EVENTS.on("updateKeyboard", updateKeyboard);
+      EVENTS.on("consoleLog", updateErrors);
     })
     .on("error", (error) => {
       console.error("MQTT", error.message);
     });
-
-  // Update sensor states from events
-  EVENTS.on("updateStatus", updateKiosk);
-  EVENTS.on("updateTheme", updateTheme);
-  EVENTS.on("updateDisplay", updateDisplay);
-  EVENTS.on("updateVolume", updateVolume);
-  EVENTS.on("updateKeyboard", updateKeyboard);
 
   // Update time sensors periodically (30s)
   setInterval(() => {
     if (APP.exiting) {
       return;
     }
-    updateHeartbeat();
     updateLastActive();
+    updateHeartbeat();
+    updateErrors();
   }, 30 * 1000);
 
   // Update system sensors periodically (1min)
@@ -240,12 +245,12 @@ const initApp = () => {
   publishConfig("update", config)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
-        console.log("Update App...");
+        console.info("Update App...");
         hardware.setDisplayStatus("ON", () => {
           const args = ["-c", `bash <(wget -qO- ${APP.scripts.install}) update`];
           hardware.execScriptCommand("bash", args, (progress, error) => {
             if (progress) {
-              console.log(`Progress: ${progress}%`);
+              console.info(`Progress: ${progress}%`);
             }
             updateApp(progress);
           });
@@ -296,7 +301,7 @@ const initShutdown = () => {
   publishConfig("button", config)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
-        console.log("Shutdown system...");
+        console.verbose("Shutdown system...");
         hardware.setDisplayStatus("ON", () => {
           hardware.shutdownSystem();
         });
@@ -324,7 +329,7 @@ const initReboot = () => {
   publishConfig("button", config)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
-        console.log("Rebooting system...");
+        console.verbose("Rebooting system...");
         hardware.setDisplayStatus("ON", () => {
           hardware.rebootSystem();
         });
@@ -348,7 +353,7 @@ const initRefresh = () => {
   publishConfig("button", config)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
-        console.log("Refreshing webview...");
+        console.verbose("Refreshing webview...");
         hardware.setDisplayStatus("ON", () => {
           EVENTS.emit("reloadView");
         });
@@ -376,7 +381,7 @@ const initKiosk = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const status = message.toString();
-        console.log("Set Kiosk Status:", status);
+        console.verbose("Set Kiosk Status:", status);
         hardware.setDisplayStatus("ON", () => {
           WEBVIEW.window.setStatus(status);
         });
@@ -390,7 +395,7 @@ const initKiosk = () => {
  * Updates the kiosk status via the mqtt connection.
  */
 const updateKiosk = async () => {
-  const kiosk = WEBVIEW.tracker.status;
+  const kiosk = WEBVIEW.tracker.window.status;
   publishState("kiosk", kiosk);
 };
 
@@ -413,7 +418,7 @@ const initTheme = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const theme = message.toString();
-        console.log("Set Application Theme:", theme);
+        console.verbose("Set Application Theme:", theme);
         WEBVIEW.theme.set(theme);
       }
     })
@@ -456,7 +461,7 @@ const initDisplay = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const status = message.toString();
-        console.log("Set Display Status:", status);
+        console.verbose("Set Display Status:", status);
         hardware.setDisplayStatus(status, (reply, error) => {
           if (!error) {
             hardware.update();
@@ -466,7 +471,7 @@ const initDisplay = () => {
         });
       } else if (topic === config.brightness_command_topic) {
         const brightness = parseInt(message, 10);
-        console.log("Set Display Brightness:", brightness);
+        console.verbose("Set Display Brightness:", brightness);
         hardware.setDisplayBrightness(brightness, (reply, error) => {
           if (!error) {
             hardware.update();
@@ -517,7 +522,7 @@ const initVolume = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const volume = parseInt(message, 10);
-        console.log("Set Audio Volume:", volume);
+        console.verbose("Set Audio Volume:", volume);
         hardware.setAudioVolume(volume);
       }
     })
@@ -554,7 +559,7 @@ const initKeyboard = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const status = message.toString();
-        console.log("Set Keyboard Visibility:", status);
+        console.verbose("Set Keyboard Visibility:", status);
         hardware.setDisplayStatus("ON", () => {
           hardware.setKeyboardVisibility(status);
         });
@@ -598,7 +603,7 @@ const initPageNumber = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const number = parseInt(message, 10);
-        console.log("Set Page Number:", number);
+        console.verbose("Set Page Number:", number);
         WEBVIEW.viewActive = number || 1;
         EVENTS.emit("updateView");
       }
@@ -638,7 +643,7 @@ const initPageZoom = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const zoom = parseInt(message, 10);
-        console.log("Set Page Zoom:", zoom);
+        console.verbose("Set Page Zoom:", zoom);
         WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.setZoomFactor(zoom / 100.0);
         EVENTS.emit("updateView");
       }
@@ -674,7 +679,7 @@ const initPageUrl = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const url = message.toString();
-        console.log("Set Page Url:", url);
+        console.verbose("Set Page Url:", url);
         WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.loadURL(url);
       }
     })
@@ -991,33 +996,6 @@ const updatePackageUpgrades = async () => {
 };
 
 /**
- * Initializes the heartbeat sensor.
- */
-const initHeartbeat = () => {
-  const root = `${INTEGRATION.root}/heartbeat`;
-  const config = {
-    name: "Heartbeat",
-    unique_id: `${INTEGRATION.node}_heartbeat`,
-    state_topic: `${root}/state`,
-    value_template: "{{ value }}",
-    icon: "mdi:heart-flash",
-    device: INTEGRATION.device,
-  };
-  publishConfig("sensor", config);
-  updateHeartbeat();
-};
-
-/**
- * Updates the heartbeat sensor via the mqtt connection.
- */
-const updateHeartbeat = async () => {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60 * 1000);
-  const heartbeat = local.toISOString().replace(/\.\d{3}Z$/, "");
-  publishState("heartbeat", heartbeat);
-};
-
-/**
  * Initializes the last active sensor.
  */
 const initLastActive = () => {
@@ -1045,6 +1023,71 @@ const updateLastActive = async () => {
   const lastActive = (now - then) / (1000 * 60);
   publishState("last_active", lastActive);
   publishAttributes("last_active", WEBVIEW.tracker.pointer);
+};
+
+/**
+ * Initializes the heartbeat sensor.
+ */
+const initHeartbeat = () => {
+  const root = `${INTEGRATION.root}/heartbeat`;
+  const config = {
+    name: "Heartbeat",
+    unique_id: `${INTEGRATION.node}_heartbeat`,
+    state_topic: `${root}/state`,
+    value_template: "{{ value }}",
+    entity_category: "diagnostic",
+    icon: "mdi:heart-flash",
+    device: INTEGRATION.device,
+  };
+  publishConfig("sensor", config);
+  updateHeartbeat();
+};
+
+/**
+ * Updates the heartbeat sensor via the mqtt connection.
+ */
+const updateHeartbeat = async () => {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60 * 1000);
+  const heartbeat = local.toISOString().replace(/\.\d{3}Z$/, "");
+  publishState("heartbeat", heartbeat);
+};
+
+/**
+ * Initializes the error log sensor.
+ */
+const initErrors = () => {
+  const root = `${INTEGRATION.root}/errors`;
+  const config = {
+    name: "Errors",
+    unique_id: `${INTEGRATION.node}_errors`,
+    state_topic: `${root}/state`,
+    json_attributes_topic: `${root}/attributes`,
+    value_template: "{{ value | int }}",
+    entity_category: "diagnostic",
+    icon: "mdi:alert-circle",
+    device: INTEGRATION.device,
+  };
+  publishConfig("sensor", config);
+  updateErrors();
+};
+
+/**
+ * Updates the error log sensor via the mqtt connection.
+ */
+const updateErrors = async () => {
+  const logs = APP.logs.slice().reverse();
+  const errors = logs.filter((log) => log.level === "error");
+  const history = logs.reduce((acc, log) => {
+    const time = log.time.toISOString().slice(0, 16);
+    if (!acc[time]) {
+      acc[time] = [];
+    }
+    acc[time].push({ [log.level.toUpperCase()]: log.text });
+    return acc;
+  }, {});
+  publishState("errors", errors.length);
+  publishAttributes("errors", history);
 };
 
 module.exports = {

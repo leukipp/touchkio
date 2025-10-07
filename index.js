@@ -37,7 +37,7 @@ app.whenReady().then(async () => {
   if ("mqtt_password" in args) {
     args.mqtt_password = "*".repeat((args.mqtt_password || "").length);
   }
-  console.log(`Arguments: ${JSON.stringify(args, null, 2)}`);
+  console.info(`Arguments: ${JSON.stringify(args, null, 2)}`);
 
   // Chained init functions
   const chained = [webview.init, hardware.init, integration.init];
@@ -112,7 +112,7 @@ const initArgs = async () => {
     if (APP.build.id) {
       build = ` (${APP.build.id}), built on ${APP.build.date} (${APP.build.platform}-${APP.build.arch}-${APP.build.maker})`;
     }
-    console.log(`${APP.name}-v${APP.version}${build}\n${APP.homepage}`);
+    console.info(`${APP.name}-v${APP.version}${build}\n${APP.homepage}`);
     return app.exit(0);
   }
 
@@ -157,7 +157,30 @@ const initLog = async () => {
     console.error("Failed to delete log file:", error.message);
   }
 
-  // Overwrite console log settings
+  // Overwrite console log
+  APP.logs = [];
+  log.errorHandler.startCatching({
+    showDialog: false,
+    onError({ error }) {
+      console.error(`Uncaught Error: ${error.message} (${error.stack})`);
+      app.exit(1);
+    },
+  });
+  log.hooks.push((message, transport, type) => {
+    const text = message.data.join(" ");
+    if (!text.startsWith("(node:") && type === "console") {
+      APP.logs.unshift({
+        time: message.date,
+        level: message.level,
+        text: text,
+      });
+      if (APP.logs.length > 10) {
+        APP.logs.splice(10);
+      }
+      EVENTS.emit("consoleLog", APP.logs[0]);
+    }
+    return message;
+  });
   log.transports.file.resolvePathFn = () => {
     return APP.log;
   };
