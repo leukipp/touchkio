@@ -147,7 +147,7 @@ const init = async () => {
  * Updates the shared hardware properties.
  */
 const update = async () => {
-  if (!HARDWARE.initialized) {
+  if (!HARDWARE.initialized || APP.exiting) {
     return;
   }
 

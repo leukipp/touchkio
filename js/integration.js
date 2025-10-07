@@ -51,6 +51,7 @@ const init = async () => {
   // Init options
   const masked = password === null ? null : "*".repeat(password.length);
   const options = user === null || password === null ? {} : { username: user, password: password };
+  options.will = { topic: `${INTEGRATION.root}/kiosk/state`, payload: "Terminated", qos: 1, retain: true };
   options.rejectUnauthorized = !("ignore_certificate_errors" in ARGS);
 
   // Client connect
@@ -109,17 +110,26 @@ const init = async () => {
 
   // Update time sensors periodically (30s)
   setInterval(() => {
+    if (APP.exiting) {
+      return;
+    }
     updateHeartbeat();
     updateLastActive();
   }, 30 * 1000);
 
   // Update system sensors periodically (1min)
   setInterval(() => {
+    if (APP.exiting) {
+      return;
+    }
     update();
   }, 60 * 1000);
 
   // Update upgrade sensors periodically (1h)
   setInterval(() => {
+    if (APP.exiting) {
+      return;
+    }
     updateApp();
     updatePackageUpgrades();
   }, 3600 * 1000);
@@ -131,7 +141,7 @@ const init = async () => {
  * Updates the shared integration properties.
  */
 const update = async () => {
-  if (!INTEGRATION.initialized) {
+  if (!INTEGRATION.initialized || APP.exiting) {
     return;
   }
 

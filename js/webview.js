@@ -182,7 +182,7 @@ const init = async () => {
  * Updates the shared webview properties.
  */
 const update = async () => {
-  if (!WEBVIEW.initialized) {
+  if (!WEBVIEW.initialized || APP.exiting) {
     return;
   }
 
@@ -642,12 +642,15 @@ const windowEvents = async () => {
 
   // Check for window touch events (1s)
   setInterval(() => {
+    if (APP.exiting) {
+      return;
+    }
     const now = new Date();
     const then = WEBVIEW.tracker.pointer.time;
     const delta = (now - then) / 1000;
 
     // Auto-hide navigation
-    if (delta > 60 && WEBVIEW.tracker.status !== "Terminated") {
+    if (delta > 60) {
       toggleNavigation("OFF");
     }
   }, 1000);
@@ -997,9 +1000,8 @@ const appEvents = async () => {
 
   // Handle exit events
   app.on("before-quit", () => {
-    WEBVIEW.tracker.status = "Terminated";
-    console.warn(`${APP.title} ${WEBVIEW.tracker.status}`);
-    integration.update();
+    APP.exiting = true;
+    console.warn(`${APP.title} Terminated`);
   });
   process.on("SIGINT", app.quit);
 
@@ -1008,6 +1010,9 @@ const appEvents = async () => {
 
   // Check for latest release infos (2h)
   setInterval(() => {
+    if (APP.exiting) {
+      return;
+    }
     latestRelease();
   }, 7200 * 1000);
   await latestRelease();
