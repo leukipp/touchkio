@@ -72,6 +72,11 @@
         align-items: center;
         flex: 0 0 auto;
       }
+      li.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
       button {
         width: 32px;
         height: 32px;
@@ -138,6 +143,9 @@
       };
 
       const registerReceiveEvents = () => {
+        ipcRenderer.on("button-disabled", (e, button) => {
+          document.getElementById(button.id).parentNode.classList.toggle("disabled", button.disabled);
+        });
         ipcRenderer.on("text-content", (e, text) => {
           document.getElementById(text.id).textContent = text.content;
         });

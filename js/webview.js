@@ -54,15 +54,37 @@ const init = async () => {
   WEBVIEW.viewActive = 0;
   WEBVIEW.viewUrls = urls;
   WEBVIEW.viewZoom = zoom;
-  WEBVIEW.viewTheme = theme;
-  WEBVIEW.pagerEnabled = widget;
-  WEBVIEW.widgetTheme = theme;
-  WEBVIEW.widgetEnabled = widget;
-  WEBVIEW.statusTheme = theme;
   WEBVIEW.statusEnabled = true;
-  WEBVIEW.navigationTheme = theme;
+  WEBVIEW.pagerEnabled = widget;
+  WEBVIEW.widgetEnabled = widget;
   WEBVIEW.navigationEnabled = widget;
-  nativeTheme.themeSource = WEBVIEW.viewTheme;
+
+  // Init global theme
+  WEBVIEW.theme = {
+    set: (name) => {
+      nativeTheme.themeSource = name.toLowerCase();
+    },
+    get: () => {
+      return nativeTheme.shouldUseDarkColors ? "dark" : "light";
+    },
+    toggle: () => {
+      nativeTheme.themeSource = nativeTheme.shouldUseDarkColors ? "light" : "dark";
+    },
+    register: () => {
+      nativeTheme.on("updated", () => {
+        const theme = WEBVIEW.theme.get();
+        WEBVIEW.statusTheme = theme;
+        WEBVIEW.widgetTheme = theme;
+        WEBVIEW.navigationTheme = theme;
+        if (WEBVIEW.initialized) {
+          resizeView();
+        }
+        EVENTS.emit("updateTheme");
+      });
+    },
+  };
+  WEBVIEW.theme.register();
+  WEBVIEW.theme.set(theme);
 
   // Init global root window
   WEBVIEW.display = screen.getPrimaryDisplay().workAreaSize;
@@ -190,10 +212,7 @@ const updateView = () => {
 
   // Update window title
   console.log(`Update View: ${title}`);
-  WEBVIEW.status.webContents.send("text-content", {
-    id: "title",
-    content: title,
-  });
+  WEBVIEW.status.webContents.send("text-content", { id: "title", content: title });
   WEBVIEW.window.setTitle(title);
 
   // Hide all other webviews and show only the active one
@@ -628,7 +647,7 @@ const windowEvents = async () => {
     const delta = (now - then) / 1000;
 
     // Auto-hide navigation
-    if (delta > 60) {
+    if (delta > 60 && WEBVIEW.tracker.status !== "Terminated") {
       toggleNavigation("OFF");
     }
   }, 1000);
@@ -675,6 +694,9 @@ const widgetEvents = async () => {
   // Handle widget button click events
   ipcMain.on("button-click", (e, button) => {
     switch (button.id) {
+      case "theme":
+        WEBVIEW.theme.toggle();
+        break;
       case "keyboard":
         const toggle = hardware.getKeyboardVisibility() === "ON" ? "OFF" : "ON";
         hardware.setKeyboardVisibility(toggle, () => {
@@ -711,14 +733,23 @@ const statusEvents = async () => {
         WEBVIEW.window.setStatus("Minimized");
         break;
       case "terminate":
+        WEBVIEW.status.webContents.send("button-disabled", { id: "fullscreen", disabled: true });
+        WEBVIEW.status.webContents.send("button-disabled", { id: "minimize", disabled: true });
+        WEBVIEW.status.webContents.send("button-disabled", { id: "terminate", disabled: true });
         const button = dialog.showMessageBoxSync(WEBVIEW.window, {
           type: "question",
           title: "Confirm",
           message: `\nExit ${APP.title}?`,
           buttons: ["No", "Yes"],
         });
-        if (button === 1) {
-          WEBVIEW.window.setStatus("Terminated");
+        switch (button) {
+          case 1:
+            WEBVIEW.window.setStatus("Terminated");
+            break;
+          default:
+            WEBVIEW.status.webContents.send("button-disabled", { id: "fullscreen", disabled: false });
+            WEBVIEW.status.webContents.send("button-disabled", { id: "minimize", disabled: false });
+            WEBVIEW.status.webContents.send("button-disabled", { id: "terminate", disabled: false });
         }
         break;
     }
@@ -863,7 +894,7 @@ const viewEvents = async () => {
         if (WEBVIEW.viewActive === 0 && ready.length === WEBVIEW.views.length) {
           nextView();
         }
-        view.webContents.loadURL(errorHtml(code, text, url));
+        view.webContents.loadURL(errorHtml(code, text, url, WEBVIEW.theme.get()));
       }
     });
 
@@ -1089,9 +1120,14 @@ const loaderHtml = (size, speed, theme) => {
  * @param {number} code - The error code of the response.
  * @param {string} text - The error text of the response.
  * @param {string} url - The url of the requested page.
+ * @param {string} theme - The theme used for text colors.
  * @returns {string} A data string with the generated html.
  */
-const errorHtml = (code, text, url) => {
+const errorHtml = (code, text, url, theme) => {
+  const color = {
+    dark: { icon: "#FFA500", text: "#E5E5E5", background: "#111111" },
+    light: { icon: "#FFA500", text: "#1A1A1A", background: "#FAFAFA" },
+  }[theme];
   const html = `
     <html>
       <head>
@@ -1099,17 +1135,25 @@ const errorHtml = (code, text, url) => {
           body {
             display: flex;
             align-items: center;
+            text-align: center;
             justify-content: center;
             font-family: sans-serif;
-            text-align: center;
+            background-color: ${color.background};
           }
           .icon {
             margin: 0;
             font-size: 5rem;
-            color: orange;
+            color: ${color.icon};
           }
           .title {
             margin: 0;
+            color: ${color.text};
+          }
+          .url {
+            color: ${color.text};
+          }
+          .error {
+            color: ${color.text};
           }
         </style>
       </head>
@@ -1117,8 +1161,8 @@ const errorHtml = (code, text, url) => {
         <div>
           <p class="icon">&#9888;</p>
           <h1 class="title">Whoopsie!</h1>
-          <p><strong>Loading:</strong> ${url}</p>
-          <p><strong>Error:</strong> ${text} (${code})</p>
+          <p class="url"><strong>Loading:</strong> ${url}</p>
+          <p class="error"><strong>Error:</strong> ${text} (${code})</p>
         </div>
       </body>
     </html>`;

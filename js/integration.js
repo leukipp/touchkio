@@ -48,12 +48,15 @@ const init = async () => {
     configuration_url: APP.homepage,
   };
 
-  // Connection settings
+  // Init options
   const masked = password === null ? null : "*".repeat(password.length);
   const options = user === null || password === null ? {} : { username: user, password: password };
   options.rejectUnauthorized = !("ignore_certificate_errors" in ARGS);
+
+  // Client connect
   console.log("MQTT Connecting:", `${user}:${masked}@${url.toString()}`);
   INTEGRATION.client = mqtt.connect(url.toString(), options);
+  INTEGRATION.client.setMaxListeners(20);
 
   // Client connected
   INTEGRATION.client
@@ -67,6 +70,7 @@ const init = async () => {
       initReboot();
       initRefresh();
       initKiosk();
+      initTheme();
       initDisplay();
       initVolume();
       initKeyboard();
@@ -97,6 +101,8 @@ const init = async () => {
     });
 
   // Update sensor states from events
+  EVENTS.on("updateStatus", updateKiosk);
+  EVENTS.on("updateTheme", updateTheme);
   EVENTS.on("updateDisplay", updateDisplay);
   EVENTS.on("updateVolume", updateVolume);
   EVENTS.on("updateKeyboard", updateKeyboard);
@@ -130,7 +136,6 @@ const update = async () => {
   }
 
   // Update client sensors
-  updateKiosk();
   updatePageNumber();
   updatePageZoom();
   updatePageUrl();
@@ -377,6 +382,41 @@ const initKiosk = () => {
 const updateKiosk = async () => {
   const kiosk = WEBVIEW.tracker.status;
   publishState("kiosk", kiosk);
+};
+
+/**
+ * Initializes the application theme and handles the execute logic.
+ */
+const initTheme = () => {
+  const root = `${INTEGRATION.root}/theme`;
+  const config = {
+    name: "Theme",
+    unique_id: `${INTEGRATION.node}_theme`,
+    command_topic: `${root}/set`,
+    state_topic: `${root}/state`,
+    value_template: "{{ value }}",
+    options: ["Light", "Dark"],
+    icon: "mdi:compare",
+    device: INTEGRATION.device,
+  };
+  publishConfig("select", config)
+    .on("message", (topic, message) => {
+      if (topic === config.command_topic) {
+        const theme = message.toString();
+        console.log("Set Application Theme:", theme);
+        WEBVIEW.theme.set(theme);
+      }
+    })
+    .subscribe(config.command_topic);
+  updateTheme();
+};
+
+/**
+ * Updates the application theme via the mqtt connection.
+ */
+const updateTheme = async () => {
+  const theme = WEBVIEW.theme.get();
+  publishState("theme", theme.charAt(0).toUpperCase() + theme.slice(1));
 };
 
 /**
