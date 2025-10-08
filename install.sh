@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 
 # Read arguments
+ARG_EARLY=false
 ARG_UPDATE=false
 for arg in "$@"; do
-  if [ "$arg" = "update" ]; then
-    ARG_UPDATE=true
-  fi
+  case "$arg" in
+    early) ARG_EARLY=true ;;
+    update) ARG_UPDATE=true ;;
+  esac
 done
 
 # Determine system architecture
@@ -13,15 +15,9 @@ echo -e "Determining system architecture..."
 
 BITS=$(getconf LONG_BIT)
 case "$(uname -m)" in
-    aarch64)
-        ARCH="arm64"
-        ;;
-    x86_64)
-        ARCH="x64"
-        ;;
-    *)
-        { echo "Architecture $(uname -m) running $BITS-bit operating system is not supported."; exit 1; }
-        ;;
+    x86_64) ARCH="x64" ;;
+    aarch64) ARCH="arm64" ;;
+    *) { echo "Architecture $(uname -m) running $BITS-bit operating system is not supported."; exit 1; } ;;
 esac
 
 [ "$BITS" -eq 64 ] || { echo "Architecture $ARCH running $BITS-bit operating system is not supported."; exit 1; }
@@ -31,11 +27,17 @@ echo "Architecture $ARCH running $BITS-bit operating system is supported."
 echo -e "\nDownloading the latest release..."
 
 TMP_DIR=$(mktemp -d)
-DEB_URL=$(wget -qO- https://api.github.com/repos/leukipp/touchkio/releases/latest | \
-grep -o "\"browser_download_url\": \"[^\"]*_${ARCH}\.deb\"" | \
-sed 's/"browser_download_url": "//;s/"//g')
-DEB_PATH="${TMP_DIR}/$(basename "$DEB_URL")"
 chmod 755 "$TMP_DIR"
+
+JSON=$(wget -qO- "https://api.github.com/repos/leukipp/touchkio/releases" | tr -d '\r\n')
+if $ARG_EARLY; then
+  DEB_REG='"prerelease":\s*(true|false).*?"browser_download_url":\s*"\K[^\"]*_'$ARCH'\.deb'
+else
+  DEB_REG='"prerelease":\s*false.*?"browser_download_url":\s*"\K[^\"]*_'$ARCH'\.deb'
+fi
+
+DEB_URL=$(echo "$JSON" | grep -oP "$DEB_REG" | head -n 1)
+DEB_PATH="${TMP_DIR}/$(basename "$DEB_URL")"
 
 [ -z "$DEB_URL" ] && { echo "Download url for .deb file not found."; exit 1; }
 wget --show-progress -q -O "$DEB_PATH" "$DEB_URL" || { echo "Failed to download the .deb file."; exit 1; }
@@ -108,8 +110,7 @@ else
 fi
 
 # Start the setup mode
-echo ""
-read -p "Start touchkio setup? (Y/n) " setup
+read -p $'\nStart touchkio setup? (Y/n) ' setup
 
 if [[ ${setup:-y} == [Yy]* ]]; then
     echo "/usr/bin/touchkio --setup"

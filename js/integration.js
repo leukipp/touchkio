@@ -235,7 +235,7 @@ const initApp = () => {
     unique_id: `${INTEGRATION.node}_app`,
     command_topic: `${root}/install`,
     state_topic: `${root}/version/state`,
-    payload_install: "update",
+    payload_install: "app_early" in ARGS ? "update early" : "update",
     device: INTEGRATION.device,
   };
   if (!HARDWARE.support.appUpdate) {
@@ -247,7 +247,7 @@ const initApp = () => {
       if (topic === config.command_topic) {
         console.info("Update App...");
         hardware.setDisplayStatus("ON", () => {
-          const args = ["-c", `bash <(wget -qO- ${APP.scripts.install}) update`];
+          const args = ["-c", `bash <(wget -qO- ${APP.scripts.install}) ${message.toString()}`];
           hardware.execScriptCommand("bash", args, (progress, error) => {
             if (progress) {
               console.info(`Progress: ${progress}%`);

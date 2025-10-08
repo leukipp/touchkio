@@ -49,7 +49,7 @@ const init = async () => {
   session.defaultSession.clearCache();
 
   // Parse arguments
-  const debug = ARGS.app_debug === "true";
+  const debug = "app_debug" in ARGS;
   const widget = ARGS.web_widget ? ARGS.web_widget === "true" : true;
   const zoom = !isNaN(parseFloat(ARGS.web_zoom)) ? parseFloat(ARGS.web_zoom) : 1.25;
   const theme = ["light", "dark"].includes(ARGS.web_theme) ? ARGS.web_theme : "dark";
@@ -905,7 +905,7 @@ const viewEvents = async () => {
       if (WEBVIEW.viewActive === 0 && ready.length === WEBVIEW.views.length) {
         nextView();
       }
-      if (ARGS.app_debug === "true") {
+      if ("app_debug" in ARGS) {
         setTimeout(() => {
           view.webContents.openDevTools();
         }, 2000);
@@ -1051,17 +1051,18 @@ const appEvents = async () => {
  */
 const latestRelease = async () => {
   try {
-    const response = await axios.get(`${APP.releases.url}/latest`, { timeout: 10000 });
-    const data = response ? response.data : null;
-    if (!data || data.draft || data.prerelease) {
-      return;
+    const response = await axios.get(APP.releases.url, { timeout: 10000 });
+    const release = response?.data?.find((item) => {
+      return !item.draft && (!item.prerelease || "app_early" in ARGS);
+    });
+    if (release) {
+      APP.releases.latest = {
+        title: APP.title,
+        version: (release.tag_name || " ").replace(/^v/i, ""),
+        summary: release.body || " ",
+        url: release.html_url || " ",
+      };
     }
-    APP.releases.latest = {
-      title: APP.title,
-      version: (data.tag_name || data.name || " ").replace(/^v/i, ""),
-      summary: data.body || " ",
-      url: data.html_url || " ",
-    };
   } catch (error) {
     console.warn("Github Error:", error.message);
   }
