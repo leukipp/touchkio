@@ -101,9 +101,12 @@ const init = async () => {
       INTEGRATION.initialized = true;
 
       // Register global events
+      EVENTS.on("updateDisplay", () => {
+        updateDisplay();
+        updateLastActive();
+      });
       EVENTS.on("updateStatus", updateKiosk);
       EVENTS.on("updateTheme", updateTheme);
-      EVENTS.on("updateDisplay", updateDisplay);
       EVENTS.on("updateVolume", updateVolume);
       EVENTS.on("updateKeyboard", updateKeyboard);
       EVENTS.on("consoleLog", updateErrors);
@@ -813,6 +816,7 @@ const initUpTime = () => {
     name: "Up Time",
     unique_id: `${INTEGRATION.node}_up_time`,
     state_topic: `${root}/state`,
+    json_attributes_topic: `${root}/attributes`,
     value_template: "{{ (value | float) | round(0) }}",
     unit_of_measurement: "min",
     icon: "mdi:timeline-clock",
@@ -827,7 +831,11 @@ const initUpTime = () => {
  */
 const updateUpTime = async () => {
   const upTime = hardware.getUpTime();
+  const bootTime = {
+    boot: new Date(new Date().getTime() - upTime * 60 * 1000),
+  };
   publishState("up_time", upTime);
+  publishAttributes("up_time", bootTime);
 };
 
 /**
@@ -988,10 +996,12 @@ const initPackageUpgrades = () => {
 const updatePackageUpgrades = async () => {
   const packages = hardware.checkPackageUpgrades();
   const upgrades = {
-    total: packages.length,
-    packages: packages.map((pkg) => pkg.replace(/\s*\[.*?\]\s*/g, "").trim()),
+    packages: packages.map((pkg) => {
+      const [name, version] = pkg.replace(/\s*\[.*?\]\s*/g, "").split(/\s+/, 2);
+      return { [name]: version };
+    }),
   };
-  publishState("package_upgrades", upgrades.total);
+  publishState("package_upgrades", packages.length);
   publishAttributes("package_upgrades", upgrades);
 };
 
@@ -1021,8 +1031,12 @@ const updateLastActive = async () => {
   const now = new Date();
   const then = WEBVIEW.tracker.pointer.time;
   const lastActive = (now - then) / (1000 * 60);
+  const tracker = {
+    ...WEBVIEW.tracker.pointer.position,
+    ...WEBVIEW.tracker.display,
+  };
   publishState("last_active", lastActive);
-  publishAttributes("last_active", WEBVIEW.tracker.pointer);
+  publishAttributes("last_active", tracker);
 };
 
 /**
@@ -1034,6 +1048,7 @@ const initHeartbeat = () => {
     name: "Heartbeat",
     unique_id: `${INTEGRATION.node}_heartbeat`,
     state_topic: `${root}/state`,
+    json_attributes_topic: `${root}/attributes`,
     value_template: "{{ value }}",
     entity_category: "diagnostic",
     icon: "mdi:heart-flash",
@@ -1050,7 +1065,9 @@ const updateHeartbeat = async () => {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60 * 1000);
   const heartbeat = local.toISOString().replace(/\.\d{3}Z$/, "");
+  const attributes = { date: now };
   publishState("heartbeat", heartbeat);
+  publishAttributes("heartbeat", attributes);
 };
 
 /**
