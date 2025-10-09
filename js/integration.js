@@ -96,6 +96,7 @@ const init = async () => {
       // Init client diagnostic
       initHeartbeat();
       initErrors();
+      initVersion();
 
       // Integration initialized
       INTEGRATION.initialized = true;
@@ -1105,6 +1106,33 @@ const updateErrors = async () => {
   }, {});
   publishState("errors", errors.length);
   publishAttributes("errors", history);
+};
+
+/**
+ * Initializes the version sensor.
+ */
+const initVersion = () => {
+  const root = `${INTEGRATION.root}/version`;
+  const config = {
+    name: "Version",
+    unique_id: `${INTEGRATION.node}_version`,
+    state_topic: `${root}/state`,
+    json_attributes_topic: `${root}/attributes`,
+    value_template: "{{ value }}",
+    entity_category: "diagnostic",
+    icon: "mdi:application-braces",
+    device: INTEGRATION.device,
+  };
+  publishConfig("sensor", config);
+  updateVersion();
+};
+
+/**
+ * Updates the version sensor via the mqtt connection.
+ */
+const updateVersion = async () => {
+  publishState("version", APP.version);
+  publishAttributes("version", APP.build);
 };
 
 module.exports = {
