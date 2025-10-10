@@ -1,4 +1,10 @@
 # TouchKio
+![build](https://img.shields.io/github/actions/workflow/status/leukipp/touchkio/release.yaml?style=flat-square)
+![date](https://img.shields.io/github/release-date/leukipp/touchkio?style=flat-square)
+![platform](https://img.shields.io/badge/platform-%20arm64%20|%20x64%20-teal?style=flat-square)
+![downloads](https://img.shields.io/github/downloads/leukipp/touchkio/total?style=flat-square)
+[![sponsor](https://img.shields.io/github/sponsors/leukipp?color=red&logo=github&style=flat-square)](https://github.com/sponsors/leukipp)
+
 **TouchKio** is a Node.js application that utilizes Electron to create a kiosk mode window specifically designed for a Home Assistant dashboard.
 This tool is packaged as a **.deb** file, making it easy to launch the kiosk application on any Debian based Linux [hardware](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md) (e.g. **Raspberry Pi**) equipped with a **DSI or HDMI** Touch Display.
 Additional releases for other Linux systems are available as **.zip** file.
@@ -12,9 +18,10 @@ Moreover, the device running the **kiosk application** also offers several **Hom
 - [x] Fast and easy setup.
 - [x] Remember login credentials.
 - [x] Touch optimized web browsing.
+- [x] Dynamic window status bar layout.
 - [x] Side panel widget for kiosk control.
 - [x] Navigation bar to switch between pages.
-- [x] Configurable browser zoom and theme support. 
+- [x] Adjustable browser zoom and theme support.
 - [x] Extended touch screen wake-up functionality.
 - [x] Remote controllable via MQTT.
   - [x] Toggle the on-screen keyboard.
@@ -23,8 +30,9 @@ Moreover, the device running the **kiosk application** also offers several **Hom
   - [x] Show network interfaces and addresses.
   - [x] List all available system package upgrades.
   - [x] Multi-webpage switching and url navigation.
-  - [x] Monitor temperature, processor and memory usage.
+  - [x] Audio volume control for connected devices.
   - [x] Execute system reboot and shutdown commands.
+  - [x] Monitor battery, temperature, processor and memory usage.
 
 The kiosk application can be executed with command line arguments to load a **Home Assistant dashboard in fullscreen** mode.
 Additionally, a **MQTT endpoint** can be defined, allowing the application to provide controls and sensors for the Linux device and the connected Touch Display.
@@ -70,9 +78,8 @@ systemctl --user start|stop|status|restart touchkio.service
 When connected via SSH, it's necessary to export the display variables first, as outlined in the [development](https://github.com/leukipp/touchkio?tab=readme-ov-file#development) section.
 The [install.sh](https://github.com/leukipp/touchkio/blob/main/install.sh) script mentioned above performs the following tasks (and you just have to do it manually):
 - [Download](https://github.com/leukipp/touchkio/releases/latest) the latest version file that is suitable for your architecture (arm64 or x64).
-  - Debian (**deb**): Open a terminal and execute the following command to install the application, e.g:
-`sudo apt install ./touchkio_1.x.x_arm64.deb && touchkio --setup`
-  - Others (**zip**): Extract the archive and run the binary, e.g:  `unzip touchkio-linux-x64-1.x.x.zip && cd touchkio-linux-x64 && ./touchkio --setup`
+  - Debian (**deb**): Open a terminal and execute the following command to install the application, e.g: `sudo apt install ./touchkio_1.x.x_arm64.deb && touchkio --setup`
+  - Others (**zip**): Extract the archive and run the binary, e.g: `unzip touchkio-linux-x64-1.x.x.zip && cd touchkio-linux-x64 && ./touchkio --setup`
 - If you just want to load a Home Assistant dashboard without further control you are good to go, e.g: `touchkio --web-url=https://demo.home-assistant.io`
   - The `--web-url` doesn't necessarily need to be a Home Assistant url, any kind of website can be shown in kiosk mode.
   - Only when using the MQTT integration via `--mqtt-*`, a running Home Assistant instance is required.
@@ -103,7 +110,7 @@ Running `touchkio --setup` will prompt you to enter arguments that will be used 
 These default arguments are stored in `~/.config/touchkio/Arguments.json`, where they can also be modified.
 
 ### WEB
-The available arguments to control the kiosk application via terminal are as follows: 
+The available arguments to control the kiosk application via terminal are as follows:
 | Name                      | Default | Description                                                                                                |
 | ------------------------- | ------- | ---------------------------------------------------------------------------------------------------------- |
 | `--web-url` (Required)    | -       | Url of the Home Assistant instance<a id="ref1"></a><sup><a href="#foot1">[1]</a></sup> (HTTP(S)://IP:PORT) |
@@ -122,7 +129,7 @@ touchkio --web-url=http://192.168.1.42:8123 --web-theme=light --web-zoom=1.0
 > You can configure multiple pages by separating them with a comma:
 > `touchkio --web-url=https://demo.home-assistant.io,https://demo.immichkiosk.app`.
 
-In the `~/.config/touchkio/Arguments.json` file: 
+In the `~/.config/touchkio/Arguments.json` file:
 ```json
 {
   "web_url": [
@@ -190,7 +197,7 @@ To make this permanent, consider adding the export variables into the `~/.bashrc
 
 <details><summary>You probably won't need this.</summary><div></br>
 
-Incorporating custom extensions and external hardware (like motion sensors, ultrasonic sensors, cameras, relays and switches) via **Raspberry Pi's GPIO/USB** involves several steps. 
+Incorporating custom extensions and external hardware (like motion sensors, ultrasonic sensors, cameras, relays and switches) via **Raspberry Pi's GPIO/USB** involves several steps.
 While using external sensors that directly integrate with Home Assistant and by utilizing automation's to interact with **TouchKio via MQTT** is generally easier and **recommended**, here's a rough guide on how to proceed with custom hardware integration:
 
 1. **Install Node.js library**: Use Yarn to add a library that can interact with your hardware (GPIO, USB, etc.):
@@ -217,7 +224,7 @@ While using external sensors that directly integrate with Home Assistant and by 
     ```javascript
     const init = async (args) => { ... }
     ```
-    From there, you will need to further refine your code by tinkering with sensor updates. This can be achieved through either periodic update calls or event based triggers. 
+    From there, you will need to further refine your code by tinkering with sensor updates. This can be achieved through either periodic update calls or event based triggers.
 
 </div></details>
 
@@ -225,8 +232,8 @@ While using external sensors that directly integrate with Home Assistant and by 
 
 <details><summary>Don't waste your time reading this.</summary><div></br>
 
-The Raspberry Pi's **build-in on-screen keyboard** named `squeekboard` (it squeaks because some *Rust* got inside), is specifically designed for Wayland environments and features a **D-Bus interface** that allows applications to show or hide the keyboard as needed.
-The kiosk application interacts with squeekboard via the `D-Bus` object path `/sm/puri/OSK0`, enabling the keyboard to be hidden or shown based on **MQTT** user input or system events. 
+The Raspberry Pi's **build-in on-screen keyboard** named `squeekboard` (it squeaks because some _Rust_ got inside), is specifically designed for Wayland environments and features a **D-Bus interface** that allows applications to show or hide the keyboard as needed.
+The kiosk application interacts with squeekboard via the `D-Bus` object path `/sm/puri/OSK0`, enabling the keyboard to be hidden or shown based on **MQTT** user input or system events.
 
 The Raspberry Pi's **build-in screen blanking** function uses the command `swayidle -w timeout 600 'wlopm --off \*' resume 'wlopm --on \*' &` inside `~/.config/labwc/autostart` to blank the screen after **10 minutes**.
 The `wlopm --off \*` command changes the `bl_power` value to **4**, when setting the value to **0** the screen will turn on again.
@@ -237,7 +244,7 @@ I managed to achieve this for the `brightness` file by implementing a simple `fs
 However, I found that it **never triggered** for the `bl_power` file.
 Although the file content changes, none of the filesystem listeners where fired.
 This could be due to `swayidle`/`wlopm` performing write actions at a deeper level that are not detectable by file listeners.
-As a result, I went for a **polling solution**, checking the state of the file **every second** for any changes.
+As a result, I went for a **polling solution**, checking the state of the `brightness` and `dpms` file **every second** for any changes.
 While I understand this is not ideal, it's necessary to ensure proper functionality.
 
 The display power status and brightness can be adjusted via the MQTT integration.
@@ -264,34 +271,22 @@ This adjustment provides a user experience similar to that of a proper mobile de
 ## Issues
 Please review the [hardware](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md) documentation first if you encounter any problems.
 
-**Minimal features** are designed to run on any system without issues:
-- A webview kiosk window launched in fullscreen mode and loading the specified `--web-url` website should not cause any problems.
-
-**Extended features** become available when the `--mqtt-*` arguments are provided and the hardware is supported:
-- If your hardware is not fully compatible there should be no crashes, but you may miss some sensors.
-    - On some Debian based systems (e.g. Ubuntu GNOME), the display status control may only be available when using X11.
-- The following commands are currently implemented to modify the display status. Make sure that one of these works for your display when you run it directly on the terminal, otherwise the MQTT switch will not work either.
-  - `wlopm --[on]/[off] *` (Raspberry Pi OS, Wayland) 
-  - `kscreen-doctor --dpms [on]/[off]` (Debian KDE, Wayland) 
-  - `xset dpms force [on]/[off]` (Generic, X11) 
-
 **Known Issues** that are by-design or for which there isn't a solution so far:
 - You can use Raspberry Pi's build-in [screen blanking](https://www.raspberrypi.com/documentation/computers/configuration.html#screen-blanking-3) functionality, however, if the screen is turned on through Home Assistant after being automatically turned off, it will remain on indefinitely.
-  - It's recommended to either use the built-in screen blanking feature or implement a Home Assistant automation (e.g. presence detection) to manage the screen status.
+  - It's recommended to either use the built-in screen blanking feature or implement a Home Assistant [automation](https://www.home-assistant.io/docs/automation/basics) (e.g. presence detection) to manage the screen status.
+  - An active VNC session can also interfere with the display state, you can find details about this in the features [section](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md#features).
 - When using a Raspberry Pi, the on-screen keyboard doesn't [automatically pop-out](https://github.com/leukipp/touchkio/issues/4) when entering a text field inside the webview.
   - As a current workaround you can use the side [widget](https://github.com/leukipp/touchkio/issues/16) to toggle the keyboard visibility.
-- Certain commands from the MQTT integration may require elevated privileges to work correctly.
-  - Ensure that your local user has the [necessary permissions](https://github.com/leukipp/touchkio/issues/39) to run `sudo` without being prompted for a password. 
-- On the terminal you may see some *ERROR:gbm_wrapper.cc* messages.
-  -  This appears to be a [known issue](https://github.com/electron/electron/issues/42322) that currently lacks a fix, but the webview still works.
+  - There is also an [experimental feature](https://github.com/leukipp/touchkio/issues/85) that uses a special Electron flag to address this problem.
+- On the terminal you may see some _ERROR:gbm_wrapper.cc_ messages.
+  - This appears to be a [known issue](https://github.com/electron/electron/issues/42322) that currently lacks a fix, but the webview still works.
 
 For debugging, stop the service and launch `touchkio` directly on the terminal to monitor the log output in real-time.
 This output is also written into `~/.config/touchkio/logs/main.log` for review.
 
-If you encounter any problems, please [create an issue](https://github.com/leukipp/touchkio/issues) and include the output of `touchkio --version`, additional information's about your system (such as operating system, hardware specs, etc.) and any relevant log files.
+If you encounter any problems, please [create an issue](https://github.com/leukipp/touchkio/issues) and include the output of `touchkio --version`, additional information's about your system (such as operating system, hardware, etc.) and any relevant log files.
 
 ## Credits
-
 [Inspired by](https://www.jeffgeerling.com/blog/2024/home-assistant-and-carplay-pi-touch-display-2) the one and only Raspberry Pi Master, Jeff Geerling ([@geerlingguy](https://github.com/geerlingguy)).
 
 Thanks to Sebastian ([@pdsccode](https://github.com/pdsccode)) for his contributions on issues and [community](https://community.home-assistant.io/t/kiosk-mode-for-raspberry-pi-with-touch-display/821196) discussions.
