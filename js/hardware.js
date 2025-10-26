@@ -86,22 +86,25 @@ const init = async () => {
   // Show hardware infos
   process.stdout.write("\n");
   const unsupported = "unsupported";
-  console.info(`Battery Level [${HARDWARE.battery.level.path || unsupported}]:`, `${getBatteryLevel() || unsupported}`);
   console.info(
-    `Display Status [${HARDWARE.display.status.path || unsupported}]:`,
-    `${getDisplayStatus() || unsupported} (${HARDWARE.display.status.command || unsupported})`,
+    `Battery Level [${HARDWARE.support.batteryLevel ? HARDWARE.battery.level.path : unsupported}]:`,
+    HARDWARE.support.batteryLevel ? getBatteryLevel() : unsupported,
   );
   console.info(
-    `Display Brightness [${HARDWARE.display.brightness.path || unsupported}]:`,
-    `${getDisplayBrightness() || unsupported}`,
+    `Display Status [${HARDWARE.support.displayStatus ? HARDWARE.display.status.path : unsupported}]:`,
+    HARDWARE.support.displayStatus ? `${getDisplayStatus()} (${HARDWARE.display.status.command})` : unsupported,
+  );
+  console.info(
+    `Display Brightness [${HARDWARE.support.displayBrightness ? HARDWARE.display.brightness.path : unsupported}]:`,
+    HARDWARE.support.displayBrightness ? getDisplayBrightness() : unsupported,
   );
   console.info(
     `Audio Volume [${HARDWARE.support.audioVolume ? HARDWARE.audio.device : unsupported}]:`,
-    `${getAudioVolume() || unsupported}`,
+    HARDWARE.support.audioVolume ? getAudioVolume() : unsupported,
   );
   console.info(
-    `Keyboard Visibility [${HARDWARE.support.keyboardVisibility ? "squeekboard" : unsupported}]:`,
-    `${getKeyboardVisibility() || unsupported}`,
+    `Keyboard Visibility [${HARDWARE.support.keyboardVisibility ? "dbus://sm/puri/OSK0" : unsupported}]:`,
+    HARDWARE.support.keyboardVisibility ? `${getKeyboardVisibility()} (squeekboard)` : unsupported,
   );
   process.stdout.write("\n");
 
@@ -155,8 +158,8 @@ const update = async () => {
   if (HARDWARE.support.displayStatus) {
     const status = (await fsp.readFile(`${HARDWARE.display.status.path}/dpms`, "utf8")).trim();
     if (status !== HARDWARE.display.status.value) {
-      console.info("Update Display Status:", getDisplayStatus());
       HARDWARE.display.status.value = status;
+      console.info("Update Display Status:", getDisplayStatus());
       EVENTS.emit("updateDisplay");
     }
   }
@@ -165,8 +168,8 @@ const update = async () => {
   if (HARDWARE.support.displayBrightness) {
     const brightness = (await fsp.readFile(`${HARDWARE.display.brightness.path}/brightness`, "utf8")).trim();
     if (brightness !== HARDWARE.display.brightness.value) {
-      console.info("Update Display Brightness:", getDisplayBrightness());
       HARDWARE.display.brightness.value = brightness;
+      console.info("Update Display Brightness:", getDisplayBrightness());
       EVENTS.emit("updateDisplay");
     }
   }
@@ -241,7 +244,7 @@ const checkSupport = () => {
   return {
     batteryLevel: !!battery.path,
     displayStatus: !!status.path && !!status.command,
-    displayBrightness: sudo && !!brightness.path && !!brightness.max,
+    displayBrightness: sudo && !!status.command && !!brightness.path && !!brightness.max,
     keyboardVisibility: keyboard,
     audioVolume: !!audio,
     sudoRights: sudo,
@@ -831,10 +834,11 @@ const commandExists = (name) => {
  */
 const execSyncCommand = (cmd, args) => {
   try {
+    console.debug(`hardware.js: execSyncCommand(${[cmd, ...args].join(" ")})`);
     const output = cpr.execSync([cmd, ...args].join(" "), { encoding: "utf8" });
     return output.trim().replace(/\0/g, "");
   } catch (error) {
-    console.error(`Execute Sync: '${[cmd, ...args].join(" ")}' --> ${error.message}`);
+    console.error(`Execute Sync: '${[cmd, ...args].join(" ")}' --> ${error.message}`.trim());
   }
   return null;
 };
@@ -848,6 +852,7 @@ const execSyncCommand = (cmd, args) => {
  * @returns {Object} The spawned process object.
  */
 const execAsyncCommand = (cmd, args, callback = null) => {
+  console.debug(`hardware.js: execAsyncCommand(${[cmd, ...args].join(" ")})`);
   let errorOutput = "";
   let successOutput = "";
   let proc = cpr.spawn(cmd, args);
@@ -883,6 +888,7 @@ const execAsyncCommand = (cmd, args, callback = null) => {
  * @returns {Object} The spawned process object.
  */
 const execScriptCommand = (cmd, args, callback = null) => {
+  console.debug(`hardware.js: execScriptCommand(${[cmd, ...args].join(" ")})`);
   let progress = 1;
   let proc = cpr.spawn(cmd, args);
   if (typeof callback === "function") callback(progress, null);
@@ -932,6 +938,7 @@ const execScriptCommand = (cmd, args, callback = null) => {
  * @returns {Object} The spawned process object.
  */
 const commandMonitor = (cmd, args, callback) => {
+  console.debug(`hardware.js: commandMonitor(${[cmd, ...args].join(" ")})`);
   const proc = cpr.spawn(cmd, args);
   proc.stdout.on("data", (data) => {
     if (data) {
@@ -958,6 +965,7 @@ const commandMonitor = (cmd, args, callback) => {
 const dbusMonitor = (path, callback) => {
   const cmd = "dbus-monitor";
   const args = [`interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='${path}'`];
+  console.debug(`hardware.js: dbusMonitor(${[cmd, ...args].join(" ")})`);
   const proc = cpr.spawn(cmd, args);
   proc.stdout.on("data", (data) => {
     try {
@@ -1006,6 +1014,7 @@ const dbusCall = (path, method, values, callback = null) => {
   const dest = `${iface} ${path} ${iface}.${method} ${values.join(" ")}`;
   const args = ["--print-reply", "--type=method_call", `--dest=${dest}`];
   try {
+    console.debug(`hardware.js: dbusCall(${[cmd, ...args].join(" ")})`);
     const output = cpr.execSync([cmd, ...args].join(" ").trim(), { encoding: "utf8" });
     if (typeof callback === "function") callback(output.trim().replace(/\0/g, ""), null);
   } catch (error) {

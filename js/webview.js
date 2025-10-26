@@ -75,20 +75,11 @@ const init = async () => {
     toggle: () => {
       nativeTheme.themeSource = nativeTheme.shouldUseDarkColors ? "light" : "dark";
     },
-    register: () => {
-      nativeTheme.on("updated", () => {
-        const theme = WEBVIEW.theme.get();
-        WEBVIEW.statusTheme = theme;
-        WEBVIEW.widgetTheme = theme;
-        WEBVIEW.navigationTheme = theme;
-        if (WEBVIEW.initialized) {
-          resizeView();
-        }
-        EVENTS.emit("updateTheme");
-      });
+    handler: (callback) => {
+      nativeTheme.on("updated", callback);
     },
   };
-  WEBVIEW.theme.register();
+  WEBVIEW.theme.handler(updateTheme);
   WEBVIEW.theme.set(theme);
 
   // Init global root window
@@ -190,6 +181,7 @@ const update = async () => {
   if (!WEBVIEW.initialized || APP.exiting) {
     return;
   }
+  console.debug("webview.js: update()");
 
   // Update window status
   updateStatus();
@@ -202,6 +194,28 @@ const update = async () => {
 
   // Update integration sensor
   integration.update();
+};
+
+/**
+ * Updates the application theme.
+ */
+const updateTheme = () => {
+  const previous = WEBVIEW.statusTheme;
+  const theme = WEBVIEW.theme.get();
+
+  // Set controls theme
+  if (previous !== theme) {
+    console.info("Update Application Theme:", theme);
+  }
+  WEBVIEW.statusTheme = theme;
+  WEBVIEW.widgetTheme = theme;
+  WEBVIEW.navigationTheme = theme;
+
+  // Update controls theme
+  if (WEBVIEW.initialized) {
+    resizeView();
+  }
+  EVENTS.emit("updateTheme");
 };
 
 /**
@@ -511,7 +525,8 @@ const resizeView = () => {
   const widget = { width: 60, height: 200 };
 
   // Update view size
-  WEBVIEW.views.forEach((view) => {
+  WEBVIEW.views.forEach((view, i) => {
+    console.debug(`webview.js: resizeView(${i})`);
     view.setBounds({
       x: 0,
       y: status.height,
@@ -577,6 +592,8 @@ const resizeView = () => {
  * Register window events and handler.
  */
 const windowEvents = async () => {
+  console.debug("webview.js: windowEvents()");
+
   // Handle window resize events
   WEBVIEW.window.on("ready-to-show", resizeView);
   WEBVIEW.window.on("resize", resizeView);
@@ -686,6 +703,7 @@ const widgetEvents = async () => {
   if (!WEBVIEW.widgetEnabled) {
     return;
   }
+  console.debug("webview.js: widgetEvents()");
 
   // Handle widget focus events
   WEBVIEW.widget.webContents.on("focus", () => {
@@ -704,6 +722,7 @@ const widgetEvents = async () => {
       theme: WEBVIEW.widgetTheme,
     });
     WEBVIEW.tracker.widget.focused = true;
+    console.debug("webview.js: widgetEvents(widget-focus)");
   });
 
   // Handle widget blur events
@@ -722,10 +741,12 @@ const widgetEvents = async () => {
       theme: "hidden",
     });
     WEBVIEW.tracker.widget.focused = false;
+    console.debug("webview.js: widgetEvents(widget-blur)");
   });
 
   // Handle widget button click events
   ipcMain.on("button-click", (e, button) => {
+    console.debug(`webview.js: widgetEvents(button-click-${button.id})`);
     WEBVIEW.tracker.pointer.time = new Date();
     switch (button.id) {
       case "theme":
@@ -748,9 +769,11 @@ const statusEvents = async () => {
   if (!WEBVIEW.statusEnabled) {
     return;
   }
+  console.debug("webview.js: statusEvents()");
 
   // Handle status button click events
   ipcMain.on("button-click", (e, button) => {
+    console.debug(`webview.js: statusEvents(button-click-${button.id})`);
     WEBVIEW.tracker.pointer.time = new Date();
     switch (button.id) {
       case "fullscreen":
@@ -790,10 +813,12 @@ const navigationEvents = async () => {
   if (!WEBVIEW.navigationEnabled) {
     return;
   }
+  console.debug("webview.js: navigationEvents()");
 
   // Handle input blur events
   let selected = false;
   ipcMain.on("input-blur", (e, input) => {
+    console.debug(`webview.js: navigationEvents(input-blur-${input.id})`);
     switch (input.id) {
       case "url":
         if (selected) {
@@ -809,6 +834,7 @@ const navigationEvents = async () => {
 
   // Handle input focus events
   ipcMain.on("input-focus", (e, input) => {
+    console.debug(`webview.js: navigationEvents(input-focus-${input.id})`);
     WEBVIEW.tracker.pointer.time = new Date();
     switch (input.id) {
       case "url":
@@ -826,6 +852,8 @@ const navigationEvents = async () => {
 
   // Handle input enter events
   ipcMain.on("input-enter", (e, input) => {
+    console.debug(`webview.js: navigationEvents(input-enter-${input.id})`);
+    WEBVIEW.tracker.pointer.time = new Date();
     switch (input.id) {
       case "url":
         let url = input.text.trim();
@@ -842,6 +870,7 @@ const navigationEvents = async () => {
 
   // Handle navigation button click events
   ipcMain.on("button-click", (e, button) => {
+    console.debug(`webview.js: navigationEvents(button-click-${button.id})`);
     WEBVIEW.tracker.pointer.time = new Date();
     switch (button.id) {
       case "home":
@@ -878,6 +907,8 @@ const navigationEvents = async () => {
 const viewEvents = async () => {
   const ready = [];
   WEBVIEW.views.forEach((view, i) => {
+    console.debug(`webview.js: viewEvents(${i})`);
+
     // Enable webview touch emulation
     view.webContents.debugger.attach("1.1");
     view.webContents.debugger.sendCommand("Emulation.setEmitTouchEventsForMouse", {
@@ -893,6 +924,7 @@ const viewEvents = async () => {
 
     // Update webview layout
     view.webContents.on("dom-ready", () => {
+      console.debug(`webview.js: viewEvents(${i},dom-ready)`);
       view.webContents.insertCSS("::-webkit-scrollbar { display: none; }");
       if (ready.length < WEBVIEW.views.length) {
         view.webContents.setZoomFactor(WEBVIEW.viewZoom);
@@ -902,6 +934,7 @@ const viewEvents = async () => {
 
     // Webview fully loaded
     view.webContents.on("did-finish-load", () => {
+      console.debug(`webview.js: viewEvents(${i},did-finish-load)`);
       if (WEBVIEW.viewActive === 0 && ready.length === WEBVIEW.views.length) {
         nextView();
       }
@@ -915,6 +948,7 @@ const viewEvents = async () => {
     // Webview not loaded
     view.webContents.on("did-fail-load", (e, code, text, url, mainframe) => {
       if (mainframe) {
+        console.debug(`webview.js: viewEvents(${i},did-fail-load)`);
         if (WEBVIEW.viewActive === 0 && ready.length === WEBVIEW.views.length) {
           nextView();
         }
@@ -932,10 +966,12 @@ const viewEvents = async () => {
     // Webview url changed
     view.webContents.on("did-navigate-in-page", (e, url, mainframe) => {
       if (mainframe) {
+        console.debug(`webview.js: viewEvents(${i},did-navigate-in-page)`);
         updateView();
       }
     });
     view.webContents.on("did-navigate", () => {
+      console.debug(`webview.js: viewEvents(${i},did-navigate)`);
       updateView();
     });
 
@@ -944,17 +980,23 @@ const viewEvents = async () => {
       const now = new Date();
       const then = WEBVIEW.tracker.pointer.time;
       const delta = (now - then) / 1000;
+
+      // Check mouse event type
       switch (mouse.type) {
         case "mouseMove":
-          const posNew = { x: mouse.globalX, y: mouse.globalY };
+          const posNew = { x: Math.round(mouse.globalX), y: Math.round(mouse.globalY) };
           if (posNew.x < 0 || posNew.y < 0) {
             break;
           }
-          // Update last active on pointer position change
+          console.debug(`webview.js: viewEvents(${i},${mouse.type}-${posNew.x}-${posNew.y})`);
+
+          // Update tracker pointer time and position
           const posOld = WEBVIEW.tracker.pointer.position;
           if (posOld.x !== posNew.x || posOld.y !== posNew.y) {
             WEBVIEW.tracker.pointer.time = now;
             WEBVIEW.tracker.pointer.position = posNew;
+
+            // Update last active on pointer position change
             if (delta > 30) {
               console.info("Update Last Active");
               integration.update();
@@ -962,15 +1004,18 @@ const viewEvents = async () => {
           }
           break;
         case "mouseDown":
+          console.debug(`webview.js: viewEvents(${i},${mouse.type}-${mouse.button})`);
           switch (mouse.button) {
             case "left":
+              const off = WEBVIEW.tracker.display.off > WEBVIEW.tracker.display.on;
+              console.debug(`webview.js: viewEvents(${i},display-${off ? "off" : "on"})`);
+
               // Ignore touch event if display was off
-              if (WEBVIEW.tracker.display.off > WEBVIEW.tracker.display.on) {
+              if (off) {
                 console.verbose("Display Touch Event: Ignored");
                 e.preventDefault();
-              }
-              // Turn display on if it was off
-              if (hardware.getDisplayStatus() === "OFF") {
+
+                // Turn display on if it was off
                 hardware.setDisplayStatus("ON");
               }
               break;
@@ -991,6 +1036,8 @@ const viewEvents = async () => {
  * Register app events and handler.
  */
 const appEvents = async () => {
+  console.debug("webview.js: appEvents()");
+
   // Handle global events
   EVENTS.on("reloadView", reloadView);
   EVENTS.on("updateView", updateView);
@@ -1024,6 +1071,16 @@ const appEvents = async () => {
       WEBVIEW.window.restore();
     }
     WEBVIEW.window.focus();
+  });
+
+  // Handle crash events
+  app.on("render-process-gone", (e, wc, details) => {
+    const content = wc.getURL() || "Unknown";
+    console.error(`Render Process ${details.reason} (code ${details.exitCode}): ${content}`);
+  });
+  app.on("child-process-gone", (e, details) => {
+    const name = details.name || details.serviceName || "Unknown";
+    console.error(`${details.type} Process ${details.reason} (code ${details.exitCode}): ${name}`);
   });
 
   // Handle exit events

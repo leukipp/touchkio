@@ -13,6 +13,7 @@ global.APP = global.APP || {};
 global.ARGS = global.ARGS || {};
 global.EVENTS = global.EVENTS || new Events();
 
+// Check display environment variable
 if (!process.env.DISPLAY) {
   console.error(`\n$DISPLAY variable not set to run the GUI application, are you connected via SSH?\n`);
   console.error(`If you have installed the service use:`);
@@ -21,6 +22,18 @@ if (!process.env.DISPLAY) {
   console.error(`  export DISPLAY=":0" && export WAYLAND_DISPLAY="wayland-0" && touchkio\n`);
   process.exit(1);
 }
+
+// Delete electron log file
+const elog = path.join(app.getPath("logs"), "electron.log");
+try {
+  if (fs.existsSync(elog)) {
+    fs.unlinkSync(elog);
+  }
+  console.debug = () => {};
+} catch (error) {
+  console.error("Failed to delete electron log file:", error.message);
+}
+app.commandLine.appendSwitch("log-file", elog);
 
 /**
  * This promise resolves when the app has finished initializing,
@@ -38,11 +51,18 @@ app.whenReady().then(async () => {
     args.mqtt_password = "*".repeat((args.mqtt_password || "").length);
   }
   console.info(`Arguments: ${JSON.stringify(args, null, 2)}`);
+  process.stdout.write("\n");
 
   // Chained init functions
-  const chained = [webview.init, hardware.init, integration.init];
-  for (const init of chained) {
+  const chained = [
+    ["webview.js", webview.init],
+    ["hardware.js", hardware.init],
+    ["integration.js", integration.init],
+  ];
+  for (const [name, init] of chained) {
+    console.debug(`${name}: init()`);
     if (!(await init())) {
+      console.debug(`${name}: init() --> aborted`);
       break;
     }
   }
@@ -154,11 +174,18 @@ const initLog = async () => {
       fs.unlinkSync(APP.log);
     }
   } catch (error) {
-    console.error("Failed to delete log file:", error.message);
+    console.error("Failed to delete main log file:", error.message);
   }
 
-  // Overwrite console log
-  APP.logs = [];
+  // Set log level and path
+  const level = "enable_logging" in ARGS ? "silly" : "app_debug" in ARGS ? "debug" : "verbose";
+  log.transports.file.level = level;
+  log.transports.console.level = level;
+  log.transports.file.resolvePathFn = () => {
+    return APP.log;
+  };
+
+  // Catch unhandled errors
   log.errorHandler.startCatching({
     showDialog: false,
     onError({ error }) {
@@ -166,6 +193,9 @@ const initLog = async () => {
       app.exit(1);
     },
   });
+
+  // Emit console log
+  APP.logs = [];
   log.hooks.push((message, transport, type) => {
     const text = message.data.join(" ");
     if (!text.startsWith("(node:") && type === "console") {
@@ -181,10 +211,10 @@ const initLog = async () => {
     }
     return message;
   });
-  log.transports.file.resolvePathFn = () => {
-    return APP.log;
-  };
+
+  // Overwrite console log
   Object.assign(console, log.functions);
+  console.silly("Welcome To The Jungle!");
 
   return true;
 };

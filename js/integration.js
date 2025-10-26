@@ -153,6 +153,7 @@ const update = async () => {
   if (!INTEGRATION.initialized || APP.exiting) {
     return;
   }
+  console.debug("integration.js: update()");
 
   // Update client sensors
   updatePageNumber();
@@ -180,6 +181,7 @@ const removeConfig = (type, config) => {
   }
   const path = config.unique_id.replace(`${INTEGRATION.node}_`, "");
   const root = `${INTEGRATION.discovery}/${type}/${INTEGRATION.node}/${path}/config`;
+  console.debug(`integration.js: removeConfig(${path})`);
   return INTEGRATION.client.publish(root, JSON.stringify({}), { qos: 1, retain: true });
 };
 
@@ -196,6 +198,7 @@ const publishConfig = (type, config) => {
   }
   const path = config.unique_id.replace(`${INTEGRATION.node}_`, "");
   const root = `${INTEGRATION.discovery}/${type}/${INTEGRATION.node}/${path}/config`;
+  console.debug(`integration.js: publishConfig(${path})`);
   return INTEGRATION.client.publish(root, JSON.stringify(config), { qos: 1, retain: true });
 };
 
