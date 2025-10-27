@@ -102,14 +102,15 @@ const init = async () => {
       INTEGRATION.initialized = true;
 
       // Register global events
-      EVENTS.on("updateDisplay", () => {
-        updateDisplay();
-        updateLastActive();
-      });
+      EVENTS.on("updateApp", updateApp);
       EVENTS.on("updateStatus", updateKiosk);
       EVENTS.on("updateTheme", updateTheme);
       EVENTS.on("updateVolume", updateVolume);
       EVENTS.on("updateKeyboard", updateKeyboard);
+      EVENTS.on("updateDisplay", () => {
+        updateDisplay();
+        updateLastActive();
+      });
       EVENTS.on("consoleLog", updateErrors);
     })
     .on("error", (error) => {
@@ -139,7 +140,6 @@ const init = async () => {
     if (APP.exiting) {
       return;
     }
-    updateApp();
     updatePackageUpgrades();
   }, 3600 * 1000);
 
@@ -499,8 +499,8 @@ const initDisplay = () => {
 const updateDisplay = async () => {
   const status = hardware.getDisplayStatus();
   const brightness = hardware.getDisplayBrightness();
-  publishState("display/power", status);
   publishState("display/brightness", brightness);
+  publishState("display/power", status);
 };
 
 /**
@@ -610,9 +610,11 @@ const initPageNumber = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const number = parseInt(message, 10);
-        console.verbose("Set Page Number:", number);
-        WEBVIEW.viewActive = number || 1;
-        EVENTS.emit("updateView");
+        if (WEBVIEW.viewActive && number) {
+          console.verbose("Set Page Number:", number);
+          WEBVIEW.viewActive = number;
+          EVENTS.emit("updateView");
+        }
       }
     })
     .subscribe(config.command_topic);
@@ -650,9 +652,11 @@ const initPageZoom = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const zoom = parseInt(message, 10);
-        console.verbose("Set Page Zoom:", zoom);
-        WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.setZoomFactor(zoom / 100.0);
-        EVENTS.emit("updateView");
+        if (WEBVIEW.viewActive && zoom) {
+          console.verbose("Set Page Zoom:", zoom);
+          WEBVIEW.views[WEBVIEW.viewActive].webContents.setZoomFactor(zoom / 100.0);
+          EVENTS.emit("updateView");
+        }
       }
     })
     .subscribe(config.command_topic);
@@ -686,8 +690,10 @@ const initPageUrl = () => {
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const url = message.toString();
-        console.verbose("Set Page Url:", url);
-        WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.loadURL(url);
+        if (WEBVIEW.viewActive && url) {
+          console.verbose("Set Page Url:", url);
+          WEBVIEW.views[WEBVIEW.viewActive].webContents.loadURL(url);
+        }
       }
     })
     .subscribe(config.command_topic);
@@ -701,7 +707,7 @@ const updatePageUrl = async () => {
   const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive || 1];
   const currentUrl = WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.getURL();
   const pageUrl = !currentUrl || currentUrl.startsWith("data:") ? defaultUrl : currentUrl;
-  publishState("page_url", pageUrl);
+  publishState("page_url", pageUrl.length < 255 ? pageUrl : null);
 };
 
 /**
