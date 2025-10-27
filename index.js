@@ -95,6 +95,7 @@ const initApp = async () => {
     url: `https://api.github.com/repos/${packageJson.author}/${packageJson.name}/releases`,
     latest: null,
   };
+  APP.issues = `https://github.com/${packageJson.author}/${packageJson.name}/issues`;
   APP.scripts = {
     install: `https://raw.githubusercontent.com/${packageJson.author}/${packageJson.name}/main/install.sh`,
   };
@@ -188,16 +189,17 @@ const initLog = async () => {
   // Catch unhandled errors
   log.errorHandler.startCatching({
     showDialog: false,
-    onError({ error }) {
-      console.error(`Uncaught Error: ${error.message} (${error.stack})`);
-      app.exit(1);
+    onError({ versions }) {
+      console.warn(`💥 Whoopsie!, Let's go ${APP.issues}:`, versions);
+      app.quit();
     },
   });
 
   // Emit console log
   APP.logs = [];
   log.hooks.push((message, transport, type) => {
-    const text = message.data.join(" ");
+    const data = message.data.map((d) => (typeof d === "object" ? d.message || JSON.stringify(d) : String(d)));
+    const text = data.filter((s) => s && s.trim()).join(" ");
     if (!text.startsWith("(node:") && type === "console") {
       APP.logs.unshift({
         time: message.date,
