@@ -112,6 +112,24 @@ const initApp = async () => {
     return app.exit(1);
   }
 
+  // Register app quit events
+  app.on("before-quit", () => {
+    APP.exiting = true;
+  });
+  app.on("will-quit", (e) => {
+    e.preventDefault();
+    process.exitCode = process.exitCode !== 0 ? 1 : 0;
+    const level = process.exitCode === 0 ? "warn" : "error";
+    console[level](`${APP.title} Terminated (${process.exitCode})`);
+    app.exit(process.exitCode);
+  });
+  ["SIGINT", "SIGTERM", "SIGQUIT"].forEach((signal) => {
+    process.on(signal, () => {
+      process.exitCode = 0;
+      app.quit();
+    });
+  });
+
   return true;
 };
 
@@ -189,8 +207,16 @@ const initLog = async () => {
   // Catch unhandled errors
   log.errorHandler.startCatching({
     showDialog: false,
-    onError({ versions }) {
-      console.warn(`💥 Whoopsie!, Let's go ${APP.issues}:`, versions);
+    onError({ error, versions }) {
+      const build = { ...APP.build, ...versions };
+      const whoopsie = "💥 Whoopsie!";
+      const section2 = `# Description\n- Hardware information?\n- How to reproduce?\n- Additional logs?\n`;
+      const section3 = `# Error\n\`\`\`bash\n${new Date().toISOString()}: ${error.stack}\n\`\`\`\n`;
+      const section4 = `# Application\n\`\`\`json\n${JSON.stringify(build, null, 2)}\n\`\`\`\n`;
+      const title = encodeURIComponent(`${whoopsie} - ${error}`);
+      const body = encodeURIComponent(`${section2}\n${section3}\n${section4}`);
+      console.error(`${whoopsie} -`, error, build);
+      console.info(`🪲 Report issue --> ${APP.issues}/new?title=${title}&body=${body}`);
       app.quit();
     },
   });
