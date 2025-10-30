@@ -3,8 +3,20 @@
   <head>
     <meta http-equiv="Content-Security-Policy" content="default-src 'unsafe-inline'" />
     <style>
+      [data-theme="dark"] {
+        --background-color: rgba(225, 225, 225, 0.15);
+        --previous-cursor: w-resize;
+        --next-cursor: e-resize;
+      }
+      [data-theme="light"] {
+        --background-color: rgba(33, 33, 33, 0.15);
+        --previous-cursor: w-resize;
+        --next-cursor: e-resize;
+      }
       [data-theme="hidden"] {
         --background-color: rgba(0, 0, 0, 0);
+        --previous-cursor: none;
+        --next-cursor: none;
       }
       ::-webkit-scrollbar {
         display: none;
@@ -27,24 +39,31 @@
         width: 100vw;
         height: 100vh;
         list-style-type: none;
-        background: var(--background-color);
       }
       li {
         display: flex;
         align-items: center;
         flex: 0 0 auto;
       }
+      li:not(.disabled) #previous {
+        cursor: var(--previous-cursor);
+      }
+      li:not(.disabled) #next {
+        cursor: var(--next-cursor);
+      }
       button {
         width: 100vw;
         height: 50vh;
         border: none;
+        cursor: not-allowed;
         background-color: transparent;
       }
-      #previous {
-        cursor: w-resize;
+      button:not(:active) {
+        transition: background-color 500ms step-end;
       }
-      #next {
-        cursor: e-resize;
+      menu:has(button:active) button {
+        background-color: var(--background-color);
+        transition-duration: 0ms;
       }
     </style>
   </head>
@@ -62,13 +81,16 @@
 
       const registerSendEvents = () => {
         document.querySelectorAll("button").forEach((button) => {
-          button.addEventListener("click", (e) => {
+          button.addEventListener("pointerdown", (e) => {
             ipcRenderer.send("button-click", { id: e.target.id });
           });
         });
       };
 
       const registerReceiveEvents = () => {
+        ipcRenderer.on("button-disabled", (e, button) => {
+          document.getElementById(button.id).parentNode.classList.toggle("disabled", button.disabled);
+        });
         ipcRenderer.on("data-theme", (e, data) => {
           document.documentElement.setAttribute("data-theme", data.theme);
         });
