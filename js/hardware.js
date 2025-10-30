@@ -431,9 +431,18 @@ const getBatteryLevel = () => {
   if (!HARDWARE.support.batteryLevel) {
     return null;
   }
-  const capacity = fs.readFileSync(`${HARDWARE.battery.level.path}/capacity`, "utf8").trim();
-  if (capacity) {
-    return parseFloat(capacity);
+  try {
+    const capacityPath = `${HARDWARE.battery.level.path}/capacity`;
+    if (!fs.existsSync(capacityPath)) {
+      return null;
+    }
+    const capacity = fs.readFileSync(capacityPath, "utf8").trim();
+    if (capacity) {
+      return parseFloat(capacity);
+    }
+  } catch (error) {
+    // Log warning but don't crash the app on unreadable device files
+    console.warn("Read Battery Level:", error.message || error);
   }
   return null;
 };
@@ -575,9 +584,15 @@ const getDisplayBrightnessMax = () => {
   if (!HARDWARE.display.brightness.path) {
     return null;
   }
-  const max = fs.readFileSync(`${HARDWARE.display.brightness.path}/max_brightness`, "utf8").trim();
-  if (max) {
-    return parseInt(max, 10);
+  try {
+    const maxPath = `${HARDWARE.display.brightness.path}/max_brightness`;
+    if (!fs.existsSync(maxPath)) return null;
+    const max = fs.readFileSync(maxPath, "utf8").trim();
+    if (max) {
+      return parseInt(max, 10);
+    }
+  } catch (error) {
+    console.warn("Read Display Brightness Max:", error.message || error);
   }
   return null;
 };
@@ -591,10 +606,16 @@ const getDisplayBrightness = () => {
   if (!HARDWARE.support.displayBrightness) {
     return null;
   }
-  const brightness = fs.readFileSync(`${HARDWARE.display.brightness.path}/brightness`, "utf8").trim();
-  if (brightness) {
-    const max = HARDWARE.display.brightness.max || 1;
-    return Math.max(1, Math.min(Math.round((parseInt(brightness, 10) / max) * 100), 100));
+  try {
+    const brightnessPath = `${HARDWARE.display.brightness.path}/brightness`;
+    if (!fs.existsSync(brightnessPath)) return null;
+    const brightness = fs.readFileSync(brightnessPath, "utf8").trim();
+    if (brightness) {
+      const max = HARDWARE.display.brightness.max || 1;
+      return Math.max(1, Math.min(Math.round((parseInt(brightness, 10) / max) * 100), 100));
+    }
+  } catch (error) {
+    console.warn("Read Display Brightness:", error.message || error);
   }
   return null;
 };
