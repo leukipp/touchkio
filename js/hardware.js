@@ -156,8 +156,8 @@ const update = async () => {
 
   // Display status has changed
   if (HARDWARE.support.displayStatus) {
-    const status = (await fsp.readFile(`${HARDWARE.display.status.path}/dpms`, "utf8")).trim();
-    if (status !== HARDWARE.display.status.value) {
+    const status = await readFile(`${HARDWARE.display.status.path}/dpms`, false);
+    if (status !== null && status !== HARDWARE.display.status.value) {
       HARDWARE.display.status.value = status;
       console.info("Update Display Status:", getDisplayStatus());
       EVENTS.emit("updateDisplay");
@@ -166,8 +166,8 @@ const update = async () => {
 
   // Display brightness has changed
   if (HARDWARE.support.displayBrightness) {
-    const brightness = (await fsp.readFile(`${HARDWARE.display.brightness.path}/brightness`, "utf8")).trim();
-    if (brightness !== HARDWARE.display.brightness.value) {
+    const brightness = await readFile(`${HARDWARE.display.brightness.path}/brightness`, false);
+    if (brightness !== null && brightness !== HARDWARE.display.brightness.value) {
       HARDWARE.display.brightness.value = brightness;
       console.info("Update Display Brightness:", getDisplayBrightness());
       EVENTS.emit("updateDisplay");
@@ -400,9 +400,12 @@ const getProcessorTemperature = () => {
     if (!fs.existsSync(typeFile) || !fs.existsSync(tempFile)) {
       continue;
     }
-    const type = fs.readFileSync(typeFile, "utf8").trim();
+    const type = readFile(typeFile);
     if (["cpu-thermal", "x86_pkg_temp", "k10temp", "acpitz", "cpu"].includes(type)) {
-      return parseFloat(fs.readFileSync(tempFile, "utf8").trim()) / 1000;
+      const temp = readFile(tempFile);
+      if (temp) {
+        return parseFloat(temp) / 1000;
+      }
     }
   }
   return null;
@@ -434,7 +437,7 @@ const getBatteryLevel = () => {
   if (!HARDWARE.support.batteryLevel) {
     return null;
   }
-  const capacity = fs.readFileSync(`${HARDWARE.battery.level.path}/capacity`, "utf8").trim();
+  const capacity = readFile(`${HARDWARE.battery.level.path}/capacity`);
   if (capacity) {
     return parseFloat(capacity);
   }
@@ -453,7 +456,7 @@ const getDisplayStatusPath = () => {
     if (!fs.existsSync(statusFile)) {
       continue;
     }
-    const content = fs.readFileSync(statusFile, "utf8").trim();
+    const content = readFile(statusFile);
     if (content === "connected") {
       return path.join(drm, card);
     }
@@ -578,7 +581,7 @@ const getDisplayBrightnessMax = () => {
   if (!HARDWARE.display.brightness.path) {
     return null;
   }
-  const max = fs.readFileSync(`${HARDWARE.display.brightness.path}/max_brightness`, "utf8").trim();
+  const max = readFile(`${HARDWARE.display.brightness.path}/max_brightness`);
   if (max) {
     return parseInt(max, 10);
   }
@@ -594,7 +597,7 @@ const getDisplayBrightness = () => {
   if (!HARDWARE.support.displayBrightness) {
     return null;
   }
-  const brightness = fs.readFileSync(`${HARDWARE.display.brightness.path}/brightness`, "utf8").trim();
+  const brightness = readFile(`${HARDWARE.display.brightness.path}/brightness`);
   if (brightness) {
     const max = HARDWARE.display.brightness.max || 1;
     return Math.max(1, Math.min(Math.round((parseInt(brightness, 10) / max) * 100), 100));
@@ -937,7 +940,7 @@ const execScriptCommand = (cmd, args, callback = null) => {
  * @param {Function} callback - A callback function that receives the output or error.
  * @returns {Object} The spawned process object.
  */
-const commandMonitor = (cmd, args, callback) => {
+const commandMonitor = (cmd, args, callback = null) => {
   console.debug(`hardware.js: commandMonitor(${[cmd, ...args].join(" ")})`);
   const proc = cpr.spawn(cmd, args);
   proc.stdout.on("data", (data) => {
@@ -962,7 +965,7 @@ const commandMonitor = (cmd, args, callback) => {
  * @param {Function} callback - A callback function that receives the changed property.
  * @returns {Object} The spawned process object.
  */
-const dbusMonitor = (path, callback) => {
+const dbusMonitor = (path, callback = null) => {
   const cmd = "dbus-monitor";
   const args = [`interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='${path}'`];
   console.debug(`hardware.js: dbusMonitor(${[cmd, ...args].join(" ")})`);
@@ -1024,6 +1027,34 @@ const dbusCall = (path, method, values, callback = null) => {
 };
 
 /**
+ * Reads file content synchronously or asynchronously from the filesystem.
+ *
+ * @param {string} path - Path of the file.
+ * @param {boolean} sync - If true, reads the file synchronously, otherwise asynchronously.
+ * @returns {string|null|Promise<string|null>} The file content or null if an error occurs.
+ */
+const readFile = (path, sync = true) => {
+  if (!sync) {
+    return new Promise((resolve) => {
+      const reader = fsp.readFile(path, "utf8");
+      reader.then((content) => {
+        resolve(content.trim());
+      });
+      reader.catch((error) => {
+        console.error(`Read File ${path} Async:`, error.message);
+        resolve(null);
+      });
+    });
+  }
+  try {
+    return fs.readFileSync(path, "utf8").trim();
+  } catch (error) {
+    console.error(`Read File ${path} Sync:`, error.message);
+  }
+  return null;
+};
+
+/**
  * Helper function for asynchronous interval calls.
  *
  * @param {Function} callback - An async callback function.
@@ -1035,7 +1066,7 @@ const interval = (callback, ms) => {
       try {
         await callback();
       } catch (error) {
-        console.error("Interval Callback:", error.message);
+        console.error("Interval Async:", error.message);
       }
       run();
     }, ms);
