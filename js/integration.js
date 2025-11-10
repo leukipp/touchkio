@@ -104,9 +104,14 @@ const init = async () => {
       // Register global events
       EVENTS.on("updateApp", updateApp);
       EVENTS.on("updateStatus", updateKiosk);
-      EVENTS.on("updateTheme", updateTheme);
       EVENTS.on("updateVolume", updateVolume);
       EVENTS.on("updateKeyboard", updateKeyboard);
+      EVENTS.on("updatePage", () => {
+        updatePageNumber();
+        updatePageZoom();
+        updatePageUrl();
+        updateTheme();
+      });
       EVENTS.on("updateDisplay", () => {
         updateDisplay();
         updateLastActive();
@@ -155,10 +160,6 @@ const update = async () => {
   }
   console.debug("integration.js: update()");
 
-  // Update client sensors
-  updatePageNumber();
-  updatePageZoom();
-  updatePageUrl();
   updateNetworkAddress();
   updateUpTime();
   updateLastActive();
@@ -424,7 +425,7 @@ const initTheme = () => {
   publishConfig("select", config)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
-        const theme = message.toString();
+        const theme = message.toString().toLowerCase();
         console.verbose("Set Application Theme:", theme);
         WEBVIEW.theme.set(theme);
       }
@@ -654,7 +655,7 @@ const initPageZoom = () => {
         const zoom = parseInt(message, 10);
         if (WEBVIEW.viewActive && zoom) {
           console.verbose("Set Page Zoom:", zoom);
-          WEBVIEW.views[WEBVIEW.viewActive].webContents.setZoomFactor(zoom / 100.0);
+          WEBVIEW.zoom.set(zoom);
           EVENTS.emit("updateView");
         }
       }
@@ -667,7 +668,7 @@ const initPageZoom = () => {
  * Updates the page zoom via the mqtt connection.
  */
 const updatePageZoom = async () => {
-  const pageZoom = Math.round(WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.getZoomFactor() * 100.0);
+  const pageZoom = WEBVIEW.zoom.get();
   publishState("page_zoom", pageZoom);
 };
 

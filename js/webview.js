@@ -46,23 +46,30 @@ const init = async () => {
     console.error("Please provide the '--web-url' parameter with http(s)");
     return app.quit();
   }
-  session.defaultSession.clearCache();
+
+  // Clear cache and storage
+  await session.defaultSession.clearCache();
+  if (ARGS.app_reset === "storage") {
+    await session.defaultSession.clearStorageData();
+  }
 
   // Parse arguments
   const debug = "app_debug" in ARGS;
   const widget = ARGS.web_widget ? ARGS.web_widget === "true" : true;
-  const zoom = !isNaN(parseFloat(ARGS.web_zoom)) ? parseFloat(ARGS.web_zoom) : 1.25;
   const theme = ["light", "dark"].includes(ARGS.web_theme) ? ARGS.web_theme : "dark";
-  const urls = [loaderHtml(40, 1.0, theme)].concat(ARGS.web_url);
+  const zoom = (!isNaN(parseFloat(ARGS.web_zoom)) ? parseFloat(ARGS.web_zoom) : 1.25) * 100;
+  const urls = [loaderHtml(40, 1.0, theme), ...ARGS.web_url];
 
-  // Init global properties
-  WEBVIEW.viewActive = 0;
-  WEBVIEW.viewUrls = urls;
-  WEBVIEW.viewZoom = zoom;
+  // Init global controls
   WEBVIEW.statusEnabled = !debug;
   WEBVIEW.pagerEnabled = widget;
   WEBVIEW.widgetEnabled = widget;
   WEBVIEW.navigationEnabled = widget;
+
+  // Init global views
+  WEBVIEW.views = [];
+  WEBVIEW.viewUrls = urls;
+  WEBVIEW.viewActive = 0;
 
   // Init global display
   const display = screen.getPrimaryDisplay();
@@ -71,25 +78,63 @@ const init = async () => {
     WEBVIEW.display = { width: 800, height: 600 };
   }
 
-  // Init global theme
+  // Init global theme manager
   WEBVIEW.theme = {
-    set: (name) => {
-      nativeTheme.themeSource = name.toLowerCase();
+    set: function (value) {
+      const theme = value.toLowerCase();
+      nativeTheme.themeSource = theme;
+      if (typeof this.callback === "function") this.callback();
     },
-    get: () => {
+    get: function () {
       return nativeTheme.shouldUseDarkColors ? "dark" : "light";
     },
-    toggle: () => {
-      nativeTheme.themeSource = nativeTheme.shouldUseDarkColors ? "light" : "dark";
+    toggle: function () {
+      this.set(nativeTheme.shouldUseDarkColors ? "light" : "dark");
     },
-    handler: (callback) => {
-      nativeTheme.on("updated", callback);
+    reset: function () {
+      this.set(this.default);
+    },
+    store: function () {
+      cookieStore("web-theme", this.get());
+    },
+    init: function (value, callback) {
+      this.callback = callback;
+      this.default = value;
+      this.reset();
     },
   };
-  WEBVIEW.theme.handler(updateTheme);
-  WEBVIEW.theme.set(theme);
 
-  // Init global root window
+  // Init global zoom manager
+  WEBVIEW.zoom = {
+    set: function (value) {
+      const zoom = Math.max(0.25, Math.min(4.0, value / 100.0));
+      WEBVIEW.views[WEBVIEW.viewActive].webContents.setZoomFactor(zoom);
+      if (typeof this.callback === "function") this.callback();
+    },
+    get: function () {
+      const zoom = WEBVIEW.views[WEBVIEW.viewActive].webContents.getZoomFactor();
+      return Math.round(zoom * 100.0);
+    },
+    minus: function () {
+      this.set(Math.floor((this.get() - 1) / 10) * 10);
+    },
+    plus: function () {
+      this.set(Math.ceil((this.get() + 1) / 10) * 10);
+    },
+    reset: function () {
+      this.set(this.default);
+    },
+    store: function () {
+      cookieStore("web-zoom", this.get());
+    },
+    init: function (value, callback) {
+      this.callback = callback;
+      this.default = value;
+      this.reset();
+    },
+  };
+
+  // Init root window
   WEBVIEW.window = new BaseWindow({
     title: APP.title,
     icon: APP.icon,
@@ -100,13 +145,9 @@ const init = async () => {
     minWidth: 136,
     minHeight: 136,
   });
-  const size = WEBVIEW.window.getBounds();
-  console.info(`Open Window: ${size.width}x${size.height}+${size.x}+${size.y}`);
-  updateTheme();
 
   // Init global webview
-  WEBVIEW.views = [];
-  urls.forEach((url, i) => {
+  WEBVIEW.viewUrls.forEach((url, i) => {
     const view = new WebContentsView({
       webPreferences: {
         nodeIntegration: false,
@@ -170,6 +211,12 @@ const init = async () => {
   WEBVIEW.window.contentView.addChildView(WEBVIEW.navigation);
   WEBVIEW.navigation.webContents.loadFile(path.join(APP.path, "html", "navigation.html"));
 
+  // Init global layout
+  const { width, height, x, y } = WEBVIEW.window.getBounds();
+  console.info(`Open Window: ${width}x${height}+${x}+${y}`);
+  WEBVIEW.theme.init(theme, updateTheme);
+  WEBVIEW.zoom.init(zoom, updateZoom);
+
   // Register global events
   await windowEvents();
   await widgetEvents();
@@ -201,9 +248,6 @@ const update = async () => {
 
   // Update navigation status
   updateNavigation();
-
-  // Update integration sensor
-  integration.update();
 };
 
 /**
@@ -213,24 +257,39 @@ const updateTheme = () => {
   if (APP.exiting) {
     return;
   }
-  const previous = WEBVIEW.statusTheme;
   const theme = WEBVIEW.theme.get();
 
-  // Set controls theme
-  if (previous !== theme) {
-    console.info("Update Application Theme:", theme);
-  }
+  // Update controls theme
   WEBVIEW.statusTheme = theme;
   WEBVIEW.pagerTheme = theme;
   WEBVIEW.widgetTheme = theme;
   WEBVIEW.navigationTheme = theme;
-
-  // Update controls theme
   WEBVIEW.window.setMenuBarVisibility(false);
+
+  // Update application theme
+  WEBVIEW.theme.store();
   if (WEBVIEW.initialized) {
+    console.info("Update Application Theme:", theme);
     resizeView();
   }
-  EVENTS.emit("updateTheme");
+  EVENTS.emit("updatePage");
+};
+
+/**
+ * Updates the page zoom.
+ */
+const updateZoom = () => {
+  if (APP.exiting) {
+    return;
+  }
+  const zoom = WEBVIEW.zoom.get();
+
+  // Update page zoom
+  WEBVIEW.zoom.store();
+  if (WEBVIEW.initialized) {
+    console.info("Update Page Zoom:", zoom);
+  }
+  EVENTS.emit("updatePage");
 };
 
 /**
@@ -240,7 +299,10 @@ const updateView = () => {
   if (!WEBVIEW.viewActive) {
     return;
   }
-  const url = WEBVIEW.views[WEBVIEW.viewActive].webContents.getURL();
+  const view = WEBVIEW.views[WEBVIEW.viewActive];
+  const url = view.webContents.getURL();
+
+  // Build window title
   const host = url.startsWith("data:") ? "whoopsie" : new URL(url).host;
   const title = `${APP.title} - ${host} (${WEBVIEW.viewActive})`;
   const previous = WEBVIEW.window.getTitle();
@@ -252,10 +314,23 @@ const updateView = () => {
   WEBVIEW.status.webContents.send("text-content", { id: "title", content: title });
   WEBVIEW.window.setTitle(title);
 
+  // Update stored theme and zoom
+  cookieStore("web-theme").then((value) => {
+    if (value && value !== WEBVIEW.theme.get()) {
+      WEBVIEW.theme.set(value);
+    }
+  });
+  cookieStore("web-zoom").then((value) => {
+    if (value && value !== WEBVIEW.zoom.get()) {
+      WEBVIEW.zoom.set(value);
+    }
+  });
+
   // Hide all other webviews and show only the active one
   WEBVIEW.views.forEach((view, i) => {
     view.setVisible(i === WEBVIEW.viewActive);
   });
+  EVENTS.emit("updatePage");
   update();
 };
 
@@ -360,11 +435,11 @@ const updateNavigation = () => {
   // Disable zoom buttons
   WEBVIEW.navigation.webContents.send("button-disabled", {
     id: "minus",
-    disabled: view.webContents.getZoomFactor().toFixed(2) <= 0.25,
+    disabled: WEBVIEW.zoom.get() <= 25,
   });
   WEBVIEW.navigation.webContents.send("button-disabled", {
     id: "plus",
-    disabled: view.webContents.getZoomFactor().toFixed(2) >= 4.0,
+    disabled: WEBVIEW.zoom.get() >= 400,
   });
 
   // Disable history buttons
@@ -446,10 +521,8 @@ const zoomMinus = () => {
   if (!WEBVIEW.viewActive) {
     return;
   }
-  const view = WEBVIEW.views[WEBVIEW.viewActive];
-  const zoom = view.webContents.getZoomFactor() - 0.1;
-  view.webContents.setZoomFactor(Math.max(0.25, Math.round(zoom * 10) / 10));
-  update();
+  WEBVIEW.zoom.minus();
+  updateView();
 };
 
 /**
@@ -459,10 +532,8 @@ const zoomPlus = () => {
   if (!WEBVIEW.viewActive) {
     return;
   }
-  const view = WEBVIEW.views[WEBVIEW.viewActive];
-  const zoom = view.webContents.getZoomFactor() + 0.1;
-  view.webContents.setZoomFactor(Math.min(4.0, Math.round(zoom * 10) / 10));
-  update();
+  WEBVIEW.zoom.plus();
+  updateView();
 };
 
 /**
@@ -528,8 +599,14 @@ const homeView = () => {
   const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
   const currentUrl = view.webContents.getURL();
 
-  // Reset log history
+  // Clear logs, cache and history
   APP.logs = [];
+  view.webContents.session.clearCache();
+  view.webContents.navigationHistory.clear();
+
+  // Reset page zoom and theme
+  WEBVIEW.zoom.reset();
+  WEBVIEW.theme.reset();
 
   // Reload the default url or refresh the page
   if (currentUrl != defaultUrl) {
@@ -537,13 +614,6 @@ const homeView = () => {
   } else {
     view.webContents.reloadIgnoringCache();
   }
-
-  // Reset page zoom and history
-  view.webContents.setZoomFactor(WEBVIEW.viewZoom);
-  setTimeout(() => {
-    view.webContents.navigationHistory.clear();
-    update();
-  }, 2000);
 };
 
 /**
@@ -557,8 +627,9 @@ const reloadView = () => {
   const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
   const currentUrl = view.webContents.getURL();
 
-  // Reset log history
+  // Clear logs and cache
   APP.logs = [];
+  view.webContents.session.clearCache();
 
   // Reload the default url or refresh the page
   if (currentUrl.startsWith("data:")) {
@@ -566,7 +637,6 @@ const reloadView = () => {
   } else {
     view.webContents.reloadIgnoringCache();
   }
-  update();
 };
 
 /**
@@ -692,6 +762,7 @@ const windowEvents = async () => {
         }
         break;
       case "Terminated":
+        process.exitCode = 0;
         app.quit();
         break;
     }
@@ -709,6 +780,7 @@ const windowEvents = async () => {
 
   // Handle window resize events
   WEBVIEW.window.on("resize", resizeView);
+  resizeView();
 
   // Handle global shortcut events
   globalShortcut.register("Control+Left", () => {
@@ -959,15 +1031,14 @@ const navigationEvents = async () => {
  */
 const viewEvents = async () => {
   const ready = [];
-  const debug = "app_debug" in ARGS;
 
   const loaded = (i) => {
-    if (WEBVIEW.viewActive !== 0) {
+    if (WEBVIEW.viewActive) {
       return true;
     }
 
     // Set window status to fullscreen
-    if (i === 0 && !debug) {
+    if (i === 0 && !("app_debug" in ARGS)) {
       WEBVIEW.window.setStatus("Fullscreen");
     }
 
@@ -998,19 +1069,22 @@ const viewEvents = async () => {
     });
 
     // Update webview layout
-    view.webContents.on("dom-ready", () => {
-      console.debug(`webview.js: viewEvents(${i},dom-ready)`);
-      view.webContents.insertCSS("::-webkit-scrollbar { display: none; }");
-    });
     view.webContents.once("dom-ready", () => {
-      view.webContents.setZoomFactor(WEBVIEW.viewZoom);
+      console.debug(`webview.js: viewEvents(${i},dom-ready)`);
+      if ("app_reset" in ARGS) {
+        cookieStore("web-theme", WEBVIEW.theme.default, view);
+        cookieStore("web-zoom", WEBVIEW.zoom.default, view);
+      }
       ready.push(i);
+    });
+    view.webContents.on("dom-ready", () => {
+      view.webContents.insertCSS("::-webkit-scrollbar { display: none; }");
     });
 
     // Webview fully loaded
     view.webContents.on("did-finish-load", () => {
       console.debug(`webview.js: viewEvents(${i},did-finish-load)`);
-      if (debug) {
+      if ("app_debug" in ARGS) {
         setTimeout(() => {
           view.webContents.openDevTools();
         }, 2000);
@@ -1035,15 +1109,15 @@ const viewEvents = async () => {
     });
 
     // Webview url changed
+    view.webContents.on("did-navigate", () => {
+      console.debug(`webview.js: viewEvents(${i},did-navigate)`);
+      updateView();
+    });
     view.webContents.on("did-navigate-in-page", (e, url, mainframe) => {
       if (mainframe) {
         console.debug(`webview.js: viewEvents(${i},did-navigate-in-page)`);
         updateView();
       }
-    });
-    view.webContents.on("did-navigate", () => {
-      console.debug(`webview.js: viewEvents(${i},did-navigate)`);
-      updateView();
     });
 
     // Handle webview mouse events
@@ -1154,13 +1228,6 @@ const appEvents = async () => {
     console.error(`${details.type} Process ${details.reason} (code ${details.exitCode}): ${name}`);
   });
 
-  // Handle exit events
-  app.on("before-quit", () => {
-    APP.exiting = true;
-    console.warn(`${APP.title} Terminated`);
-  });
-  process.on("SIGINT", app.quit);
-
   // Check latest release (2h)
   setInterval(() => {
     if (APP.exiting) {
@@ -1232,6 +1299,43 @@ const onlineStatus = (url, interval = 1000, timeout = 60000) => {
     };
     check();
   });
+};
+
+/**
+ * Stores, retrieves or deletes a cookie from the active webview.
+ *
+ * @param {string} key - The key of the webview cookie.
+ * @param {string|number} value - The value of the webview cookie.
+ * @param {WebContentsView} view - The webview that stores the cookie.
+ * @returns {Promise<string|number>} The value of the webview cookie.
+ */
+const cookieStore = async (key, value, view = WEBVIEW.views[WEBVIEW.viewActive]) => {
+  const url = view ? view.webContents.getURL() : null;
+  if (!url || url.startsWith("data:")) {
+    return;
+  }
+
+  // Use origin session cookies
+  const name = `${APP.name}-${key}`;
+  const origin = new URL(url).origin;
+  const cookies = view.webContents.session.cookies;
+  const expires = Math.floor(Date.now() / 1000) + 3600 * 24 * 365;
+
+  // Delete cookie if value is null
+  if (value === null) {
+    await cookies.remove(origin, name);
+    return null;
+  }
+
+  // Write cookie if value is provided
+  if (value !== undefined) {
+    await cookies.set({ url: origin, name: name, value: `${value}`, expirationDate: expires });
+    return value;
+  }
+
+  // Read cookie if no value is provided
+  const cookie = (await cookies.get({ url: origin, name: name }))[0] || {};
+  return !isNaN(Number(cookie.value)) ? Number(cookie.value) : cookie.value;
 };
 
 /**
