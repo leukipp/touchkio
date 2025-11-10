@@ -6,7 +6,7 @@ const integration = require("./js/integration");
 const hardware = require("./js/hardware");
 const webview = require("./js/webview");
 const log = require("electron-log");
-const { app } = require("electron");
+const { app, powerMonitor } = require("electron");
 const Events = require("events");
 
 global.APP = global.APP || {};
@@ -124,11 +124,19 @@ const initApp = async () => {
     console[level](`${APP.title} Terminated (${process.exitCode})`);
     app.exit(process.exitCode);
   });
-  ["SIGINT", "SIGTERM", "SIGQUIT"].forEach((signal) => {
+
+  // Register process exit events
+  ["SIGINT", "SIGTERM", "SIGQUIT", "exit"].forEach((signal) => {
     process.on(signal, () => {
       process.exitCode = 0;
+      APP.exiting = true;
       app.quit();
     });
+  });
+  powerMonitor.on("shutdown", () => {
+    process.exitCode = 0;
+    APP.exiting = true;
+    app.quit();
   });
 
   return true;
