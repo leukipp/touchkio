@@ -87,6 +87,7 @@ const initApp = async () => {
   APP.path = app.getAppPath();
   APP.icon = path.join(app.getAppPath(), "img", "icon.png");
   APP.log = path.join(app.getPath("logs"), "main.log");
+  APP.cache = path.join(app.getPath("userData"), "Cache");
   APP.config = app.getPath("userData");
 
   // Set additional update infos
@@ -145,6 +146,9 @@ const initArgs = async () => {
   let argsFilePath = path.join(APP.config, "Arguments.json");
   let argsFileExists = fs.existsSync(argsFilePath);
 
+  let argsFileHashPath = path.join(APP.cache, "Arguments.hash");
+  let argsFileHashExists = fs.existsSync(argsFileHashPath);
+
   // Show version and release info
   if ("help" in args || "version" in args) {
     let build = "";
@@ -177,6 +181,16 @@ const initArgs = async () => {
   if (!Array.isArray(args.web_url)) {
     args.web_url = args.web_url.split(",").map((url) => url.trim());
   }
+
+  // Calculate arguments hash
+  const argsFileHash = crypto.createHash("sha256").update(JSON.stringify(args)).digest("hex");
+  const argsUpdated = argsFileHashExists && argsFileHash !== fs.readFileSync(argsFileHashPath, "utf8");
+  if (argsUpdated && !("app_reset" in args)) {
+    args.app_reset = "arguments";
+  }
+  fs.writeFileSync(argsFileHashPath, argsFileHash);
+
+  // Set global arguments
   ARGS = args;
 
   return true;
