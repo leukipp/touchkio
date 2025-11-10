@@ -660,7 +660,7 @@ const getAudioVolume = () => {
   }
   const match = volume.match(/\/(\s*(\d+)%)/);
   if (match) {
-    return Math.max(0, Math.min(100, mute.includes("yes") ? 0 : parseInt(match[2])));
+    return Math.max(0, Math.min(100, mute.includes("yes") ? 0 : parseInt(match[2], 10)));
   }
   return null;
 };
@@ -908,7 +908,7 @@ const execScriptCommand = (cmd, args, callback = null) => {
       for (const line of lines.split("\n").filter(Boolean)) {
         const matches = line.match(/(\d{1,3})%/g);
         if (matches) {
-          const match = Math.max(...matches.map((p) => parseInt(p)));
+          const match = Math.max(...matches.map((p) => parseInt(p, 10)));
           const percent = Math.floor(match / 10) * 10;
           if (percent > 10 && percent > progress) {
             progress = percent;
