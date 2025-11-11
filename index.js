@@ -246,7 +246,7 @@ const initLog = async () => {
   // Emit console log
   APP.logs = [];
   log.hooks.push((message, transport, type) => {
-    const data = message.data.map((d) => (typeof d === "object" ? d.message || JSON.stringify(d) : String(d)));
+    const data = message.data.map((d) => (typeof d === "object" ? String(d?.message) || JSON.stringify(d) : String(d)));
     const text = data.filter((s) => s && s.trim()).join(" ");
     if (!text.startsWith("(node:") && type === "console") {
       APP.logs.unshift({
