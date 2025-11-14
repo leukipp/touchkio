@@ -15,14 +15,14 @@ global.HARDWARE = global.HARDWARE || {
   },
   display: {
     status: {
-      value: null,
       path: null,
       command: null,
+      value: {},
     },
     brightness: {
-      value: null,
       path: null,
-      max: null,
+      command: null,
+      value: {},
     },
   },
   keyboard: {
@@ -52,7 +52,8 @@ const init = async () => {
   HARDWARE.display.status.path = getDisplayStatusPath();
   HARDWARE.display.status.command = getDisplayStatusCommand();
   HARDWARE.display.brightness.path = getDisplayBrightnessPath();
-  HARDWARE.display.brightness.max = getDisplayBrightnessMax();
+  HARDWARE.display.brightness.command = getDisplayBrightnessCommand();
+  HARDWARE.display.brightness.value.max = getDisplayBrightnessMax();
   HARDWARE.audio.device = getAudioDevice();
   HARDWARE.support = checkSupport();
   HARDWARE.initialized = true;
@@ -86,25 +87,35 @@ const init = async () => {
   // Show hardware infos
   process.stdout.write("\n");
   const unsupported = "unsupported";
+  const batteryLevel = `${getBatteryLevel()} (sysfs)`;
+  const batteryLevelInfo = HARDWARE.support.batteryLevel ? batteryLevel : unsupported;
   console.info(
     `Battery Level [${HARDWARE.support.batteryLevel ? HARDWARE.battery.level.path : unsupported}]:`,
-    HARDWARE.support.batteryLevel ? getBatteryLevel() : unsupported,
+    batteryLevelInfo,
   );
+  const displayStatus = `${getDisplayStatus()} (${HARDWARE.display.status.command})`;
+  const displayStatusInfo = HARDWARE.support.displayStatus ? displayStatus : unsupported;
   console.info(
     `Display Status [${HARDWARE.support.displayStatus ? HARDWARE.display.status.path : unsupported}]:`,
-    HARDWARE.support.displayStatus ? `${getDisplayStatus()} (${HARDWARE.display.status.command})` : unsupported,
+    displayStatusInfo,
   );
+  const displayBrightness = `${getDisplayBrightness()} (${HARDWARE.display.brightness.command || "sysfs"})`;
+  const displayBrightnessInfo = HARDWARE.support.displayBrightness ? displayBrightness : unsupported;
   console.info(
-    `Display Brightness [${HARDWARE.support.displayBrightness ? HARDWARE.display.brightness.path : unsupported}]:`,
-    HARDWARE.support.displayBrightness ? getDisplayBrightness() : unsupported,
+    `Display Brightness [${HARDWARE.support.displayBrightness ? HARDWARE.display.brightness.path || "ddc://vcp/feature/0x10" : unsupported}]:`,
+    displayBrightnessInfo,
   );
+  const audioVolume = `${getAudioVolume()} (pactl)`;
+  const audioVolumeInfo = HARDWARE.support.audioVolume ? audioVolume : unsupported;
   console.info(
     `Audio Volume [${HARDWARE.support.audioVolume ? HARDWARE.audio.device : unsupported}]:`,
-    HARDWARE.support.audioVolume ? getAudioVolume() : unsupported,
+    audioVolumeInfo,
   );
+  const keyboardVisibility = `${getKeyboardVisibility()} (squeekboard)`;
+  const keyboardVisibilityInfo = HARDWARE.support.keyboardVisibility ? keyboardVisibility : unsupported;
   console.info(
     `Keyboard Visibility [${HARDWARE.support.keyboardVisibility ? "dbus://sm/puri/OSK0" : unsupported}]:`,
-    HARDWARE.support.keyboardVisibility ? `${getKeyboardVisibility()} (squeekboard)` : unsupported,
+    keyboardVisibilityInfo,
   );
   process.stdout.write("\n");
 
@@ -138,9 +149,9 @@ const init = async () => {
     });
   }
 
-  // Check for display changes
+  // Monitor display changes (1s)
   setDisplayStatus("ON", () => {
-    interval(update, 1000);
+    interval(update, 1 * 1000);
   });
 
   return true;
@@ -154,23 +165,65 @@ const update = async () => {
     return;
   }
 
-  // Display status has changed
+  // Check if display status has changed
   if (HARDWARE.support.displayStatus) {
-    const status = await readFile(`${HARDWARE.display.status.path}/dpms`, false);
-    if (status !== null && status !== HARDWARE.display.status.value) {
-      HARDWARE.display.status.value = status;
-      console.info("Update Display Status:", getDisplayStatus());
+    let displayStatusChanged = false;
+
+    // Use sysfs dpms path if available
+    if (HARDWARE.display.status.path) {
+      const power = await readFile(path.join(HARDWARE.display.status.path, "dpms"), false);
+      const powerChanged = !!power && power !== HARDWARE.display.status.value.power;
+
+      // Update internal status values
+      HARDWARE.display.status.value.power = power;
+      displayStatusChanged |= powerChanged;
+    }
+
+    // Use sysfs status path if available
+    if (HARDWARE.display.status.path) {
+      const connection = await readFile(path.join(HARDWARE.display.status.path, "status"), false);
+      const connectionChanged = !!connection && connection !== HARDWARE.display.status.value.connection;
+
+      // Update internal status values
+      HARDWARE.display.status.value.connection = connection;
+      displayStatusChanged |= connectionChanged;
+    }
+
+    // Emit display event if changed
+    if (displayStatusChanged) {
       EVENTS.emit("updateDisplay");
+      console.info("Update Display Status:", getDisplayStatus());
     }
   }
 
-  // Display brightness has changed
+  // Check if display brightness has changed
   if (HARDWARE.support.displayBrightness) {
-    const brightness = await readFile(`${HARDWARE.display.brightness.path}/brightness`, false);
-    if (brightness !== null && brightness !== HARDWARE.display.brightness.value) {
-      HARDWARE.display.brightness.value = brightness;
-      console.info("Update Display Brightness:", getDisplayBrightness());
+    let displayBrightnessChanged = false;
+
+    // Use cache brightness path if available
+    if (HARDWARE.display.brightness.command) {
+      const brightness = await readFile(path.join(APP.cache, "Brightness.vcp"), false);
+      const brightnessChanged = !!brightness && brightness !== HARDWARE.display.brightness.value.brightness;
+
+      // Update internal brightness values
+      HARDWARE.display.brightness.value.brightness = brightness;
+      displayBrightnessChanged |= brightnessChanged;
+    }
+
+    // Use sysfs brightness path if available
+    if (HARDWARE.display.brightness.path) {
+      const brightness = await readFile(path.join(HARDWARE.display.brightness.path, "brightness"), false);
+      const brightnessChanged = !!brightness && brightness !== HARDWARE.display.brightness.value.brightness;
+
+      // Update internal brightness values
+      HARDWARE.display.brightness.value.brightness = brightness;
+      displayBrightnessChanged |= brightnessChanged;
+    }
+
+    // Emit display event if changed
+    if (displayBrightnessChanged) {
       EVENTS.emit("updateDisplay");
+      console.info("Update Display Brightness:", getDisplayBrightness());
     }
   }
 };
@@ -233,22 +286,26 @@ const sessionDesktop = () => {
  * @returns {Object} Returns support object with boolean values.
  */
 const checkSupport = () => {
-  const battery = HARDWARE.battery.level;
-  const status = HARDWARE.display.status;
-  const brightness = HARDWARE.display.brightness;
-  const audio = HARDWARE.audio.device;
-  const keyboard = processRuns("squeekboard");
-  const service = serviceRuns(APP.name);
   const sudo = sudoRights();
-  const deb = APP.build.maker === "deb";
+  const service = serviceRuns(APP.name);
+  const keyboard = processRuns("squeekboard");
+  const release = APP.build.maker === "deb";
+
+  const audioDevice = !!HARDWARE.audio.device;
+  const batteryPath = !!HARDWARE.battery.level.path;
+  const statusPath = !!HARDWARE.display.status.path;
+  const statusCommand = !!HARDWARE.display.status.command;
+  const brightnessPath = !!HARDWARE.display.brightness.path && !!HARDWARE.display.brightness.value.max;
+  const brightnessCommand = !!HARDWARE.display.brightness.command && !!HARDWARE.display.brightness.value.max;
+
   return {
-    batteryLevel: !!battery.path,
-    displayStatus: !!status.path && !!status.command,
-    displayBrightness: sudo && !!status.command && !!brightness.path && !!brightness.max,
+    batteryLevel: batteryPath,
+    displayStatus: statusPath && statusCommand,
+    displayBrightness: sudo && statusPath && statusCommand && (brightnessPath || brightnessCommand),
     keyboardVisibility: keyboard,
-    audioVolume: !!audio,
+    audioVolume: audioDevice,
     sudoRights: sudo,
-    appUpdate: service && sudo && deb,
+    appUpdate: service && sudo && release,
   };
 };
 
@@ -484,7 +541,6 @@ const getDisplayStatusCommand = () => {
       return map.command;
     }
   }
-  console.warn("No display command available");
   return null;
 };
 
@@ -573,23 +629,62 @@ const getDisplayBrightnessPath = () => {
 };
 
 /**
- * Gets the maximum display brightness value using `/sys/class/backlight/.../max_brightness`.
+ * Gets the available display brightness command checking for `ddcutil`.
  *
- * @returns {number|null} The brightness maximum value or null if an error occurs.
+ * @returns {string|null} The display brightness command or null if nothing was found.
  */
-const getDisplayBrightnessMax = () => {
-  if (!HARDWARE.display.brightness.path) {
-    return null;
-  }
-  const max = readFile(`${HARDWARE.display.brightness.path}/max_brightness`);
-  if (max) {
-    return parseInt(max, 10);
+const getDisplayBrightnessCommand = () => {
+  const type = HARDWARE.session.type;
+  const desktop = HARDWARE.session.desktop;
+  const mapping = {
+    wayland: [{ command: "ddcutil", desktops: ["*"] }],
+    x11: [{ command: "ddcutil", desktops: ["*"] }],
+  }[type];
+  for (const map of mapping || []) {
+    if (sudoRights() && commandExists(map.command) && map.desktops.some((d) => d === "*" || desktop.includes(d))) {
+      HARDWARE.display.brightness.path = null;
+      switch (map.command) {
+        case "ddcutil":
+          const output = execSyncCommand("sudo", ["ddcutil", "capabilities"]);
+          if (output && output.includes("Feature: 10")) {
+            fs.writeFileSync(path.join(APP.cache, "Brightness.vcp"), "");
+            return map.command;
+          }
+          break;
+        default:
+          return map.command;
+      }
+    }
   }
   return null;
 };
 
 /**
- * Gets the current display brightness level using `/sys/class/backlight/.../brightness`.
+ * Gets the maximum display brightness value using `/sys/class/backlight/.../max_brightness` or `ddcutil getvcp 10`.
+ *
+ * @returns {number|null} The brightness maximum value or null if an error occurs.
+ */
+const getDisplayBrightnessMax = () => {
+  switch (HARDWARE.display.brightness.command) {
+    case "ddcutil":
+      const output = execSyncCommand("sudo", ["ddcutil", "getvcp", "10", "--brief"]);
+      const match = output ? output.match(/VCP 10 C (\d+) (\d+)/) : null;
+      if (match) {
+        return parseInt(match[2], 10);
+      }
+      return null;
+  }
+  if (HARDWARE.display.brightness.path) {
+    const max = readFile(path.join(HARDWARE.display.brightness.path, "max_brightness"));
+    if (max) {
+      return parseInt(max, 10);
+    }
+  }
+  return null;
+};
+
+/**
+ * Gets the current display brightness level using `/sys/class/backlight/.../brightness` or `ddcutil getvcp 10`.
  *
  * @returns {number|null} The brightness level as a percentage or null if an error occurs.
  */
@@ -597,16 +692,27 @@ const getDisplayBrightness = () => {
   if (!HARDWARE.support.displayBrightness) {
     return null;
   }
-  const brightness = readFile(`${HARDWARE.display.brightness.path}/brightness`);
-  if (brightness) {
-    const max = HARDWARE.display.brightness.max || 1;
-    return Math.max(1, Math.min(Math.round((parseInt(brightness, 10) / max) * 100), 100));
+  switch (HARDWARE.display.brightness.command) {
+    case "ddcutil":
+      const output = execSyncCommand("sudo", ["ddcutil", "getvcp", "10", "--brief"]);
+      const match = output ? output.match(/VCP 10 C (\d+) (\d+)/) : null;
+      if (match) {
+        return parseInt(match[1], 10);
+      }
+      return null;
+  }
+  if (HARDWARE.display.brightness.path) {
+    const brightness = readFile(path.join(HARDWARE.display.brightness.path, "brightness"));
+    if (brightness) {
+      const max = HARDWARE.display.brightness.value.max || 1;
+      return Math.max(1, Math.min(Math.round((parseInt(brightness, 10) / max) * 100), 100));
+    }
   }
   return null;
 };
 
 /**
- * Sets the display brightness level using `/sys/class/backlight/.../brightness`.
+ * Sets the display brightness level using `/sys/class/backlight/.../brightness` or `ddcutil setvcp 10`.
  *
  * This function takes a brightness value between 1 to 100 percent,
  * maps it to the proper range and writes it to the system.
@@ -624,11 +730,23 @@ const setDisplayBrightness = (brightness, callback = null) => {
     if (typeof callback === "function") callback(null, "Invalid brightness");
     return;
   }
-  const max = HARDWARE.display.brightness.max || 1;
-  const value = Math.max(1, Math.min(Math.round((brightness / 100) * max), max));
-  const proc = execAsyncCommand("sudo", ["tee", `${HARDWARE.display.brightness.path}/brightness`], callback);
-  proc.stdin.write(value.toString());
-  proc.stdin.end();
+  switch (HARDWARE.display.brightness.command) {
+    case "ddcutil":
+      execAsyncCommand("sudo", ["ddcutil", "setvcp", "10", `${brightness}`], (reply, error) => {
+        if (!error) {
+          fs.writeFileSync(path.join(APP.cache, "Brightness.vcp"), `${brightness}`);
+        }
+        if (typeof callback === "function") callback(reply, error);
+      });
+      return;
+  }
+  if (HARDWARE.display.brightness.path) {
+    const max = HARDWARE.display.brightness.value.max || 1;
+    const value = Math.max(1, Math.min(Math.round((brightness / 100) * max), max));
+    const proc = execAsyncCommand("sudo", ["tee", path.join(HARDWARE.display.brightness.path, "brightness")], callback);
+    proc.stdin.write(value.toString());
+    proc.stdin.end();
+  }
 };
 
 /**
@@ -1035,16 +1153,13 @@ const dbusCall = (path, method, values, callback = null) => {
  */
 const readFile = (path, sync = true) => {
   if (!sync) {
-    return new Promise((resolve) => {
-      const reader = fsp.readFile(path, "utf8");
-      reader.then((content) => {
-        resolve(content.trim());
-      });
-      reader.catch((error) => {
+    return fsp
+      .readFile(path, "utf8")
+      .then((content) => content.trim())
+      .catch((error) => {
         console.error(`Read File ${path} Async:`, error.message);
-        resolve(null);
+        return null;
       });
-    });
   }
   try {
     return fs.readFileSync(path, "utf8").trim();
