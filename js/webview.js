@@ -818,7 +818,7 @@ const windowEvents = async () => {
       }
       toggleNavigation("OFF");
     }
-  }, 1000);
+  }, 1 * 1000);
 };
 
 /**
@@ -1220,8 +1220,11 @@ const appEvents = async () => {
 
   // Handle crash events
   app.on("render-process-gone", (e, wc, details) => {
-    const content = wc.getURL() || "Unknown";
-    console.error(`Render Process ${details.reason} (code ${details.exitCode}): ${content}`);
+    const url = wc.getURL() || "Unknown";
+    if (!url.startsWith("data:")) {
+      console.error(`Render Process ${details.reason} (code ${details.exitCode}): ${url}`);
+    }
+    reloadView();
   });
   app.on("child-process-gone", (e, details) => {
     const name = details.name || details.serviceName || "Unknown";

@@ -126,7 +126,7 @@ const initApp = async () => {
   });
 
   // Register process exit events
-  ["SIGINT", "SIGTERM", "SIGQUIT", "exit"].forEach((signal) => {
+  ["SIGINT", "SIGTERM", "SIGQUIT", "SIGTRAP", "exit"].forEach((signal) => {
     process.on(signal, () => {
       process.exitCode = 0;
       APP.exiting = true;
@@ -230,15 +230,17 @@ const initLog = async () => {
   log.errorHandler.startCatching({
     showDialog: false,
     onError({ error, versions }) {
-      const build = { ...APP.build, ...versions };
-      const whoopsie = "💥 Whoopsie!";
-      const section2 = `# Description\n- Hardware information?\n- How to reproduce?\n- Additional logs?\n`;
-      const section3 = `# Error\n\`\`\`bash\n${new Date().toISOString()}: ${error.stack}\n\`\`\`\n`;
-      const section4 = `# Application\n\`\`\`json\n${JSON.stringify(build, null, 2)}\n\`\`\`\n`;
-      const title = encodeURIComponent(`${whoopsie} - ${error}`);
-      const body = encodeURIComponent(`${section2}\n${section3}\n${section4}`);
-      console.error(`${whoopsie} -`, error, build);
-      console.info(`🪲 Report issue --> ${APP.issues}/new?title=${title}&body=${body}`);
+      if (!error?.message?.includes("Object has been destroyed")) {
+        const build = { ...APP.build, ...versions };
+        const whoopsie = "💥 Whoopsie!";
+        const section2 = `# Description\n- Hardware information?\n- How to reproduce?\n- Additional logs?\n`;
+        const section3 = `# Error\n\`\`\`bash\n${new Date().toISOString()}: ${error.stack}\n\`\`\`\n`;
+        const section4 = `# Application\n\`\`\`json\n${JSON.stringify(build, null, 2)}\n\`\`\`\n`;
+        const title = encodeURIComponent(`${whoopsie} - ${error}`);
+        const body = encodeURIComponent(`${section2}\n${section3}\n${section4}`);
+        console.error(`${whoopsie} -`, error, build);
+        console.info(`🪲 Report issue --> ${APP.issues}/new?title=${title}&body=${body}`);
+      }
       app.quit();
     },
   });
