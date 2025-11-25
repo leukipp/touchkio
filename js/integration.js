@@ -94,6 +94,7 @@ const init = async () => {
       initLastActive();
 
       // Init client diagnostic
+      initScreenshot();
       initHeartbeat();
       initErrors();
       initVersion();
@@ -116,6 +117,7 @@ const init = async () => {
         updateDisplay();
         updateLastActive();
       });
+      EVENTS.on("updateScreenshot", updateScreenshot);
       EVENTS.on("consoleLog", updateErrors);
     })
     .on("error", (error) => {
@@ -452,10 +454,12 @@ const initDisplay = () => {
     unique_id: `${INTEGRATION.node}_display`,
     command_topic: `${root}/power/set`,
     state_topic: `${root}/power/state`,
+    supported_color_modes: ["onoff"],
     icon: "mdi:monitor-shimmer",
     platform: "light",
     device: INTEGRATION.device,
     ...(HARDWARE.support.displayBrightness && {
+      supported_color_modes: ["brightness"],
       brightness_command_topic: `${root}/brightness/set`,
       brightness_state_topic: `${root}/brightness/state`,
       brightness_scale: 100,
@@ -1048,6 +1052,33 @@ const updateLastActive = async () => {
   };
   publishState("last_active", lastActive);
   publishAttributes("last_active", tracker);
+};
+
+/**
+ * Initializes the page screenshot.
+ */
+const initScreenshot = () => {
+  const root = `${INTEGRATION.root}/screenshot`;
+  const config = {
+    name: "Screenshot",
+    unique_id: `${INTEGRATION.node}_screenshot`,
+    image_topic: `${root}/state`,
+    image_encoding: "b64",
+    content_type: "image/png",
+    entity_category: "diagnostic",
+    icon: "mdi:image-area",
+    device: INTEGRATION.device,
+  };
+  publishConfig("image", config);
+  updateScreenshot();
+};
+
+/**
+ * Updates the page screenshot via the mqtt connection.
+ */
+const updateScreenshot = async () => {
+  const screenshot = WEBVIEW.tracker.screenshot;
+  publishState("screenshot", screenshot);
 };
 
 /**

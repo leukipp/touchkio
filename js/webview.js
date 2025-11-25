@@ -29,6 +29,7 @@ global.WEBVIEW = global.WEBVIEW || {
     widget: {
       focused: null,
     },
+    screenshot: null,
   },
 };
 
@@ -314,6 +315,11 @@ const updateView = () => {
   WEBVIEW.status.webContents.send("text-content", { id: "title", content: title });
   WEBVIEW.window.setTitle(title);
 
+  // Hide all other webviews and show only the active one
+  WEBVIEW.views.forEach((view, i) => {
+    view.setVisible(i === WEBVIEW.viewActive);
+  });
+
   // Update stored theme and zoom
   cookieStore("web-theme").then((value) => {
     if (value && value !== WEBVIEW.theme.get()) {
@@ -326,9 +332,9 @@ const updateView = () => {
     }
   });
 
-  // Hide all other webviews and show only the active one
-  WEBVIEW.views.forEach((view, i) => {
-    view.setVisible(i === WEBVIEW.viewActive);
+  // Update webview screenshot
+  captureView(1000).then(() => {
+    EVENTS.emit("updateScreenshot");
   });
   EVENTS.emit("updatePage");
   update();
@@ -711,6 +717,11 @@ const resizeView = () => {
       theme: WEBVIEW.navigationTheme,
     });
   }
+
+  // Update webview screenshot
+  captureView(1000).then(() => {
+    EVENTS.emit("updateScreenshot");
+  });
 };
 
 /**
@@ -802,8 +813,8 @@ const windowEvents = async () => {
     historyForward();
   });
 
-  // Check for window touch events (1s)
-  setInterval(() => {
+  // Check for window touch events (every full 1s)
+  interval(() => {
     if (APP.exiting) {
       return;
     }
@@ -1231,8 +1242,18 @@ const appEvents = async () => {
     console.error(`${details.type} Process ${details.reason} (code ${details.exitCode}): ${name}`);
   });
 
-  // Check latest release (2h)
-  setInterval(() => {
+  // Update latest screenshot (every full 1min)
+  interval(() => {
+    if (APP.exiting) {
+      return;
+    }
+    captureView(5000).then(() => {
+      EVENTS.emit("updateScreenshot");
+    });
+  }, 60 * 1000);
+
+  // Check latest release (every full 2h)
+  interval(() => {
     if (APP.exiting) {
       return;
     }
@@ -1342,6 +1363,22 @@ const cookieStore = async (key, value, view = WEBVIEW.views[WEBVIEW.viewActive])
 };
 
 /**
+ * Captures a webview screenshot as a base64 image.
+ *
+ * @param {number} wait - The time to wait before capturing in milliseconds.
+ * @param {WebContentsView} view - The webview that captures the page.
+ * @returns {Promise<string|null>} The base64 image of the captured page or null if failed.
+ */
+const captureView = async (wait, view = WEBVIEW.views[WEBVIEW.viewActive]) => {
+  await new Promise((r) => setTimeout(r, wait));
+  const image = await view.webContents.capturePage();
+  const dataUrl = image.toDataURL();
+  const dataString = dataUrl.replace(/^data:image\/\w+;base64,/, "").trim();
+  WEBVIEW.tracker.screenshot = dataString || WEBVIEW.tracker.screenshot;
+  return WEBVIEW.tracker.screenshot;
+};
+
+/**
  * Generates a html template for a spinning loader.
  *
  * @param {number} size - The size of the circle.
@@ -1437,6 +1474,20 @@ const errorHtml = (code, text, url, theme) => {
       </body>
     </html>`;
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+};
+
+/**
+ * Interval function that runs at interval boundaries.
+ *
+ * @param {Function} callback - The function to execute.
+ * @param {number} ms - The interval time in milliseconds.
+ */
+const interval = (callback, ms) => {
+  const delay = ms - (Date.now() % ms);
+  setTimeout(() => {
+    callback();
+    setInterval(callback, ms);
+  }, delay);
 };
 
 module.exports = {
