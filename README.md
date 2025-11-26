@@ -1,8 +1,8 @@
 # TouchKio
-![build](https://img.shields.io/github/actions/workflow/status/leukipp/touchkio/release.yaml?style=flat-square)
-![date](https://img.shields.io/github/release-date/leukipp/touchkio?style=flat-square)
-![platform](https://img.shields.io/badge/platform-%20arm64%20|%20x64%20-teal?style=flat-square)
-![downloads](https://img.shields.io/github/downloads/leukipp/touchkio/total?style=flat-square)
+[![build](https://img.shields.io/github/actions/workflow/status/leukipp/touchkio/release.yaml?style=flat-square)](https://github.com/leukipp/touchkio/actions)
+[![date](https://img.shields.io/github/release-date/leukipp/touchkio?style=flat-square)](https://github.com/leukipp/touchkio/releases)
+[![platform](https://img.shields.io/badge/platform-%20arm64%20|%20x64%20-teal?style=flat-square)](https://github.com/leukipp/touchkio/releases)
+[![downloads](https://img.shields.io/github/downloads/leukipp/touchkio/total?style=flat-square)](https://github.com/leukipp/touchkio/releases)
 [![sponsor](https://img.shields.io/github/sponsors/leukipp?color=red&logo=github&style=flat-square)](https://github.com/sponsors/leukipp)
 
 **TouchKio** is a Node.js application that utilizes Electron to create a kiosk mode window specifically designed for a Home Assistant dashboard.
@@ -27,10 +27,11 @@ Moreover, the device running the **kiosk application** also offers several **Hom
   - [x] Toggle the on-screen keyboard.
   - [x] Touch display power and brightness.
   - [x] Manage kiosk window status and zoom.
+  - [x] Screenshot image of the kiosk webview.
   - [x] Show network interfaces and addresses.
   - [x] List all available system package upgrades.
   - [x] Multi-webpage switching and url navigation.
-  - [x] Audio volume control for connected devices.
+  - [x] Volume control for connected audio outputs.
   - [x] Execute system reboot and shutdown commands.
   - [x] Monitor battery, temperature, processor and memory usage.
 
@@ -51,11 +52,12 @@ This setup allows seamless communication between your kiosk device and Home Assi
 For a comprehensive guide on setting up MQTT with Home Assistant, please refer to the official documentation available here: https://www.home-assistant.io/integrations/mqtt.
 
 ## Installation
-On the first run of the application, you may encounter a **setup procedure** and the Home Assistant **login screen**.
+On the first run of the application, you will encounter a **setup procedure (CLI)** and the Home Assistant **login screen (UI)**.
 It's recommended to create a dedicated Home Assistant user (local access only) for your kiosk device.
 
 You might also need a physical keyboard or remote VNC access to input these credentials once.
 If your hardware is [supported](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md) you may be able to activate the on-screen keyboard using the side [widget](https://github.com/leukipp/touchkio/issues/16).
+After the first login the Home Assistant credentials should be stored inside the `~/.config/touchkio/Cache` folder.
 
 #### Option 1 - The easy way
 Run this command to download and install the latest **.deb** (arm64 or x64) release.
@@ -236,15 +238,17 @@ The Raspberry Pi's **build-in on-screen keyboard** named `squeekboard` (it squea
 The kiosk application interacts with squeekboard via the `D-Bus` object path `/sm/puri/OSK0`, enabling the keyboard to be hidden or shown based on **MQTT** user input or system events.
 
 The Raspberry Pi's **build-in screen blanking** function uses the command `swayidle -w timeout 600 'wlopm --off \*' resume 'wlopm --on \*' &` inside `~/.config/labwc/autostart` to blank the screen after **10 minutes**.
-The `wlopm --off \*` command changes the `bl_power` value to **4**, when setting the value to **0** the screen will turn on again.
+The `wlopm --off \*` command changes the `/sys/class/backlight/*/bl_power` value to **4**, when setting the value to **0** the screen will turn on again.
 However, `swayidle` still seems to consider the screen to be off and as a result it will not turn off again unless there is some interaction in the meantime.
 
 When using the MQTT integration, the kiosk application must be able to **detect changes** made on the **device** itself.
-I managed to achieve this for the `brightness` file by implementing a simple `fs.watch(..)` file listener.
-However, I found that it **never triggered** for the `bl_power` file.
+I managed to achieve this for the `/sys/class/backlight/*/brightness` file by implementing a simple `fs.watch(..)` file listener.
+However, I found that it **never triggered** for the `/sys/class/backlight/*/bl_power` or the `/sys/class/drm/*/dpms` file.
 Although the file content changes, none of the filesystem listeners where fired.
 This could be due to `swayidle`/`wlopm` performing write actions at a deeper level that are not detectable by file listeners.
-As a result, I went for a **polling solution**, checking the state of the `brightness` and `dpms` file **every second** for any changes.
+
+As a result, I went for a **polling solution**, checking the state of the `/sys/class/backlight/*/brightness` and `/sys/class/drm/*/dpms` file **every second** for any changes.
+In case `ddcutil` is installed the file `~/.config/touchkio/Cache/Brightness.vcp` will be written/monitored to support brightness support for HDMI screens.
 While I understand this is not ideal, it's necessary to ensure proper functionality.
 
 The display power status and brightness can be adjusted via the MQTT integration.
@@ -269,46 +273,17 @@ This adjustment provides a user experience similar to that of a proper mobile de
 </div></details>
 
 ## Issues
-Please review the [hardware](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md) documentation first if you encounter any problems.
+### Please review the hardware [FAQ](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md#faq) section first if you encounter any issues.
 
-**Known Issues** that are by-design or for which there isn't a solution so far:
-- You can use Raspberry Pi's build-in [screen blanking](https://www.raspberrypi.com/documentation/computers/configuration.html#screen-blanking-3) functionality, however, if the screen is turned on through Home Assistant after being automatically turned off, it will remain on indefinitely.
-  - It's recommended to either use the built-in screen blanking feature or implement a Home Assistant [automation](https://www.home-assistant.io/docs/automation/basics) (e.g. presence detection) to manage the screen status.
-  - An active VNC session can also interfere with the display state, you can find details about this in the features [section](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md#features).
-- When using a Raspberry Pi, the on-screen keyboard doesn't [automatically pop-out](https://github.com/leukipp/touchkio/issues/4) when entering a text field inside the webview.
-  - As a current workaround you can use the side [widget](https://github.com/leukipp/touchkio/issues/16) to toggle the keyboard visibility.
-  - There is also an [experimental feature](https://github.com/leukipp/touchkio/issues/85) that uses a special Electron flag to address this problem.
-- On the terminal you may see some _ERROR:gbm_wrapper.cc_ messages.
-  - This appears to be a [known issue](https://github.com/electron/electron/issues/42322) that currently lacks a fix, but the webview still works.
-
-
-### DNS Resolution Notes
-
-TouchKio is based on Chromium/Electron, which by default may use its own DNS resolver and DNS-over-HTTPS (DoH). This can cause issues if you rely on local DNS or `/etc/hosts` entries, as these may be ignored.
-
-#### Why this happens
-Chromium has an internal asynchronous DNS resolver and optional DoH support. When enabled, it bypasses the system resolver stack, ignoring `/etc/hosts` and local DNS servers.
-
-#### How to fix it
-To force TouchKio to use the system resolver (which respects `/etc/hosts` and your network DNS), disable these Chromium features:
-
-```bash
-touchkio --disable-features=UseDNSHttps,AsyncDns
-```
-
-To make this permanent, modify `~/.config/systemd/user/touchkio.service` and update the `ExecStart` line to look like this:
-
-Then reload the service:
-```bash
-systemctl --user daemon-reload
-systemctl --user restart touchkio.service
-```
-
-
-For debugging, stop the service and launch `touchkio` directly on the terminal to monitor the log output in real-time.
+For basic debugging **(TouchKio)**, stop the service and launch `touchkio` directly on the terminal to monitor the log output in real-time.
 This output is also written into `~/.config/touchkio/logs/main.log` for review.
 
-If you encounter any problems, please [create an issue](https://github.com/leukipp/touchkio/issues) and include the output of `touchkio --version`, additional information's about your system (such as operating system, hardware, etc.) and any relevant log files.
+For extended logging **(Electron)** you can run `touchkio --enable-logging`, which will write an additional log file into `~/.config/touchkio/logs/electron.log`.
+Refer to the [--log-level=[0-3]](https://www.electronjs.org/docs/latest/api/command-line-switches#--log-leveln) and [--v=[0-3]](https://www.electronjs.org/docs/latest/api/command-line-switches#--vlog_level) options to adjust the logging verbosity.
+
+If you need to debug the webview **(Chrome DevTools)** use `touchkio --app-debug`.
+
+In case of undocumented problems, please [create an issue](https://github.com/leukipp/touchkio/issues) and include the output of `touchkio --version`, additional information about your system (such as operating system, hardware, etc.), and any relevant log files.
 
 ## Credits
 [Inspired by](https://www.jeffgeerling.com/blog/2024/home-assistant-and-carplay-pi-touch-display-2) the one and only Raspberry Pi Master, Jeff Geerling ([@geerlingguy](https://github.com/geerlingguy)).
