@@ -281,6 +281,30 @@ Please review the [hardware](https://github.com/leukipp/touchkio/blob/main/HARDW
 - On the terminal you may see some _ERROR:gbm_wrapper.cc_ messages.
   - This appears to be a [known issue](https://github.com/electron/electron/issues/42322) that currently lacks a fix, but the webview still works.
 
+
+### DNS Resolution Notes
+
+TouchKio is based on Chromium/Electron, which by default may use its own DNS resolver and DNS-over-HTTPS (DoH). This can cause issues if you rely on local DNS or `/etc/hosts` entries, as these may be ignored.
+
+#### Why this happens
+Chromium has an internal asynchronous DNS resolver and optional DoH support. When enabled, it bypasses the system resolver stack, ignoring `/etc/hosts` and local DNS servers.
+
+#### How to fix it
+To force TouchKio to use the system resolver (which respects `/etc/hosts` and your network DNS), disable these Chromium features:
+
+```bash
+touchkio --disable-features=UseDNSHttps,AsyncDns
+```
+
+To make this permanent, modify `~/.config/systemd/user/touchkio.service` and update the ExecStart line to look like this: `ExecStart=/usr/bin/touchkio --disable-features=UseDNSHttps,AsyncDns`
+
+Then reload the service:
+```bash
+systemctl --user daemon-reload
+systemctl --user restart touchkio.service
+```
+
+
 For debugging, stop the service and launch `touchkio` directly on the terminal to monitor the log output in real-time.
 This output is also written into `~/.config/touchkio/logs/main.log` for review.
 
