@@ -296,7 +296,7 @@ To force TouchKio to use the system resolver (which respects `/etc/hosts` and yo
 touchkio --disable-features=UseDNSHttps,AsyncDns
 ```
 
-To make this permanent, modify `~/.config/systemd/user/touchkio.service` and update the ExecStart line to look like this: `ExecStart=/usr/bin/touchkio --disable-features=UseDNSHttps,AsyncDns`
+To make this permanent, modify `~/.config/systemd/user/touchkio.service` and update the `ExecStart` line to look like this:
 
 Then reload the service:
 ```bash
