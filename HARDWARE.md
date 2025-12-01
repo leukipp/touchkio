@@ -81,9 +81,9 @@ The necessary requirements for MQTT sensors to work are listed here:
 <details><summary>I have installed Raspberry Pi OS on a RPI3.</summary>
 
   - Raspberry Pi 3 devices have produced a bunch of issues in the past.
-    - [RPI 3B wayland rendering issue](ttps://github.com/leukipp/touchkio/issues/104).
-    - [RPI 3b+ thermostat card issue](https://github.com/leukipp/touchkio/issues/17).
-    - [Webpage cards don't work (Pi3b+)](https://github.com/leukipp/touchkio/issues/24).
+    - [RPI 3B thermostat card issue](https://github.com/leukipp/touchkio/issues/17).
+    - [RPI 3B wayland rendering issue](https://github.com/leukipp/touchkio/issues/104).    
+    - [Webpage cards don't work (RPI 3B)](https://github.com/leukipp/touchkio/issues/24).
  - It looks like the GPU is not properly supported by Electron.
     - Running `touchkio --disable-gpu` may improve the situation, but upgrading the hardware is the best solution.
 
@@ -115,6 +115,9 @@ The necessary requirements for MQTT sensors to work are listed here:
   - HDMI screens typically do not offer brightness control out of the box, so additional setup steps are required.
     - Brightness support for [ddcutil](https://github.com/leukipp/touchkio/issues/101#issuecomment-3521247263) is build-in and checked on application startup.
     - Alternatively installing [ddcci-driver-linux](https://github.com/leukipp/touchkio/issues/132#issue-3659009749) or [ddcci-dkms](https://github.com/leukipp/touchkio/issues/101#issuecomment-3571523927) may also work.
+  - Make sure that one of these works for your display when you run it directly on the terminal, otherwise the MQTT switch will not work either.
+    - `sudo cat /sys/class/backlight/*/brightness` returns some numeric value.
+    - `sudo ddcutil setvcp 10 42` changes the brightness to 42% without asking for a password.
 
 </details>
 
