@@ -253,7 +253,7 @@ While I understand this is not ideal, it's necessary to ensure proper functional
 
 The display power status and brightness can be adjusted via the MQTT integration.
 **Support** for changing the power status on **DSI and HDMI** displays is achieved by checking for connected screens in `/sys/class/drm/*/status`.
-Support for changing the brightness of connected display is implemented by using `/sys/class/backlight/*/brightness`.
+Support for changing the brightness of a connected display is implemented by using `sudo tee /sys/class/backlight/*/brightness` or `sudo ddcutil setvcp 10`.
 In cases where no supported backlight device is found, the Home Assistant light entity will only show an on/off switch without brightness control.
 
 Keep in mind that default arguments are stored as plain text in `~/.config/touchkio/Arguments.json`.
@@ -273,7 +273,7 @@ This adjustment provides a user experience similar to that of a proper mobile de
 </div></details>
 
 ## Issues
-### Please review the hardware [FAQ](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md#faq) section first if you encounter any issues.
+### Please read the hardware [FAQ](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md#faq) section first if you encounter any issues.
 
 For basic debugging **(TouchKio)**, stop the service and launch `touchkio` directly on the terminal to monitor the log output in real-time.
 This output is also written into `~/.config/touchkio/logs/main.log` for review.
@@ -283,16 +283,40 @@ Refer to the [--log-level=[0-3]](https://www.electronjs.org/docs/latest/api/comm
 
 If you need to debug the webview **(Chrome DevTools)** use `touchkio --app-debug`.
 
-In case of undocumented problems, please [create an issue](https://github.com/leukipp/touchkio/issues) and include the output of `touchkio --version`, additional information about your system (such as operating system, hardware, etc.), and any relevant log files.
+In case [undocumented problems](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md#faq) arise, please [create an issue](https://github.com/leukipp/touchkio/issues) and include the output of `touchkio --version`, additional information about your system (such as operating system, hardware, etc.), and any relevant log files.
 
 ## Credits
 [Inspired by](https://www.jeffgeerling.com/blog/2024/home-assistant-and-carplay-pi-touch-display-2) the one and only Raspberry Pi Master, Jeff Geerling ([@geerlingguy](https://github.com/geerlingguy)).
 
 Thanks to Sebastian ([@pdsccode](https://github.com/pdsccode)) for his contributions on issues and [community](https://community.home-assistant.io/t/kiosk-mode-for-raspberry-pi-with-touch-display/821196) discussions.
 
-If you are looking for hardware or a well-designed mounting solution for the Raspberry Pi Display, check out the [blog post](https://www.thestockpot.net/videos/home-assistant-wall-display) from Dillan Stock ([@TheStockPot-AU](https://www.youtube.com/channel/UCmlzNHg8QiWVutUyFOV2UdQ)).
+### Tutorials
+If you are looking for hardware or a well-designed mounting solution for the Raspberry Pi Display, check out the [blog post](https://www.thestockpot.net/videos/home-assistant-wall-display) from Dillan Stock ([@TheStockPot-AU](https://www.youtube.com/@TheStockPot-AU)):
 
 [![What My Smart Home Was Missing](https://img.youtube.com/vi/uTxURzmrVtA/maxresdefault.jpg)](https://www.youtube.com/watch?v=uTxURzmrVtA)
+
+Also, have a look at this curated collection of helpful videos contributed by the community:
+
+<div style="display: flex; justify-content: space-around; align-items: center;">
+  <div style="text-align: center; width: 33%;">
+    <a href="https://www.youtube.com/watch?v=_adl1fiXlgk">
+      <img src="https://img.youtube.com/vi/_adl1fiXlgk/mqdefault.jpg" alt="Building a Home Assistant Kiosk - Why Did I Wait So Long?">
+    </a>
+    <p><a href="https://www.youtube.com/@Jims-Garage">@Jims-Garage</a></p>
+  </div>
+  <div style="text-align: center; width: 33%;">    
+    <a href="https://www.youtube.com/watch?v=uXcjx-zL_UU">
+      <img src="https://img.youtube.com/vi/uXcjx-zL_UU/mqdefault.jpg" alt="Touch Display for Home Assistant with TouchKIO">
+    </a>
+    <p><a href="https://www.youtube.com/@haus_automation">@haus_automation</a></p>
+  </div>
+  <div style="text-align: center; width: 33%;">
+    <a href="https://www.youtube.com/watch?v=t2YQm7GPmpY">
+      <img src="https://img.youtube.com/vi/t2YQm7GPmpY/mqdefault.jpg" alt="DIY Home Assistant Kiosk Build: Raspberry Pi & 3D Printing Livestream">
+    </a>
+    <p><a href="https://www.youtube.com/@homeautomatorza">@homeautomatorza</a></p>
+  </div>
+</div>
 
 ## License
 [MIT](https://github.com/leukipp/touchkio/blob/main/LICENSE)
