@@ -293,30 +293,23 @@ Thanks to Sebastian ([@pdsccode](https://github.com/pdsccode)) for his contribut
 ### Tutorials
 If you are looking for hardware or a well-designed mounting solution for the Raspberry Pi Display, check out the [blog post](https://www.thestockpot.net/videos/home-assistant-wall-display) from Dillan Stock ([@TheStockPot-AU](https://www.youtube.com/@TheStockPot-AU)):
 
-[![What My Smart Home Was Missing](https://img.youtube.com/vi/uTxURzmrVtA/maxresdefault.jpg)](https://www.youtube.com/watch?v=uTxURzmrVtA)
+<a href="https://www.youtube.com/watch?v=uTxURzmrVtA">
+  <img src="https://img.youtube.com/vi/uTxURzmrVtA/maxresdefault.jpg" alt="What My Smart Home Was Missing" title="@TheStockPot-AU" style="width:100%">
+</a>
 
 Also, have a look at this curated collection of helpful videos contributed by the community:
 
-<div style="display: flex; justify-content: space-around; align-items: center;">
-  <div style="text-align: center; width: 33%;">
-    <a href="https://www.youtube.com/watch?v=_adl1fiXlgk">
-      <img src="https://img.youtube.com/vi/_adl1fiXlgk/mqdefault.jpg" alt="Building a Home Assistant Kiosk - Why Did I Wait So Long?">
-    </a>
-    <p><a href="https://www.youtube.com/@Jims-Garage">@Jims-Garage</a></p>
-  </div>
-  <div style="text-align: center; width: 33%;">    
-    <a href="https://www.youtube.com/watch?v=uXcjx-zL_UU">
-      <img src="https://img.youtube.com/vi/uXcjx-zL_UU/mqdefault.jpg" alt="Touch Display for Home Assistant with TouchKIO">
-    </a>
-    <p><a href="https://www.youtube.com/@haus_automation">@haus_automation</a></p>
-  </div>
-  <div style="text-align: center; width: 33%;">
-    <a href="https://www.youtube.com/watch?v=t2YQm7GPmpY">
-      <img src="https://img.youtube.com/vi/t2YQm7GPmpY/mqdefault.jpg" alt="DIY Home Assistant Kiosk Build: Raspberry Pi & 3D Printing Livestream">
-    </a>
-    <p><a href="https://www.youtube.com/@homeautomatorza">@homeautomatorza</a></p>
-  </div>
-</div>
+<p align="center" style="width:100%">
+  <a href="https://www.youtube.com/watch?v=_adl1fiXlgk">
+    <img src="https://img.youtube.com/vi/_adl1fiXlgk/mqdefault.jpg" alt="Building a Home Assistant Kiosk - Why Did I Wait So Long?" title="@Jims-Garage" style="width:32%">
+  </a>
+  <a href="https://www.youtube.com/watch?v=uXcjx-zL_UU">
+    <img src="https://img.youtube.com/vi/uXcjx-zL_UU/mqdefault.jpg" alt="Touch Display for Home Assistant with TouchKIO" title="@haus_automation" style="width:32%">
+  </a>
+  <a href="https://www.youtube.com/watch?v=t2YQm7GPmpY">
+    <img src="https://img.youtube.com/vi/t2YQm7GPmpY/mqdefault.jpg" alt="DIY Home Assistant Kiosk Build: Raspberry Pi & 3D Printing Livestream" title="@homeautomatorza" style="width:32%">
+  </a>
+</p>
 
 ## License
 [MIT](https://github.com/leukipp/touchkio/blob/main/LICENSE)
