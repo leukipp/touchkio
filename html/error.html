@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+  <head>
+    <style>
+      body {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        justify-content: center;
+        font-family: sans-serif;
+        background-color: ${color.background};
+      }
+      .icon {
+        margin: 0;
+        font-size: 5rem;
+        color: ${color.icon};
+      }
+      .title {
+        margin: 0;
+        color: ${color.text};
+      }
+      .url {
+        color: ${color.text};
+      }
+      .error {
+        color: ${color.text};
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <p class="icon">&#9888;</p>
+      <h1 class="title">Whoopsie!</h1>
+      <p class="url"><strong>Loading:</strong> ${url}</p>
+      <p class="error"><strong>Error:</strong> ${text} (${code})</p>
+    </div>
+  </body>
+</html>
