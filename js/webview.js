@@ -1,4 +1,5 @@
 const path = require("path");
+const fs = require("fs");
 const axios = require("axios");
 const https = require("https");
 const hardware = require("./hardware");
@@ -174,7 +175,7 @@ const init = async () => {
   });
   WEBVIEW.pager.setBackgroundColor("#00000000");
   WEBVIEW.window.contentView.addChildView(WEBVIEW.pager);
-  WEBVIEW.pager.webContents.loadFile(path.join(APP.path, "html", "pager.html"));
+  WEBVIEW.pager.webContents.loadFile(resolveTemplatePath("pager"));
 
   // Init global widget
   WEBVIEW.widget = new WebContentsView({
@@ -186,7 +187,7 @@ const init = async () => {
   });
   WEBVIEW.widget.setBackgroundColor("#00000000");
   WEBVIEW.window.contentView.addChildView(WEBVIEW.widget);
-  WEBVIEW.widget.webContents.loadFile(path.join(APP.path, "html", "widget.html"));
+  WEBVIEW.widget.webContents.loadFile(resolveTemplatePath("widget"));
 
   // Init global status
   WEBVIEW.status = new WebContentsView({
@@ -198,7 +199,7 @@ const init = async () => {
   });
   WEBVIEW.status.setBackgroundColor("#00000000");
   WEBVIEW.window.contentView.addChildView(WEBVIEW.status);
-  WEBVIEW.status.webContents.loadFile(path.join(APP.path, "html", "status.html"));
+  WEBVIEW.status.webContents.loadFile(resolveTemplatePath("status"));
 
   // Init global navigation
   WEBVIEW.navigation = new WebContentsView({
@@ -210,7 +211,7 @@ const init = async () => {
   });
   WEBVIEW.navigation.setBackgroundColor("#00000000");
   WEBVIEW.window.contentView.addChildView(WEBVIEW.navigation);
-  WEBVIEW.navigation.webContents.loadFile(path.join(APP.path, "html", "navigation.html"));
+  WEBVIEW.navigation.webContents.loadFile(resolveTemplatePath("navigation"));
 
   // Init global layout
   const { width, height, x, y } = WEBVIEW.window.getBounds();
@@ -1379,6 +1380,35 @@ const captureView = async (wait, view = WEBVIEW.views[WEBVIEW.viewActive]) => {
 };
 
 /**
+ * Return the path to the requested template file, taking into account overrides with CLI arguments or config file.
+ *
+ * @param {string} templateName - Name of the template without .html
+ * @returns {string} Path to the template file
+ */
+const resolveTemplatePath = (templateName) => {
+  let templatePath = path.join(APP.path, "html", `${templateName}.html`);
+  if (ARGS["template_" + templateName]) {
+    templatePath = ARGS["template_" + templateName];
+  }
+  return templatePath;
+};
+
+/**
+ * Renders a template by name with the passed variables. This should NEVER be given untrusted input, as it uses eval() internally!
+ *
+ * @param {string} templateName - Name of the template without .html
+ * @param {object} params - Variables that you can use in the template
+ * @returns {string} Rendered template
+ */
+const renderTemplateUnsafe = (templateName, params) => {
+  const templatePath = resolveTemplatePath(templateName);
+  const template = fs.readFileSync(templatePath, "utf8");
+  const names = Object.keys(params);
+  const vals = Object.values(params);
+  return new Function(...names, `return \`${template}\`;`)(...vals);
+};
+
+/**
  * Generates a html template for a spinning loader.
  *
  * @param {number} size - The size of the circle.
@@ -1391,33 +1421,11 @@ const loaderHtml = (size, speed, theme) => {
     dark: { border: "#2A2A2A", spinner: "#03A9F4", background: "#111111" },
     light: { border: "#DCDCDC", spinner: "#03A9F4", background: "#FAFAFA" },
   }[theme];
-  const html = `
-    <html>
-      <head>
-        <style>
-          body {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: ${color.background};
-          }
-          .spinner {
-            width: ${size}px;
-            height: ${size}px;
-            border-radius: 50%;
-            border: 4px solid ${color.border};
-            border-top-color: ${color.spinner};
-            animation: spin ${speed}s linear infinite;
-          }
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="spinner"></div>
-      </body>
-    </html>`;
+  const html = renderTemplateUnsafe("loader", {
+    size,
+    speed,
+    color,
+  });
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 };
 
@@ -1435,44 +1443,11 @@ const errorHtml = (code, text, url, theme) => {
     dark: { icon: "#FFA500", text: "#E5E5E5", background: "#111111" },
     light: { icon: "#FFA500", text: "#1A1A1A", background: "#FAFAFA" },
   }[theme];
-  const html = `
-    <html>
-      <head>
-        <style>
-          body {
-            display: flex;
-            align-items: center;
-            text-align: center;
-            justify-content: center;
-            font-family: sans-serif;
-            background-color: ${color.background};
-          }
-          .icon {
-            margin: 0;
-            font-size: 5rem;
-            color: ${color.icon};
-          }
-          .title {
-            margin: 0;
-            color: ${color.text};
-          }
-          .url {
-            color: ${color.text};
-          }
-          .error {
-            color: ${color.text};
-          }
-        </style>
-      </head>
-      <body>
-        <div>
-          <p class="icon">&#9888;</p>
-          <h1 class="title">Whoopsie!</h1>
-          <p class="url"><strong>Loading:</strong> ${url}</p>
-          <p class="error"><strong>Error:</strong> ${text} (${code})</p>
-        </div>
-      </body>
-    </html>`;
+  const html = renderTemplateUnsafe("error", {
+    size,
+    speed,
+    color,
+  });
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 };
 

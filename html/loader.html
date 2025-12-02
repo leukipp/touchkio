@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+    <style>
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: ${color.background};
+      }
+      .spinner {
+        width: ${size}px;
+        height: ${size}px;
+        border-radius: 50%;
+        border: 4px solid ${color.border};
+        border-top-color: ${color.spinner};
+        animation: spin ${speed}s linear infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="spinner"></div>
+  </body>
+</html>
