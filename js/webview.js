@@ -18,10 +18,18 @@ const {
 global.WEBVIEW = global.WEBVIEW || {
   initialized: false,
   tracker: {
-    display: {},
+    display: {
+      on: new Date(0),
+      off: new Date(0),
+      lastWakeup: null,
+    },
     pointer: {
       position: {},
       time: new Date(),
+    },
+    motion: {
+      detected: false,
+      clearTimer: null,
     },
     window: {
       status: null,
@@ -212,11 +220,20 @@ const init = async () => {
   WEBVIEW.window.contentView.addChildView(WEBVIEW.navigation);
   WEBVIEW.navigation.webContents.loadFile(path.join(APP.path, "html", "navigation.html"));
 
+  // Init input blocking state management
+  WEBVIEW.inputBlocking = {
+    enabled: false,
+    allViews: [], // Cached array of all views
+  };
+
   // Init global layout
   const { width, height, x, y } = WEBVIEW.window.getBounds();
   console.info(`Open Window: ${width}x${height}+${x}+${y}`);
   WEBVIEW.theme.init(theme, updateTheme);
   WEBVIEW.zoom.init(zoom, updateZoom);
+
+  // Cache all views array for input blocking
+  WEBVIEW.inputBlocking.allViews = [...WEBVIEW.views, WEBVIEW.pager, WEBVIEW.widget, WEBVIEW.navigation, WEBVIEW.status];
 
   // Register global events
   await windowEvents();
@@ -620,6 +637,67 @@ const homeView = () => {
   } else {
     view.webContents.reloadIgnoringCache();
   }
+};
+
+/**
+ * Blocks all input on webviews by injecting JavaScript event blockers.
+ */
+const blockAllInput = async () => {
+  if (WEBVIEW.inputBlocking.enabled || !WEBVIEW.inputBlocking.allViews) return;
+  
+  WEBVIEW.inputBlocking.enabled = true;
+  
+  const promises = WEBVIEW.inputBlocking.allViews.map(async (view) => {
+    try {
+      await view.webContents.executeJavaScript(`
+        (function() {
+          if (window.__touchkioBlocker) return;
+          window.__touchkioBlocker = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            return false;
+          };
+          const events = ['touchstart', 'touchmove', 'touchend', 'mousedown', 'mouseup', 'click', 'pointerdown', 'pointerup'];
+          events.forEach(type => {
+            document.addEventListener(type, window.__touchkioBlocker, { capture: true, passive: false });
+          });
+        })();
+      `);
+    } catch (error) {
+      console.error(`webview.js: Failed to block input:`, error.message);
+    }
+  });
+  
+  await Promise.all(promises);
+};
+
+/**
+ * Unblocks all input on webviews by removing JavaScript event blockers.
+ */
+const unblockAllInput = async () => {
+  if (!WEBVIEW.inputBlocking.enabled || !WEBVIEW.inputBlocking.allViews) return;
+  
+  WEBVIEW.inputBlocking.enabled = false;
+  
+  const promises = WEBVIEW.inputBlocking.allViews.map(async (view) => {
+    try {
+      await view.webContents.executeJavaScript(`
+        (function() {
+          if (!window.__touchkioBlocker) return;
+          const events = ['touchstart', 'touchmove', 'touchend', 'mousedown', 'mouseup', 'click', 'pointerdown', 'pointerup'];
+          events.forEach(type => {
+            document.removeEventListener(type, window.__touchkioBlocker, { capture: true });
+          });
+          delete window.__touchkioBlocker;
+        })();
+      `);
+    } catch (error) {
+      console.error(`webview.js: Failed to unblock input:`, error.message);
+    }
+  });
+  
+  await Promise.all(promises);
 };
 
 /**
@@ -1131,8 +1209,37 @@ const viewEvents = async () => {
       }
     });
 
+    // Handle webview input events (catches keyboard and mouse)
+    view.webContents.on("before-input-event", (e, input) => {
+      const justWokeUp = WEBVIEW.tracker.display.lastWakeup && 
+                         (new Date() - WEBVIEW.tracker.display.lastWakeup) < 500;
+      const displayOff = WEBVIEW.tracker.display.off > WEBVIEW.tracker.display.on;
+
+      if (displayOff || justWokeUp) {
+        e.preventDefault();
+        return;
+      }
+    });
+
     // Handle webview mouse events
     view.webContents.on("before-mouse-event", (e, mouse) => {
+      const justWokeUp = WEBVIEW.tracker.display.lastWakeup && 
+                         (new Date() - WEBVIEW.tracker.display.lastWakeup) < 500;
+      const displayOff = WEBVIEW.tracker.display.off > WEBVIEW.tracker.display.on;
+
+      // Wake display on touch when off
+      if (displayOff && mouse.type !== "mouseLeave") {
+        e.preventDefault();
+        WEBVIEW.tracker.display.lastWakeup = new Date();
+        hardware.setDisplayStatus("ON");
+        return;
+      }
+
+      // Block input during wakeup period
+      if (displayOff || justWokeUp) {
+        e.preventDefault();
+        return;
+      }
       const now = new Date();
       const then = WEBVIEW.tracker.pointer.time;
       const delta = (now - then) / 1000;
@@ -1152,6 +1259,9 @@ const viewEvents = async () => {
             WEBVIEW.tracker.pointer.time = now;
             WEBVIEW.tracker.pointer.position = posNew;
 
+            // Trigger motion sensor update
+            EVENTS.emit("updateMotion", true);
+
             // Update last active on pointer position change
             if (delta > 30) {
               console.info("Update Last Active");
@@ -1162,19 +1272,6 @@ const viewEvents = async () => {
         case "mouseDown":
           console.debug(`webview.js: viewEvents(${i},${mouse.type}-${mouse.button})`);
           switch (mouse.button) {
-            case "left":
-              const off = WEBVIEW.tracker.display.off > WEBVIEW.tracker.display.on;
-              console.debug(`webview.js: viewEvents(${i},display-${off ? "off" : "on"})`);
-
-              // Ignore touch event if display was off
-              if (off) {
-                console.verbose("Display Touch Event: Ignored");
-                e.preventDefault();
-
-                // Turn display on if it was off
-                hardware.setDisplayStatus("ON");
-              }
-              break;
             case "back":
               historyBackward();
               break;
@@ -1194,6 +1291,22 @@ const viewEvents = async () => {
 const appEvents = async () => {
   console.debug("webview.js: appEvents()");
 
+  // Periodically check display status and block input if needed (every 100ms)
+  setInterval(() => {
+    if (APP.exiting) return;
+    
+    const justWokeUp = WEBVIEW.tracker.display.lastWakeup && 
+                       (new Date() - WEBVIEW.tracker.display.lastWakeup) < 500; // 500ms grace period
+    const displayOff = WEBVIEW.tracker.display.off > WEBVIEW.tracker.display.on;
+    const shouldBlock = displayOff || justWokeUp;
+    
+    if (shouldBlock && !WEBVIEW.inputBlocking.enabled) {
+      blockAllInput();
+    } else if (!shouldBlock && WEBVIEW.inputBlocking.enabled) {
+      unblockAllInput();
+    }
+  }, 100);
+
   // Handle global events
   EVENTS.on("reloadView", reloadView);
   EVENTS.on("updateView", updateView);
@@ -1201,6 +1314,9 @@ const appEvents = async () => {
     const status = hardware.getDisplayStatus();
     if (status) {
       WEBVIEW.tracker.display[status.toLowerCase()] = new Date();
+      if (status === "OFF") {
+        blockAllInput();
+      }
     }
   });
   EVENTS.on("updateStatus", () => {

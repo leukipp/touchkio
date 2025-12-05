@@ -92,6 +92,7 @@ const init = async () => {
       initBatteryLevel();
       initPackageUpgrades();
       initLastActive();
+      initMotion();
 
       // Init client diagnostic
       initScreenshot();
@@ -117,6 +118,7 @@ const init = async () => {
         updateDisplay();
         updateLastActive();
       });
+      EVENTS.on("updateMotion", updateMotion);
       EVENTS.on("updateScreenshot", updateScreenshot);
       EVENTS.on("consoleLog", updateErrors);
     })
@@ -1052,6 +1054,52 @@ const updateLastActive = async () => {
   };
   publishState("last_active", lastActive);
   publishAttributes("last_active", tracker);
+};
+
+/**
+ * Initializes the motion binary sensor.
+ */
+const initMotion = () => {
+  const root = `${INTEGRATION.root}/motion`;
+  const config = {
+    name: "Motion",
+    unique_id: `${INTEGRATION.node}_motion`,
+    state_topic: `${root}/state`,
+    payload_on: "ON",
+    payload_off: "OFF",
+    device_class: "motion",
+    icon: "mdi:motion-sensor",
+    device: INTEGRATION.device,
+  };
+  publishConfig("binary_sensor", config);
+  updateMotion();
+};
+
+/**
+ * Updates the motion binary sensor via the mqtt connection.
+ */
+const updateMotion = async (detected = false) => {
+  // Clear existing timer
+  if (WEBVIEW.tracker.motion.clearTimer) {
+    clearTimeout(WEBVIEW.tracker.motion.clearTimer);
+    WEBVIEW.tracker.motion.clearTimer = null;
+  }
+  
+  // Determine motion state
+  let isMotion = false;
+  if (detected) {
+    isMotion = true;
+    // Set new timer to clear motion after 5 seconds
+    WEBVIEW.tracker.motion.clearTimer = setTimeout(() => {
+      updateMotion(false);
+    }, 5000);
+  }
+  
+  // Only publish if state changed
+  if (WEBVIEW.tracker.motion.detected !== isMotion) {
+    WEBVIEW.tracker.motion.detected = isMotion;
+    publishState("motion", isMotion ? "ON" : "OFF");
+  }
 };
 
 /**
