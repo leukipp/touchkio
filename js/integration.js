@@ -152,6 +152,15 @@ const init = async () => {
     updatePackageUpgrades();
   }, 3600 * 1000);
 
+  // Cleanup motion timer on app exit
+  const { app } = require("electron");
+  app.on("before-quit", () => {
+    if (WEBVIEW.tracker.motion.clearTimer) {
+      clearTimeout(WEBVIEW.tracker.motion.clearTimer);
+      WEBVIEW.tracker.motion.clearTimer = null;
+    }
+  });
+
   return true;
 };
 
@@ -1079,23 +1088,31 @@ const initMotion = () => {
  * Updates the motion binary sensor via the mqtt connection.
  */
 const updateMotion = async (detected = false) => {
-  // Clear existing timer
+  // Clear existing timer to prevent stale callbacks
   if (WEBVIEW.tracker.motion.clearTimer) {
     clearTimeout(WEBVIEW.tracker.motion.clearTimer);
     WEBVIEW.tracker.motion.clearTimer = null;
   }
   
-  // Determine motion state
-  let isMotion = false;
-  if (detected) {
-    isMotion = true;
-    // Set new timer to clear motion after 5 seconds
+  // Don't set new timers if app is exiting
+  if (APP.exiting) {
+    return;
+  }
+  
+  // Determine new motion state
+  const isMotion = detected === true;
+  
+  // Set timer to auto-clear motion after inactivity period
+  if (isMotion) {
     WEBVIEW.tracker.motion.clearTimer = setTimeout(() => {
-      updateMotion(false);
+      // Only clear if no new motion was detected in the meantime and app is not exiting
+      if (WEBVIEW.tracker.motion.detected && !APP.exiting) {
+        updateMotion(false);
+      }
     }, 5000);
   }
   
-  // Only publish if state changed
+  // Only publish if state actually changed
   if (WEBVIEW.tracker.motion.detected !== isMotion) {
     WEBVIEW.tracker.motion.detected = isMotion;
     publishState("motion", isMotion ? "ON" : "OFF");
