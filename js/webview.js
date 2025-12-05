@@ -1305,7 +1305,7 @@ const appEvents = async () => {
     } else if (!shouldBlock && WEBVIEW.inputBlocking.enabled) {
       unblockAllInput();
     }
-  }, 100);
+  }, 500);
 
   // Handle global events
   EVENTS.on("reloadView", reloadView);
