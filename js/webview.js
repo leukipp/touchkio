@@ -244,6 +244,7 @@ const init = async () => {
   // Init input blocking state management
   WEBVIEW.inputBlocking = {
     enabled: false,
+    inProgress: false, // Prevents concurrent block/unblock operations
     allViews: [], // Cached array of all views
   };
 
@@ -664,7 +665,9 @@ const homeView = () => {
  * Blocks all input on webviews by injecting JavaScript event blockers.
  */
 const blockAllInput = async () => {
-  if (WEBVIEW.inputBlocking.enabled || !WEBVIEW.inputBlocking.allViews || !WEBVIEW.tracker) return;
+  if (WEBVIEW.inputBlocking.enabled || WEBVIEW.inputBlocking.inProgress || !WEBVIEW.inputBlocking.allViews || !WEBVIEW.tracker) return;
+  
+  WEBVIEW.inputBlocking.inProgress = true;
   
   const promises = WEBVIEW.inputBlocking.allViews.map(async (view) => {
     try {
@@ -690,13 +693,16 @@ const blockAllInput = async () => {
   
   await Promise.all(promises);
   WEBVIEW.inputBlocking.enabled = true;
+  WEBVIEW.inputBlocking.inProgress = false;
 };
 
 /**
  * Unblocks all input on webviews by removing JavaScript event blockers.
  */
 const unblockAllInput = async () => {
-  if (!WEBVIEW.inputBlocking.enabled || !WEBVIEW.inputBlocking.allViews) return;
+  if (!WEBVIEW.inputBlocking.enabled || WEBVIEW.inputBlocking.inProgress || !WEBVIEW.inputBlocking.allViews) return;
+  
+  WEBVIEW.inputBlocking.inProgress = true;
   
   const promises = WEBVIEW.inputBlocking.allViews.map(async (view) => {
     try {
@@ -705,7 +711,7 @@ const unblockAllInput = async () => {
           if (!window.__touchkioBlocker) return;
           const events = ['touchstart', 'touchmove', 'touchend', 'mousedown', 'mouseup', 'click', 'pointerdown', 'pointerup'];
           events.forEach(type => {
-            document.removeEventListener(type, window.__touchkioBlocker, { capture: true });
+            document.removeEventListener(type, window.__touchkioBlocker, { capture: true, passive: false });
           });
           delete window.__touchkioBlocker;
         })();
@@ -717,6 +723,7 @@ const unblockAllInput = async () => {
   
   await Promise.all(promises);
   WEBVIEW.inputBlocking.enabled = false;
+  WEBVIEW.inputBlocking.inProgress = false;
 };
 
 /**
@@ -1303,7 +1310,7 @@ const appEvents = async () => {
   console.debug("webview.js: appEvents()");
 
   // Periodically check display status and block input if needed
-  setInterval(() => {
+  const inputBlockingInterval = setInterval(() => {
     if (APP.exiting) return;
     
     const shouldBlock = isDisplayOff() || isJustWokenUp();
@@ -1315,6 +1322,13 @@ const appEvents = async () => {
     }
   }, INPUT_BLOCKING_CHECK_INTERVAL_MS);
 
+  // Cleanup interval on app exit
+  app.on("before-quit", () => {
+    if (inputBlockingInterval) {
+      clearInterval(inputBlockingInterval);
+    }
+  });
+
   // Handle global events
   EVENTS.on("reloadView", reloadView);
   EVENTS.on("updateView", updateView);
@@ -1324,6 +1338,8 @@ const appEvents = async () => {
       WEBVIEW.tracker.display[status.toLowerCase()] = new Date();
       if (status === "OFF") {
         blockAllInput().catch(err => console.error('webview.js: Failed to block input on display off:', err));
+      } else if (status === "ON") {
+        unblockAllInput().catch(err => console.error('webview.js: Failed to unblock input on display on:', err));
       }
     } else {
       console.warn("webview.js: Failed to retrieve display status");

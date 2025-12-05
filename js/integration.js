@@ -153,7 +153,6 @@ const init = async () => {
   }, 3600 * 1000);
 
   // Cleanup motion timer on app exit
-  const { app } = require("electron");
   app.on("before-quit", () => {
     if (WEBVIEW.tracker.motion.clearTimer) {
       clearTimeout(WEBVIEW.tracker.motion.clearTimer);
