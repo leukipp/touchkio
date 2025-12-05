@@ -1317,6 +1317,8 @@ const appEvents = async () => {
       if (status === "OFF") {
         blockAllInput();
       }
+    } else {
+      console.warn("webview.js: Failed to retrieve display status");
     }
   });
   EVENTS.on("updateStatus", () => {
