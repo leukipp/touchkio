@@ -1,5 +1,5 @@
 # TouchKio
-[![build](https://img.shields.io/github/actions/workflow/status/leukipp/touchkio/release.yaml?style=flat-square)](https://github.com/leukipp/touchkio/actions)
+[![build](https://img.shields.io/github/actions/workflow/status/leukipp/touchkio/release.yml?style=flat-square)](https://github.com/leukipp/touchkio/actions)
 [![date](https://img.shields.io/github/release-date/leukipp/touchkio?style=flat-square)](https://github.com/leukipp/touchkio/releases)
 [![platform](https://img.shields.io/badge/platform-%20arm64%20|%20x64%20-teal?style=flat-square)](https://github.com/leukipp/touchkio/releases)
 [![downloads](https://img.shields.io/github/downloads/leukipp/touchkio/total?style=flat-square)](https://github.com/leukipp/touchkio/releases)
@@ -273,7 +273,8 @@ This adjustment provides a user experience similar to that of a proper mobile de
 </div></details>
 
 ## Issues
-### Please read the hardware [FAQ](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md#faq) section first if you encounter any issues.
+> [!NOTE]
+> ### Please read the hardware [FAQ](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md#faq) section first if you encounter any issues.
 
 For basic debugging **(TouchKio)**, stop the service and launch `touchkio` directly on the terminal to monitor the log output in real-time.
 This output is also written into `~/.config/touchkio/logs/main.log` for review.
