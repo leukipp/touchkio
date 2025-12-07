@@ -23,15 +23,15 @@ if (!process.env.DISPLAY) {
   process.exit(1);
 }
 
-// Delete electron log file
+// Move electron log file
 const elog = path.join(app.getPath("logs"), "electron.log");
 try {
   if (fs.existsSync(elog)) {
-    fs.unlinkSync(elog);
+    fs.renameSync(elog, elog.replace(".log", ".old.log"));
   }
   console.debug = () => {};
 } catch (error) {
-  console.error("Failed to delete electron log file:", error.message);
+  console.error("Failed to move electron log file:", error.message);
 }
 app.commandLine.appendSwitch("log-file", elog);
 
@@ -212,10 +212,10 @@ const initArgs = async () => {
 const initLog = async () => {
   try {
     if (fs.existsSync(APP.log)) {
-      fs.unlinkSync(APP.log);
+      fs.renameSync(APP.log, APP.log.replace(".log", ".old.log"));
     }
   } catch (error) {
-    console.error("Failed to delete main log file:", error.message);
+    console.error("Failed to move main log file:", error.message);
   }
 
   // Set log level and path
