@@ -28,7 +28,7 @@ body:
     validations:
       required: true
     attributes:
-      label: What version of TouchKio is used?
+      label: What version of touchkio is used?
       placeholder: v
       description: >
         Can be found on the MQTT device under `Diagnostics > Version`.
@@ -93,7 +93,7 @@ body:
       label: Used arguments
       placeholder: json arguments
       description: |
-        Use `cat ~/.config/touchkio/Arguments.json` to get the content.
+        Use `cat ~/.config/touchkio/Arguments.json` to get the file content.
       render: json
   - type: textarea
     id: log_file
@@ -101,10 +101,10 @@ body:
       required: false
     attributes:
       label: Log file
-      placeholder: drag-and-drop the log file or copy-and-paste the full content here
+      placeholder: drag-and-drop the file or copy-and-paste the full content here
       description: |
-        From the host machine use `scp USER@IP:~/.config/touchkio/logs/main.log main.log` to download the log file.
-        Alternatively, you can use `cat ~/.config/touchkio/logs/main.log` on a ssh connection to get the content.
+        From the host machine use `scp USER@IP:~/.config/touchkio/logs/main.log main.log` to download the log file.  
+        Alternatively, you can use `cat ~/.config/touchkio/logs/main.log` on a ssh connection to get the file content.
       render: txt
   - type: textarea
     id: additional_information
