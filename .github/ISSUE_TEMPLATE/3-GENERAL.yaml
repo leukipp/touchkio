@@ -1,0 +1,82 @@
+name: General inquiry or suggestion for the project
+description: I want to ask a question or improve the documentation.
+title: "[General]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue form is for general inquiries only!
+        - [x] I promise that the `Report a bug in the application` issue form is not suitable for my question or suggestion! 🤞
+        - [x] I promise that the `Request a new feature for the application` issue form is not suitable for my question or suggestion! 🤞
+  - type: textarea
+    id: general_comment
+    validations:
+      required: true
+    attributes:
+      label: General comment
+      placeholder: general comment
+      description: |
+        Ask a question, request some help, leave a general information or suggest an improvement for the documentation.
+  - type: markdown
+    attributes:
+      value: |
+        ## Details (optional)
+  - type: input
+    id: app_version
+    validations:
+      required: false
+    attributes:
+      label: What version of TouchKio is used?
+      placeholder: v
+      description: >
+        Can be found on the MQTT device under `Diagnostics > Version`.
+  - type: input
+    id: operating_system
+    validations:
+      required: false
+    attributes:
+      label: What operating system and version is used?
+      description: >
+        Raspberry Pi OS (Trixie), Ubuntu (24.04), etc.
+  - type: dropdown
+    id: display_server
+    validations:
+      required: false
+    attributes:
+      label: Which display server is configured on the system?
+      description: >
+        Use `loginctl show-session $(loginctl show-user $(whoami) -p Display --value) -p Type --value` to find out.
+      options:
+        - Wayland
+        - X11
+        - Other
+  - type: input
+    id: hardware_model
+    validations:
+      required: false
+    attributes:
+      label: Which hardware model is used?
+      description: >
+        Raspberry Pi 5 (8GB RAM), Intel NUC 14 (16GB RAM), etc.
+  - type: input
+    id: screen_model
+    validations:
+      required: false
+    attributes:
+      label: Which screen model is used?
+      description: >
+        Raspberry Pi 7" Touch Display 2 (720x1280), Waveshare 8" CAPLCD (768x1024), etc.
+  - type: dropdown
+    id: screen_connection
+    validations:
+      required: false
+    attributes:
+      label: Which screen connection type is used?
+      description: >
+        Choose the connection type between your screen and the host machine.
+      options:
+        - DSI
+        - HDMI
+        - HDMI + USB
+        - Other

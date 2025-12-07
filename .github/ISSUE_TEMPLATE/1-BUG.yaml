@@ -1,0 +1,117 @@
+name: Report a bug in the application
+description: I encountered a bug that was not reported before.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue form is for reporting unknown bugs only!
+        - [x] I promise to have read the [FAQ](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md#faq) section in the hardware documentation first! 🤞
+        - [x] I promise to have read the [ISSUES](https://github.com/leukipp/touchkio?tab=readme-ov-file#issues) section and know how to debug the application! 🤞
+        - [x] I also swear to have searched for similar open and closed issues on [GITHUB](https://github.com/leukipp/touchkio/issues?q=is%3Aissue) first! 🤞
+  - type: textarea
+    id: problem_description
+    validations:
+      required: true
+    attributes:
+      label: Problem description
+      placeholder: problem description
+      description: |
+        Describe the issue you are experiencing and how to reproduce it.
+  - type: markdown
+    attributes:
+      value: |
+        ## Details
+  - type: input
+    id: app_version
+    validations:
+      required: true
+    attributes:
+      label: What version of TouchKio is used?
+      placeholder: v
+      description: >
+        Can be found on the MQTT device under `Diagnostics > Version`.
+  - type: input
+    id: operating_system
+    validations:
+      required: true
+    attributes:
+      label: What operating system and version is used?
+      description: >
+        Raspberry Pi OS (Trixie), Ubuntu (24.04), etc.
+  - type: dropdown
+    id: display_server
+    validations:
+      required: true
+    attributes:
+      label: Which display server is configured on the system?
+      description: >
+        Use `loginctl show-session $(loginctl show-user $(whoami) -p Display --value) -p Type --value` to find out.
+      options:
+        - Wayland
+        - X11
+        - Other
+  - type: input
+    id: hardware_model
+    validations:
+      required: true
+    attributes:
+      label: Which hardware model is used?
+      description: >
+        Raspberry Pi 5 (8GB RAM), Intel NUC 14 (16GB RAM), etc.
+  - type: input
+    id: screen_model
+    validations:
+      required: true
+    attributes:
+      label: Which screen model is used?
+      description: >
+        Raspberry Pi 7" Touch Display 2 (720x1280), Waveshare 8" CAPLCD (768x1024), etc.
+  - type: dropdown
+    id: screen_connection
+    validations:
+      required: true
+    attributes:
+      label: Which screen connection type is used?
+      description: >
+        Choose the connection type between your screen and the host machine.
+      options:
+        - DSI
+        - HDMI
+        - HDMI + USB
+        - Other
+  - type: markdown
+    attributes:
+      value: |
+        ## Diagnostics
+  - type: textarea
+    id: arguments_json
+    validations:
+      required: false
+    attributes:
+      label: Used arguments
+      placeholder: json arguments
+      description: |
+        Use `cat ~/.config/touchkio/Arguments.json` to get the content.
+      render: json
+  - type: textarea
+    id: log_file
+    validations:
+      required: false
+    attributes:
+      label: Log file
+      placeholder: drag-and-drop the log file or copy-and-paste the full content here
+      description: |
+        From the host machine use `scp USER@IP:~/.config/touchkio/logs/main.log main.log` to download the log file.
+        Alternatively, you can use `cat ~/.config/touchkio/logs/main.log` on a ssh connection to get the content.
+      render: txt
+  - type: textarea
+    id: additional_information
+    validations:
+      required: false
+    attributes:
+      label: Additional information
+      placeholder: additional information
+      description: |
+        If you have any additional information that might be useful, use this field.

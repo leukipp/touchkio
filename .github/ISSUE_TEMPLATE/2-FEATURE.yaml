@@ -1,0 +1,82 @@
+name: Request a new feature for the application
+description: I want to request a new feature that is not yet available.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue form is for requesting new features only!
+        - [x] I promise to have read the [FAQ](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md#faq) section in the hardware documentation first! 🤞
+        - [x] I also swear to have searched for similar open and closed feature requests on [GITHUB](https://github.com/leukipp/touchkio/issues?q=is%3Aissue) first! 🤞
+  - type: textarea
+    id: feature_description
+    validations:
+      required: true
+    attributes:
+      label: Feature description
+      placeholder: feature description
+      description: |
+        Describe the feature you want to request and why it would be useful for others.
+  - type: markdown
+    attributes:
+      value: |
+        ## Details
+  - type: input
+    id: app_version
+    validations:
+      required: true
+    attributes:
+      label: What version of TouchKio is used?
+      placeholder: v
+      description: >
+        Can be found on the MQTT device under `Diagnostics > Version`.
+  - type: input
+    id: operating_system
+    validations:
+      required: true
+    attributes:
+      label: What operating system and version is used?
+      description: >
+        Raspberry Pi OS (Trixie), Ubuntu (24.04), etc.
+  - type: dropdown
+    id: display_server
+    validations:
+      required: true
+    attributes:
+      label: Which display server is configured on the system?
+      description: >
+        Use `loginctl show-session $(loginctl show-user $(whoami) -p Display --value) -p Type --value` to find out.
+      options:
+        - Wayland
+        - X11
+        - Other
+  - type: input
+    id: hardware_model
+    validations:
+      required: true
+    attributes:
+      label: Which hardware model is used?
+      description: >
+        Raspberry Pi 5 (8GB RAM), Intel NUC 14 (16GB RAM), etc.
+  - type: input
+    id: screen_model
+    validations:
+      required: true
+    attributes:
+      label: Which screen model is used?
+      description: >
+        Raspberry Pi 7" Touch Display 2 (720x1280), Waveshare 8" CAPLCD (768x1024), etc.
+  - type: dropdown
+    id: screen_connection
+    validations:
+      required: true
+    attributes:
+      label: Which screen connection type is used?
+      description: >
+        Choose the connection type between your screen and the host machine.
+      options:
+        - DSI
+        - HDMI
+        - HDMI + USB
+        - Other
