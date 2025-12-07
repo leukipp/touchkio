@@ -17,34 +17,37 @@ If you are running Linux with a graphical user interface (Wayland or X11), you s
 | ⬛   | Not operational       | The house is on fire.                                                     |
 
 ### DSI
-| Device                 | System                                 | Display                                                                                                   | Status |
-| ---------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------ |
-| Raspberry Pi 3 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 1 (800x480)](https://www.raspberrypi.com/products/raspberry-pi-touch-display/) | ⬜      |
-| Raspberry Pi 3 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 2 (720x1280)](https://www.raspberrypi.com/products/touch-display-2/)           | ⬜      |
-| Raspberry Pi 4 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 1 (800x480)](https://www.raspberrypi.com/products/raspberry-pi-touch-display/) | 🟩      |
-| Raspberry Pi 4 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 2 (720x1280)](https://www.raspberrypi.com/products/touch-display-2/)           | 🟩      |
-| Raspberry Pi 5 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 1 (800x480)](https://www.raspberrypi.com/products/raspberry-pi-touch-display/) | 🟩      |
-| Raspberry Pi 5 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 2 (720x1280)](https://www.raspberrypi.com/products/touch-display-2/)           | 🟩      |
+| Device                 | System                                 | Display                                                                                                  | Status |
+| ---------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------ |
+| Raspberry Pi 3 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 1 (800x480)](https://www.raspberrypi.com/products/raspberry-pi-touch-display) | ⬜      |
+| Raspberry Pi 3 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 2 (720x1280)](https://www.raspberrypi.com/products/touch-display-2)           | ⬜      |
+| Raspberry Pi 4 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 1 (800x480)](https://www.raspberrypi.com/products/raspberry-pi-touch-display) | 🟩      |
+| Raspberry Pi 4 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 2 (720x1280)](https://www.raspberrypi.com/products/touch-display-2)           | 🟩      |
+| Raspberry Pi 5 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 1 (800x480)](https://www.raspberrypi.com/products/raspberry-pi-touch-display) | 🟩      |
+| Raspberry Pi 5 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Official 7" Touch Display 2 (720x1280)](https://www.raspberrypi.com/products/touch-display-2)           | 🟩      |
+| Raspberry Pi 5 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Waveshare 10.1" DSI Touch (800x1280)](https://www.waveshare.com/10.1-dsi-touch-a.htm)                   | 🟩      |
+| Raspberry Pi 5 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Waveshare 12.3" DSI Touch (720x1920)](https://www.waveshare.com/12.3-dsi-touch-a.htm)                   | 🟩      |
 
 ### HDMI
-| Device                    | System                                 | Display                                                                                                               | Status |
-| ------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------ |
-| Raspberry Pi 4 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [LAFVIN Touch Display 5" (800x480)](https://www.amazon.de/gp/product/B0BWJ8YP7S)                                      | 🟨      |
-| Raspberry Pi 4 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Waveshare 7EP-CAPLCD 7" (1280x800)](https://www.waveshare.com/7ep-caplcd.htm)                                        | 🟨      |
-| Raspberry Pi 4 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Waveshare CAPLCD 8" (768x1024)](https://www.waveshare.com/wiki/8inch_768x1024_LCD)                                   | 🟨      |
-| Raspberry Pi 4 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Hannspree HT225 21.5" (1920x1080)](https://www.hannspree.eu/product/HT-225-HPB)                                      | 🟨      |
-| Raspberry Pi CM 4 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Lenovo ThinkCentre 23.8" (1920x1080)](https://psref.lenovo.com/Detail/ThinkCentre_Tiny_In_One_24_Gen_5?M=12NBGAT1EU) | 🟨      |
-| Raspberry Pi 400 (arm64)  | Raspberry Pi OS (64-bit), Wayland, X11 | [UPerfect Vertical Touch 15.6" (1920x1080)](https://uperfect.com/products/uperfect-y-vertical-monitor-15-6)           | 🟨      |
-| Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [GeeekPi Capacitive Touch 10.1" (1280x800)](https://www.amazon.nl/dp/B0DHV6DZC1)                                      | 🟨      |
-| Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [ELECROW Portable Monitor 10.1" (1280x800)](https://www.amazon.co.uk/dp/B0BHHQLKPY)                                   | 🟨      |
-| Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Waveshare Capacitive Touch 14" (2160x1440)](https://www.waveshare.com/14inch-2160x1440-lcd.htm)                      | 🟨      |
-| Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Akntzcs Portable Touch HD 16" (1920x1200)](https://www.amazon.com/dp/B0CTGW6MQ6)                                     | 🟨      |
-| Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Prechen Portable Touch FHD 18.5" (1920x1080)](https://www.amazon.de/dp/B0CT2KLDBQ)                                   | 🟨      |
-| Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | Generic Non-Touch                                                                                                     | 🟨      |
-| Generic PC (x64)          | Debian KDE (64-bit), Wayland, X11      | Generic Non-Touch                                                                                                     | 🟧      |
-| Generic PC (x64)          | Ubuntu XFCE (64-bit), X11              | Generic Non-Touch                                                                                                     | 🟧      |
-| Generic PC (x64)          | Ubuntu GNOME (64-bit), X11             | Generic Non-Touch                                                                                                     | 🟧      |
-| Generic PC (x64)          | Ubuntu GNOME (64-bit), Wayland         | Generic Non-Touch                                                                                                     | 🟥      |
+| Device                    | System                                 | Display                                                                                                                                                            | Status |
+| ------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
+| Raspberry Pi 4 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [LAFVIN Touch Display 5" (800x480)](https://www.amazon.de/gp/product/B0BWJ8YP7S)                                                                                   | 🟨      |
+| Raspberry Pi 4 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Waveshare 7EP-CAPLCD 7" (1280x800)](https://www.waveshare.com/7ep-caplcd.htm)                                                                                     | 🟨      |
+| Raspberry Pi 4 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Waveshare CAPLCD 8" (768x1024)](https://www.waveshare.com/wiki/8inch_768x1024_LCD)                                                                                | 🟨      |
+| Raspberry Pi 4 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [EVICIV 10.1" Touch (1920x1200)](https://de.aliexpress.com/item/1005001870058398.html?spm=a2g0o.order_list.order_list_main.10.21ef5c5fCTxEDm&gatewayAdapt=glo2deu) | 🟨      |
+| Raspberry Pi 4 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Hannspree HT225 21.5" (1920x1080)](https://www.hannspree.eu/product/HT-225-HPB)                                                                                   | 🟨      |
+| Raspberry Pi CM 4 (arm64) | Raspberry Pi OS (64-bit), Wayland, X11 | [Lenovo ThinkCentre 23.8" (1920x1080)](https://psref.lenovo.com/Detail/ThinkCentre_Tiny_In_One_24_Gen_5?M=12NBGAT1EU)                                              | 🟨      |
+| Raspberry Pi 400 (arm64)  | Raspberry Pi OS (64-bit), Wayland, X11 | [UPerfect Vertical Touch 15.6" (1920x1080)](https://uperfect.com/products/uperfect-y-vertical-monitor-15-6)                                                        | 🟨      |
+| Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [GeeekPi Capacitive Touch 10.1" (1280x800)](https://www.amazon.nl/dp/B0DHV6DZC1)                                                                                   | 🟨      |
+| Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [ELECROW Portable Monitor 10.1" (1280x800)](https://www.amazon.co.uk/dp/B0BHHQLKPY)                                                                                | 🟨      |
+| Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Waveshare Capacitive Touch 14" (2160x1440)](https://www.waveshare.com/14inch-2160x1440-lcd.htm)                                                                   | 🟨      |
+| Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Akntzcs Portable Touch HD 16" (1920x1200)](https://www.amazon.com/dp/B0CTGW6MQ6)                                                                                  | 🟨      |
+| Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Prechen Portable Touch FHD 18.5" (1920x1080)](https://www.amazon.de/dp/B0CT2KLDBQ)                                                                                | 🟨      |
+| Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | Generic Non-Touch                                                                                                                                                  | 🟨      |
+| Generic PC (x64)          | Debian KDE (64-bit), Wayland, X11      | Generic Non-Touch                                                                                                                                                  | 🟧      |
+| Generic PC (x64)          | Ubuntu XFCE (64-bit), X11              | Generic Non-Touch                                                                                                                                                  | 🟧      |
+| Generic PC (x64)          | Ubuntu GNOME (64-bit), X11             | Generic Non-Touch                                                                                                                                                  | 🟧      |
+| Generic PC (x64)          | Ubuntu GNOME (64-bit), Wayland         | Generic Non-Touch                                                                                                                                                  | 🟥      |
 
 ## Features
 **Minimal features** are designed to run on any system without issues:
