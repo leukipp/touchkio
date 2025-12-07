@@ -53,18 +53,17 @@ const init = async () => {
   const options = user === null || password === null ? {} : { username: user, password: password };
   options.will = { topic: `${INTEGRATION.root}/kiosk/state`, payload: "Terminated", qos: 1, retain: true };
   options.rejectUnauthorized = !("ignore_certificate_errors" in ARGS);
+  options.reconnectPeriod = 10 * 1000;
 
-  // Client connect
-  console.info("MQTT Connecting:", `${user}:${masked}@${url.toString()}`);
+  // Client connecting
+  const connection = `${user}:${masked}@${url.toString()}`;
+  console.info("MQTT Connecting:", connection);
   INTEGRATION.client = mqtt.connect(url.toString(), options);
   INTEGRATION.client.setMaxListeners(20);
 
   // Client connected
   INTEGRATION.client
     .once("connect", () => {
-      console.info(`MQTT Connected: ${url.toString()}`);
-      process.stdout.write("\n");
-
       // Init client controls
       initApp();
       initShutdown();
@@ -120,8 +119,19 @@ const init = async () => {
       EVENTS.on("updateScreenshot", updateScreenshot);
       EVENTS.on("consoleLog", updateErrors);
     })
+    .on("connect", () => {
+      console.info(`MQTT Connected: ${connection}`);
+      process.stdout.write("\n");
+      updateKiosk();
+    })
+    .on("offline", () => {
+      console.warn(`MQTT Disconnected: ${connection}`);
+    })
+    .on("reconnect", () => {
+      console.info(`MQTT Reconnecting: ${connection}`);
+    })
     .on("error", (error) => {
-      console.error("MQTT", error.message);
+      console.error("MQTT Error:", error.message);
     });
 
   // Update time sensors periodically (30s)
