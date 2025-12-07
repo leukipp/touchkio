@@ -105,7 +105,6 @@ body:
       description: |
         From the host machine use `scp USER@IP:~/.config/touchkio/logs/main.log main.log` to download the log file.  
         Alternatively, you can use `cat ~/.config/touchkio/logs/main.log` on a ssh connection to get the file content.
-      render: txt
   - type: textarea
     id: additional_information
     validations:
