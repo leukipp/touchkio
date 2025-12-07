@@ -52,21 +52,21 @@ body:
         - X11
         - Other
   - type: input
-    id: hardware_model
+    id: system_hardware
     validations:
       required: false
     attributes:
-      label: Which hardware model is used?
+      label: Which system hardware is used?
       description: >
         Raspberry Pi 5 (8GB RAM), Intel NUC 14 (16GB RAM), etc.
   - type: input
-    id: screen_model
+    id: screen_hardware
     validations:
       required: false
     attributes:
-      label: Which screen model is used?
+      label: Which screen hardware is used?
       description: >
-        Raspberry Pi 7" Touch Display 2 (720x1280), Waveshare 8" CAPLCD (768x1024), etc.
+        Waveshare 8" CAPLCD (768x1024), Raspberry Pi 7" Touch Display 2 (720x1280), etc.
   - type: dropdown
     id: screen_connection
     validations:
