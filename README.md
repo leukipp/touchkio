@@ -57,7 +57,7 @@ It's recommended to create a dedicated Home Assistant user (local access only) f
 
 You might also need a physical keyboard or remote VNC access to input these credentials once.
 If your hardware is [supported](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md) you may be able to activate the on-screen keyboard using the side [widget](https://github.com/leukipp/touchkio/issues/16).
-After the first login the Home Assistant credentials should be stored inside the `~/.config/touchkio/Cache` folder.
+After the first login the Home Assistant credentials are stored inside the `~/.config/touchkio/` folder.
 
 #### Option 1 - The easy way
 Run this command to download and install the latest **.deb** (arm64 or x64) release.
