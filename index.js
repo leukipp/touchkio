@@ -196,7 +196,9 @@ const initArgs = async () => {
   if (argsUpdated && !("app_reset" in args)) {
     args.app_reset = "arguments";
   }
-  fs.writeFileSync(argsFileHashPath, argsFileHash);
+  if (fs.existsSync(APP.cache)) {
+    fs.writeFileSync(argsFileHashPath, argsFileHash);
+  }
 
   // Set global arguments
   ARGS = args;
