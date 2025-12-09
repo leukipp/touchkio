@@ -732,7 +732,13 @@ const windowEvents = async () => {
 
   // Handle window status updates
   WEBVIEW.window.setStatus = async (status) => {
+    if (APP.exiting) {
+      return;
+    }
     const apply = (func, ...args) => {
+      if (APP.exiting) {
+        return Promise.resolve();
+      }
       func.apply(WEBVIEW.window, args);
       return new Promise((r) => setTimeout(r, 50));
     };
