@@ -158,6 +158,10 @@ For example:
 touchkio --web-url=http://192.168.1.42:8123 --mqtt-url=mqtt://192.168.1.42:1883 --mqtt-user=kiosk --mqtt-password=password
 ```
 
+### Overriding templates
+
+It is possible to customize any HTML template in the application, such as the error and loading pages. Pass the path to your HTML file with the argument `template-{name}` (e.g. `--template-error=./customError.html`). You can override any template in the [`html/`](html/) directory.
+
 ## User Interface
 TouchKio provides a simple webview window designed specifically for Touch Displays. Electron apps are known to be resource intensive due to their architecture and the inclusion of a full web browser environment. If you just run the kiosk application without other heavy loads, everything should run smoothly.
 
