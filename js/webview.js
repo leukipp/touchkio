@@ -1173,6 +1173,7 @@ const viewEvents = async () => {
 
                 // Turn display on if it was off
                 hardware.setDisplayStatus("ON");
+                WEBVIEW.tracker.display.on = new Date();
               }
               break;
             case "back":
