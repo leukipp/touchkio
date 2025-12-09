@@ -126,14 +126,20 @@ const initApp = async () => {
   });
 
   // Register process exit events
-  ["SIGINT", "SIGTERM", "SIGQUIT", "SIGTRAP", "exit"].forEach((signal) => {
+  ["SIGINT", "SIGTERM", "SIGQUIT", "exit"].forEach((signal) => {
     process.on(signal, () => {
+      if (APP.exiting) {
+        return;
+      }
       process.exitCode = 0;
       APP.exiting = true;
       app.quit();
     });
   });
   powerMonitor.on("shutdown", () => {
+    if (APP.exiting) {
+      return;
+    }
     process.exitCode = 0;
     APP.exiting = true;
     app.quit();
