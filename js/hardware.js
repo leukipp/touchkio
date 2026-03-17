@@ -13,6 +13,9 @@ global.HARDWARE = global.HARDWARE || {
       path: null,
     },
   },
+  illuminance: {
+    path: null,
+  },
   display: {
     status: {
       path: null,
@@ -49,6 +52,7 @@ const init = async () => {
   HARDWARE.session.type = sessionType();
   HARDWARE.session.desktop = sessionDesktop();
   HARDWARE.battery.level.path = getBatteryLevelPath();
+  HARDWARE.illuminance.path = getIlluminancePath();
   HARDWARE.display.status.path = getDisplayStatusPath();
   HARDWARE.display.status.command = getDisplayStatusCommand();
   HARDWARE.display.brightness.path = getDisplayBrightnessPath();
@@ -92,6 +96,12 @@ const init = async () => {
   console.info(
     `Battery Level [${HARDWARE.support.batteryLevel ? HARDWARE.battery.level.path : unsupported}]:`,
     batteryLevelInfo,
+  );
+  const illuminance = `${getIlluminance()} (sysfs)`;
+  const illuminanceInfo = HARDWARE.support.illuminance ? illuminance : unsupported;
+  console.info(
+    `Illuminance [${HARDWARE.support.illuminance ? HARDWARE.illuminance.path : unsupported}]:`,
+    illuminanceInfo,
   );
   const displayStatus = `${getDisplayStatus()} (${HARDWARE.display.status.command})`;
   const displayStatusInfo = HARDWARE.support.displayStatus ? displayStatus : unsupported;
@@ -293,6 +303,7 @@ const checkSupport = () => {
 
   const audioDevice = !!HARDWARE.audio.device;
   const batteryPath = !!HARDWARE.battery.level.path;
+  const illuminancePath = !!HARDWARE.illuminance.path;
   const statusPath = !!HARDWARE.display.status.path;
   const statusCommand = !!HARDWARE.display.status.command;
   const brightnessPath = !!HARDWARE.display.brightness.path && !!HARDWARE.display.brightness.value.max;
@@ -300,6 +311,7 @@ const checkSupport = () => {
 
   return {
     batteryLevel: batteryPath,
+    illuminance: illuminancePath,
     displayStatus: statusPath && statusCommand,
     displayBrightness: sudo && statusPath && statusCommand && (brightnessPath || brightnessCommand),
     keyboardVisibility: keyboard,
@@ -497,6 +509,46 @@ const getBatteryLevel = () => {
   const capacity = readFile(`${HARDWARE.battery.level.path}/capacity`);
   if (capacity) {
     return parseFloat(capacity);
+  }
+  return null;
+};
+
+/**
+ * Gets the ambient light sensor path using `/sys/bus/iio/devices`.
+ *
+ * @returns {string|null} The illuminance sensor path or null if nothing was found.
+ */
+const getIlluminancePath = () => {
+  const iio = "/sys/bus/iio/devices";
+  if (!fs.existsSync(iio)) {
+    return null;
+  }
+  for (const device of fs.readdirSync(iio)) {
+    const nameFile = path.join(iio, device, "name");
+    const rawFile = path.join(iio, device, "in_illuminance_raw");
+    if (!fs.existsSync(nameFile) || !fs.existsSync(rawFile)) {
+      continue;
+    }
+    const name = readFile(nameFile);
+    if (name === "als") {
+      return path.join(iio, device);
+    }
+  }
+  return null;
+};
+
+/**
+ * Gets the current ambient light level in lux using `/sys/bus/iio/devices/.../in_illuminance_raw`.
+ *
+ * @returns {number|null} The illuminance in lux or null if nothing was found.
+ */
+const getIlluminance = () => {
+  if (!HARDWARE.support.illuminance) {
+    return null;
+  }
+  const raw = readFile(`${HARDWARE.illuminance.path}/in_illuminance_raw`);
+  if (raw) {
+    return parseFloat(raw);
   }
   return null;
 };
@@ -1204,6 +1256,7 @@ module.exports = {
   getProcessorUsage,
   getProcessorTemperature,
   getBatteryLevel,
+  getIlluminance,
   getDisplayStatus,
   setDisplayStatus,
   getDisplayBrightness,

@@ -89,6 +89,7 @@ const init = async () => {
       initProcessorUsage();
       initProcessorTemperature();
       initBatteryLevel();
+      initIlluminance();
       initPackageUpgrades();
       initLastActive();
 
@@ -179,6 +180,7 @@ const update = async () => {
   updateProcessorUsage();
   updateProcessorTemperature();
   updateBatteryLevel();
+  updateIlluminance();
 };
 
 /**
@@ -995,6 +997,37 @@ const initBatteryLevel = () => {
 const updateBatteryLevel = async () => {
   const batteryLevel = hardware.getBatteryLevel();
   publishState("battery_level", batteryLevel);
+};
+
+/**
+ * Initializes the illuminance sensor.
+ */
+const initIlluminance = () => {
+  const root = `${INTEGRATION.root}/illuminance`;
+  const config = {
+    name: "Illuminance",
+    unique_id: `${INTEGRATION.node}_illuminance`,
+    state_topic: `${root}/state`,
+    value_template: "{{ (value | float) | round(0) }}",
+    unit_of_measurement: "lx",
+    device_class: "illuminance",
+    icon: "mdi:brightness-5",
+    device: INTEGRATION.device,
+  };
+  if (!HARDWARE.support.illuminance) {
+    removeConfig("sensor", config);
+    return;
+  }
+  publishConfig("sensor", config);
+  updateIlluminance();
+};
+
+/**
+ * Updates the illuminance sensor via the mqtt connection.
+ */
+const updateIlluminance = async () => {
+  const illuminance = hardware.getIlluminance();
+  publishState("illuminance", illuminance);
 };
 
 /**
