@@ -298,10 +298,13 @@ const checkSupport = () => {
   const brightnessPath = !!HARDWARE.display.brightness.path && !!HARDWARE.display.brightness.value.max;
   const brightnessCommand = !!HARDWARE.display.brightness.command && !!HARDWARE.display.brightness.value.max;
 
+  const hasBrightness = sudo && (brightnessPath || brightnessCommand);
+
   return {
     batteryLevel: batteryPath,
-    displayStatus: statusPath && statusCommand,
-    displayBrightness: sudo && statusPath && statusCommand && (brightnessPath || brightnessCommand),
+    // Assume displayStatus is true if brightness works but status command doesn't (e.g., cage)
+    displayStatus: (statusPath && statusCommand) || hasBrightness,
+    displayBrightness: hasBrightness,
     keyboardVisibility: keyboard,
     audioVolume: audioDevice,
     sudoRights: sudo,
@@ -576,6 +579,10 @@ const getDisplayStatus = () => {
       }
       break;
   }
+  // If no status command but brightness is supported, assume display is on
+  if (HARDWARE.support.displayBrightness) {
+    return "ON";
+  }
   return null;
 };
 
@@ -607,6 +614,10 @@ const setDisplayStatus = (status, callback = null) => {
       break;
     case "xset":
       execAsyncCommand("xset", ["dpms", "force", status.toLowerCase()], callback);
+      break;
+    default:
+      // No display status command available, just call callback
+      if (typeof callback === "function") callback(null, null);
       break;
   }
 };
