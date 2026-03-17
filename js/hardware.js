@@ -451,6 +451,8 @@ const getProcessorUsage = () => {
  */
 const getProcessorTemperature = () => {
   const thermal = "/sys/class/thermal";
+  const priorities = ["x86_pkg_temp", "k10temp", "cpu-thermal", "soc_dts0", "PNIT", "cpu", "acpitz"];
+  let best = null;
   for (const zone of fs.readdirSync(thermal)) {
     const typeFile = path.join(thermal, zone, "type");
     const tempFile = path.join(thermal, zone, "temp");
@@ -458,14 +460,20 @@ const getProcessorTemperature = () => {
       continue;
     }
     const type = readFile(typeFile);
-    if (["cpu-thermal", "x86_pkg_temp", "k10temp", "acpitz", "cpu"].includes(type)) {
+    const priority = priorities.indexOf(type);
+    if (priority !== -1) {
       const temp = readFile(tempFile);
       if (temp) {
-        return parseFloat(temp) / 1000;
+        const celsius = parseFloat(temp) / 1000;
+        if (celsius >= -40 && celsius <= 150) {
+          if (best === null || priority < priorities.indexOf(best.type)) {
+            best = { type, celsius };
+          }
+        }
       }
     }
   }
-  return null;
+  return best ? best.celsius : null;
 };
 
 /**
