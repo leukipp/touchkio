@@ -17,6 +17,7 @@ global.HARDWARE = global.HARDWARE || {
     status: {
       path: null,
       command: null,
+      ddcPowerMode: false,
       value: {},
     },
     brightness: {
@@ -50,10 +51,10 @@ const init = async () => {
   HARDWARE.session.desktop = sessionDesktop();
   HARDWARE.battery.level.path = getBatteryLevelPath();
   HARDWARE.display.status.path = getDisplayStatusPath();
-  HARDWARE.display.status.command = getDisplayStatusCommand();
   HARDWARE.display.brightness.path = getDisplayBrightnessPath();
   HARDWARE.display.brightness.command = getDisplayBrightnessCommand();
   HARDWARE.display.brightness.value.max = getDisplayBrightnessMax();
+  HARDWARE.display.status.command = getDisplayStatusCommand();
   HARDWARE.audio.device = getAudioDevice();
   HARDWARE.support = checkSupport();
   HARDWARE.initialized = true;
@@ -96,7 +97,7 @@ const init = async () => {
   const displayStatus = `${getDisplayStatus()} (${HARDWARE.display.status.command})`;
   const displayStatusInfo = HARDWARE.support.displayStatus ? displayStatus : unsupported;
   console.info(
-    `Display Status [${HARDWARE.support.displayStatus ? HARDWARE.display.status.path : unsupported}]:`,
+    `Display Status [${HARDWARE.support.displayStatus ? (HARDWARE.display.status.command === "ddcutil" ? "ddc://vcp/feature/0xD6" : HARDWARE.display.status.path) : unsupported}]:`,
     displayStatusInfo,
   );
   const displayBrightness = `${getDisplayBrightness()} (${HARDWARE.display.brightness.command || "sysfs"})`;
@@ -168,6 +169,16 @@ const update = async () => {
   // Check if display status has changed
   if (HARDWARE.support.displayStatus) {
     let displayStatusChanged = false;
+
+    // Use cache status path if available (ddcutil)
+    if (HARDWARE.display.status.command === "ddcutil") {
+      const status = await readFile(path.join(APP.cache, "Status.vcp"), false);
+      const statusChanged = !!status && status !== HARDWARE.display.status.value.status;
+
+      // Update internal status values
+      HARDWARE.display.status.value.status = status;
+      displayStatusChanged |= statusChanged;
+    }
 
     // Use sysfs dpms path if available
     if (HARDWARE.display.status.path) {
@@ -527,6 +538,12 @@ const getDisplayStatusPath = () => {
  * @returns {string|null} The display status command or null if nothing was found.
  */
 const getDisplayStatusCommand = () => {
+  // Prefer ddcutil when already used for brightness (HDMI without sysfs backlight)
+  if (HARDWARE.display.brightness.command === "ddcutil" && HARDWARE.display.status.ddcPowerMode) {
+    fs.writeFileSync(path.join(APP.cache, "Status.vcp"), "");
+    return "ddcutil";
+  }
+
   const type = HARDWARE.session.type;
   const desktop = HARDWARE.session.desktop;
   const mapping = {
@@ -541,6 +558,13 @@ const getDisplayStatusCommand = () => {
       return map.command;
     }
   }
+
+  // Fallback to ddcutil DDC power mode (VCP 0xD6) when no DPMS tool is available
+  if (HARDWARE.display.status.ddcPowerMode) {
+    fs.writeFileSync(path.join(APP.cache, "Status.vcp"), "");
+    return "ddcutil";
+  }
+
   return null;
 };
 
@@ -575,6 +599,13 @@ const getDisplayStatus = () => {
         return output ? "ON" : "OFF";
       }
       break;
+    case "ddcutil":
+      const ddc = execSyncCommand("sudo", ["ddcutil", "getvcp", "d6", "--brief"]);
+      if (ddc !== null) {
+        const match = ddc.match(/x0([14])/);
+        if (match) return match[1] === "1" ? "ON" : "OFF";
+      }
+      break;
   }
   return null;
 };
@@ -607,6 +638,14 @@ const setDisplayStatus = (status, callback = null) => {
       break;
     case "xset":
       execAsyncCommand("xset", ["dpms", "force", status.toLowerCase()], callback);
+      break;
+    case "ddcutil":
+      execAsyncCommand("sudo", ["ddcutil", "setvcp", "--noverify", "d6", status === "ON" ? "1" : "4"], (reply, error) => {
+        if (!error) {
+          fs.writeFileSync(path.join(APP.cache, "Status.vcp"), status);
+        }
+        if (typeof callback === "function") callback(reply, error);
+      });
       break;
   }
 };
@@ -646,9 +685,12 @@ const getDisplayBrightnessCommand = () => {
       switch (map.command) {
         case "ddcutil":
           const output = execSyncCommand("sudo", ["ddcutil", "capabilities"]);
-          if (output && output.includes("Feature: 10")) {
-            fs.writeFileSync(path.join(APP.cache, "Brightness.vcp"), "");
-            return map.command;
+          if (output) {
+            HARDWARE.display.status.ddcPowerMode = output.includes("Feature: D6");
+            if (output.includes("Feature: 10")) {
+              fs.writeFileSync(path.join(APP.cache, "Brightness.vcp"), "");
+              return map.command;
+            }
           }
           break;
         default:
