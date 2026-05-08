@@ -609,6 +609,16 @@ const setDisplayStatus = (status, callback = null) => {
       execAsyncCommand("xset", ["dpms", "force", status.toLowerCase()], callback);
       break;
   }
+  if (HARDWARE.support.displayBrightness && !HARDWARE.display.brightness.command) {
+    if (status === "OFF") {
+      HARDWARE.display.brightness.value.saved = getDisplayBrightness();
+      setDisplayBrightness(0);
+    } else if (status === "ON" && HARDWARE.display.brightness.value.saved != null) {
+      const saved = HARDWARE.display.brightness.value.saved;
+      HARDWARE.display.brightness.value.saved = null;
+      setDisplayBrightness(saved);
+    }
+  }
 };
 
 /**
@@ -725,8 +735,8 @@ const setDisplayBrightness = (brightness, callback = null) => {
     if (typeof callback === "function") callback(null, "Not supported");
     return;
   }
-  if (typeof brightness !== "number" || brightness < 1 || brightness > 100) {
-    console.error("Brightness must be a number between 1 and 100");
+  if (typeof brightness !== "number" || brightness < 0 || brightness > 100) {
+    console.error("Brightness must be a number between 0 and 100");
     if (typeof callback === "function") callback(null, "Invalid brightness");
     return;
   }
@@ -742,7 +752,7 @@ const setDisplayBrightness = (brightness, callback = null) => {
   }
   if (HARDWARE.display.brightness.path) {
     const max = HARDWARE.display.brightness.value.max || 1;
-    const value = Math.max(1, Math.min(Math.round((brightness / 100) * max), max));
+    const value = Math.max(0, Math.min(Math.round((brightness / 100) * max), max));
     const proc = execAsyncCommand("sudo", ["tee", path.join(HARDWARE.display.brightness.path, "brightness")], callback);
     proc.stdin.write(value.toString());
     proc.stdin.end();
