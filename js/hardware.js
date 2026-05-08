@@ -715,7 +715,7 @@ const getDisplayBrightness = () => {
     const brightness = readFile(path.join(HARDWARE.display.brightness.path, "brightness"));
     if (brightness) {
       const max = HARDWARE.display.brightness.value.max || 1;
-      return Math.max(1, Math.min(Math.round((parseInt(brightness, 10) / max) * 100), 100));
+      return Math.max(0, Math.min(Math.round((parseInt(brightness, 10) / max) * 100), 100));
     }
   }
   return null;
