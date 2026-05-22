@@ -31,6 +31,11 @@ global.HARDWARE = global.HARDWARE || {
   audio: {
     device: null,
   },
+  motion: {
+    device: {
+      path: null,
+    },
+  },
 };
 
 /**
@@ -55,6 +60,7 @@ const init = async () => {
   HARDWARE.display.brightness.command = getDisplayBrightnessCommand();
   HARDWARE.display.brightness.value.max = getDisplayBrightnessMax();
   HARDWARE.audio.device = getAudioDevice();
+  HARDWARE.motion.device.path = getMotionDevicePath();
   HARDWARE.support = checkSupport();
   HARDWARE.initialized = true;
 
@@ -116,6 +122,11 @@ const init = async () => {
   console.info(
     `Keyboard Visibility [${HARDWARE.support.keyboardVisibility ? "dbus://sm/puri/OSK0" : unsupported}]:`,
     keyboardVisibilityInfo,
+  );
+  const motionSensorInfo = HARDWARE.support.motionSensor ? `${HARDWARE.motion.device.path} (motion)` : unsupported;
+  console.info(
+    `Motion Sensor [${HARDWARE.support.motionSensor ? HARDWARE.motion.device.path : unsupported}]:`,
+    motionSensorInfo,
   );
   process.stdout.write("\n");
 
@@ -297,6 +308,7 @@ const checkSupport = () => {
   const statusCommand = !!HARDWARE.display.status.command;
   const brightnessPath = !!HARDWARE.display.brightness.path && !!HARDWARE.display.brightness.value.max;
   const brightnessCommand = !!HARDWARE.display.brightness.command && !!HARDWARE.display.brightness.value.max;
+  const motionDevice = !!HARDWARE.motion.device.path;
 
   return {
     batteryLevel: batteryPath,
@@ -304,6 +316,7 @@ const checkSupport = () => {
     displayBrightness: sudo && statusPath && statusCommand && (brightnessPath || brightnessCommand),
     keyboardVisibility: keyboard,
     audioVolume: audioDevice,
+    motionSensor: motionDevice && commandExists("motion"),
     sudoRights: sudo,
     appUpdate: service && sudo && release,
   };
@@ -766,6 +779,19 @@ const getAudioDevice = () => {
 };
 
 /**
+ * Gets the webcam device path from the `--motion-device` argument.
+ *
+ * @returns {string|null} The webcam device path or null if not configured or not found.
+ */
+const getMotionDevicePath = () => {
+  const device = ARGS.motion_device || null;
+  if (device && fs.existsSync(device)) {
+    return device;
+  }
+  return null;
+};
+
+/**
  * Gets the default audio device volume using `pactl`.
  *
  * @returns {number|null} The default audio device volume as a percentage or null if an error occurs.
@@ -1212,6 +1238,7 @@ module.exports = {
   setAudioVolume,
   getKeyboardVisibility,
   setKeyboardVisibility,
+  getMotionDevicePath,
   checkPackageUpgrades,
   shutdownSystem,
   rebootSystem,

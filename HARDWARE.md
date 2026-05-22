@@ -68,6 +68,7 @@ The necessary requirements for MQTT sensors to work are listed here:
 | Volume               | Device (non-dummy) `pactl get-default-sink` exists.                                                           | [#82](https://github.com/leukipp/touchkio/issues/82)                                                         |
 | Reboot               | Requires password-less `sudo` rights.                                                                         | [#39](https://github.com/leukipp/touchkio/issues/39)                                                         |
 | Shutdown             | Requires password-less `sudo` rights.                                                                         | [#39](https://github.com/leukipp/touchkio/issues/39)                                                         |
+| Motion               | Requires `motion` package installed and `--motion-device` argument pointing to a valid `/dev/video*` device.  | -                                                                                                             |
 
 ## FAQ
 

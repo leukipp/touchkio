@@ -1,3 +1,4 @@
+const fs = require("fs");
 const mqtt = require("mqtt");
 const hardware = require("./hardware");
 const { app } = require("electron");
@@ -91,6 +92,7 @@ const init = async () => {
       initBatteryLevel();
       initPackageUpgrades();
       initLastActive();
+      initMotion();
 
       // Init client diagnostic
       initScreenshot();
@@ -1190,6 +1192,51 @@ const updateLastActive = async () => {
   };
   publishState("last_active", lastActive);
   publishAttributes("last_active", tracker);
+};
+
+/**
+ * Initializes the motion binary sensor.
+ * Publishes an MQTT discovery config and watches the motion state file written by
+ * the `motion` daemon's on_event_start/on_event_end hooks.
+ */
+const initMotion = () => {
+  if (!HARDWARE.support.motionSensor || ARGS.app_disable.includes("mqtt_motion")) {
+    removeConfig("binary_sensor", {
+      unique_id: `${INTEGRATION.node}_motion`,
+    });
+    return;
+  }
+  const stateFile = "/tmp/kiosk_motion_state";
+  const root = `${INTEGRATION.root}/motion`;
+  const config = {
+    name: "Motion",
+    unique_id: `${INTEGRATION.node}_motion`,
+    state_topic: `${root}/state`,
+    device_class: "motion",
+    payload_on: "ON",
+    payload_off: "OFF",
+    icon: "mdi:motion-sensor",
+    device: INTEGRATION.device,
+  };
+  publishConfig("binary_sensor", config);
+  updateMotion();
+  fs.watchFile(stateFile, { interval: 500 }, () => updateMotion());
+};
+
+/**
+ * Updates the motion binary sensor via the mqtt connection.
+ */
+const updateMotion = () => {
+  if (!HARDWARE.support.motionSensor || ARGS.app_disable.includes("mqtt_motion")) {
+    return;
+  }
+  let state = "OFF";
+  try {
+    state = fs.readFileSync("/tmp/kiosk_motion_state", "utf8").trim() === "ON" ? "ON" : "OFF";
+  } catch {
+    // state file absent — default to no motion
+  }
+  publishState("motion", state);
 };
 
 /**

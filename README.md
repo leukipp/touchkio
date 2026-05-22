@@ -34,6 +34,7 @@ Moreover, the device running the **kiosk application** also offers several **Hom
   - [x] Volume control for connected audio outputs.
   - [x] Execute system reboot and shutdown commands.
   - [x] Monitor battery, temperature, processor and memory usage.
+  - [x] Motion sensor binary using a connected USB or built-in webcam.
 
 The kiosk application can be executed with command line arguments to load a **Home Assistant dashboard in fullscreen** mode.
 Additionally, a **MQTT endpoint** can be defined, allowing the application to provide controls and sensors for the Linux device and the connected Touch Display.
@@ -157,6 +158,46 @@ For example:
 ```bash
 touchkio --web-url=http://192.168.1.42:8123 --mqtt-url=mqtt://192.168.1.42:1883 --mqtt-user=kiosk --mqtt-password=password
 ```
+
+### MOTION
+If your device has a USB or built-in webcam, TouchKio can expose a **Motion** binary sensor in Home Assistant.
+Motion detection is handled by the external [`motion`](https://motion-project.github.io) daemon, which writes detection state to a shared file that TouchKio watches.
+
+| Name                          | Default | Description                                                                      |
+| ----------------------------- | ------- | -------------------------------------------------------------------------------- |
+| `--motion-device` (Optional)  | -       | Path to the webcam device (e.g. `/dev/video0`). Enables the motion binary sensor. |
+
+**Requirements:** the `motion` package must be installed (`sudo apt install motion`) and the specified device must exist.
+
+**Setup:** configure `/etc/motion/motion.conf` to call two hook scripts on detection events:
+```
+on_event_start /usr/local/bin/kiosk-motion-start
+on_event_end   /usr/local/bin/kiosk-motion-end
+```
+
+Create the two hook scripts:
+```bash
+# /usr/local/bin/kiosk-motion-start
+#!/bin/bash
+echo "ON" > /tmp/kiosk_motion_state
+
+# /usr/local/bin/kiosk-motion-end
+#!/bin/bash
+echo "OFF" > /tmp/kiosk_motion_state
+```
+
+Make them executable and ensure the `motion` daemon user can write to `/tmp/kiosk_motion_state`:
+```bash
+sudo chmod +x /usr/local/bin/kiosk-motion-start /usr/local/bin/kiosk-motion-end
+echo "OFF" | sudo tee /tmp/kiosk_motion_state && sudo chmod 666 /tmp/kiosk_motion_state
+```
+
+Then start TouchKio with the device argument:
+```bash
+touchkio --web-url=http://192.168.1.42:8123 --mqtt-url=mqtt://192.168.1.42:1883 --mqtt-user=kiosk --mqtt-password=password --motion-device=/dev/video0
+```
+
+The **Motion** binary sensor will appear automatically in Home Assistant under the same TouchKio device as all other sensors.
 
 ## User Interface
 TouchKio provides a simple webview window designed specifically for Touch Displays. Electron apps are known to be resource intensive due to their architecture and the inclusion of a full web browser environment. If you just run the kiosk application without other heavy loads, everything should run smoothly.
