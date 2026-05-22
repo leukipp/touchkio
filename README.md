@@ -241,6 +241,11 @@ The Raspberry Pi's **build-in screen blanking** function uses the command `swayi
 The `wlopm --off \*` command changes the `/sys/class/backlight/*/bl_power` value to **4**, when setting the value to **0** the screen will turn on again.
 However, `swayidle` still seems to consider the screen to be off and as a result it will not turn off again unless there is some interaction in the meantime.
 
+When using Raspberry Pi OS with labwc/Wayland and `wayvnc`, display power control through `wlopm` will fail while a VNC client is actively connected.
+In this state, commands such as `wlopm --off DSI-2` or `wlopm --on DSI-2` return `ERROR: Setting power mode for output 'DSI-2' failed.`
+The issue occurs during an active VNC screen capture session. After disconnecting the VNC client, `wlopm` starts working again without rebooting the device or restarting TouchKio.
+If display power control is automated through Home Assistant, it is recommended to avoid testing or relying on display on/off commands while a VNC session is active, or to verify that the requested display state was actually applied.
+
 When using the MQTT integration, the kiosk application must be able to **detect changes** made on the **device** itself.
 I managed to achieve this for the `/sys/class/backlight/*/brightness` file by implementing a simple `fs.watch(..)` file listener.
 However, I found that it **never triggered** for the `/sys/class/backlight/*/bl_power` or the `/sys/class/drm/*/dpms` file.
