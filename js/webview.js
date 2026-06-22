@@ -78,8 +78,12 @@ const init = async () => {
     return app.quit();
   }
 
-  // Clear cache and storage
+  // Clear HTTP cache and Service Worker CacheStorage on every start.
+  // CacheStorage (used by the SW) can grow to several GB over time without this.
   await session.defaultSession.clearCache();
+  await session.defaultSession.clearStorageData({
+    storages: ['cachestorage', 'serviceworkers'],
+  });
   if (ARGS.app_reset === "storage") {
     await session.defaultSession.clearStorageData();
   }
@@ -668,6 +672,32 @@ const homeView = () => {
 };
 
 /**
+ * Clears HTTP cache and Service Worker CacheStorage, then reloads the active webview.
+ */
+const clearCacheView = async () => {
+  if (!WEBVIEW.viewActive) {
+    return;
+  }
+  const view = WEBVIEW.views[WEBVIEW.viewActive];
+  const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
+  const currentUrl = view.webContents.getURL();
+
+  // Clear logs, HTTP cache and Service Worker CacheStorage
+  APP.logs = [];
+  await view.webContents.session.clearCache();
+  await view.webContents.session.clearStorageData({
+    storages: ["cachestorage", "serviceworkers"],
+  });
+
+  // Reload the default url or refresh the page
+  if (currentUrl.startsWith("data:")) {
+    view.webContents.loadURL(defaultUrl);
+  } else {
+    view.webContents.reloadIgnoringCache();
+  }
+};
+
+/**
  * Reloads the current url on the active webview.
  */
 const reloadView = () => {
@@ -1247,6 +1277,7 @@ const appEvents = async () => {
   console.debug("webview.js: appEvents()");
 
   // Handle global events
+  EVENTS.on("clearCache", clearCacheView);
   EVENTS.on("reloadView", reloadView);
   EVENTS.on("updateView", updateView);
   EVENTS.on("updateDisplay", () => {

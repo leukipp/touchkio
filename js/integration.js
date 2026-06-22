@@ -69,6 +69,7 @@ const init = async () => {
       initShutdown();
       initReboot();
       initRefresh();
+      initCacheClear();
       initKiosk();
       initTheme();
       initDisplay();
@@ -376,6 +377,31 @@ const initRefresh = () => {
         console.verbose("Refreshing webview...");
         hardware.setDisplayStatus("ON", () => {
           EVENTS.emit("reloadView");
+        });
+      }
+    })
+    .subscribe(config.command_topic);
+};
+
+/**
+ * Initializes the cache clear button and handles the execute logic.
+ * Clears HTTP cache and Service Worker CacheStorage, then reloads the webview.
+ */
+const initCacheClear = () => {
+  const root = `${INTEGRATION.root}/cache`;
+  const config = {
+    name: "Clear Cache",
+    unique_id: `${INTEGRATION.node}_cache_clear`,
+    command_topic: `${root}/clear`,
+    icon: "mdi:cached",
+    device: INTEGRATION.device,
+  };
+  publishConfig("button", config)
+    .on("message", (topic, message) => {
+      if (topic === config.command_topic) {
+        console.verbose("Clearing cache and reloading webview...");
+        hardware.setDisplayStatus("ON", () => {
+          EVENTS.emit("clearCache");
         });
       }
     })
