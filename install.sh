@@ -48,6 +48,10 @@ echo -e "\nInstalling the latest release..."
 command -v apt &> /dev/null || { echo "Package manager apt was not found."; exit 1; }
 sudo apt install -y "$DEB_PATH" || { echo "Installation of .deb file failed."; exit 1; }
 
+# Install optional dependency for USB power control
+echo -e "\nInstalling optional dependency uhubctl for USB power control..."
+sudo apt install -y uhubctl || echo "uhubctl not installed; USB power control will be unavailable."
+
 # Create the systemd user service
 echo -e "\nCreating systemd user service..."
 

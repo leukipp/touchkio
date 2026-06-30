@@ -39,6 +39,14 @@ global.HARDWARE = global.HARDWARE || {
       input: null,
     },
   },
+  usb: {
+    power: {
+      locations: [],
+      ports: null,
+      sudo: false,
+      value: { status: null },
+    },
+  },
 };
 
 /**
@@ -65,6 +73,9 @@ const init = async () => {
   HARDWARE.display.brightness.value.max = getDisplayBrightnessMax();
   HARDWARE.audio.device.output = getAudioOutput();
   HARDWARE.audio.device.input = getAudioInput();
+  HARDWARE.usb.power.locations = getUsbPowerLocations();
+  HARDWARE.usb.power.ports = getUsbPowerPorts();
+  HARDWARE.usb.power.sudo = getUsbPowerSudo();
   HARDWARE.support = checkSupport();
   HARDWARE.initialized = true;
 
@@ -139,6 +150,16 @@ const init = async () => {
     `Keyboard Visibility [${HARDWARE.support.keyboardVisibility ? "dbus://sm/puri/OSK0" : unsupported}]:`,
     keyboardVisibilityInfo,
   );
+  const usbPowerLabel = getUsbPowerCommandLabel();
+  const usbPower = `${getUsbPowerStatus()} (${usbPowerLabel})`;
+  const usbPowerInfo = HARDWARE.support.usbPower ? usbPower : unsupported;
+  console.info(
+    `USB Power [${HARDWARE.support.usbPower ? HARDWARE.usb.power.locations.join(",") : unsupported}]:`,
+    usbPowerInfo,
+  );
+  if (HARDWARE.usb.power.locations.length && !HARDWARE.support.usbPower) {
+    logUsbPowerHint();
+  }
   process.stdout.write("\n");
 
   // Monitor audio output and input volume
@@ -179,6 +200,18 @@ const init = async () => {
   setDisplayStatus("ON", () => {
     interval(update, 1 * 1000);
   });
+
+  // Monitor USB power changes (5s)
+  if (HARDWARE.support.usbPower) {
+    interval(async () => {
+      const status = getUsbPowerStatus();
+      if (status && status !== HARDWARE.usb.power.value.status) {
+        HARDWARE.usb.power.value.status = status;
+        console.info("Update USB Power Status:", status);
+        EVENTS.emit("updateUsbPower");
+      }
+    }, 5 * 1000);
+  }
 
   return true;
 };
@@ -326,6 +359,7 @@ const checkSupport = () => {
     microphoneVolume: audioInput,
     appUpdate: sudo && service && release,
     sudoRights: sudo,
+    usbPower: commandExists("uhubctl") && HARDWARE.usb.power.locations.length > 0 && uhubctlProbe(),
   };
 };
 
@@ -738,6 +772,252 @@ const setDisplayStatus = (status, callback = null) => {
       execAsyncCommand("xset", ["dpms", "force", status.toLowerCase()], callback);
       break;
   }
+};
+
+/**
+ * Gets configured USB hub locations from arguments.
+ *
+ * @returns {Array<string>} USB hub locations for uhubctl -l.
+ */
+const getUsbPowerLocations = () => {
+  const value = ARGS.usb_power_location;
+  if (!value) {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value.map((location) => location.trim()).filter(Boolean);
+  }
+  return value
+    .split(",")
+    .map((location) => location.trim())
+    .filter(Boolean);
+};
+
+/**
+ * Gets configured USB port filter from arguments.
+ *
+ * @returns {string|null} USB port list for uhubctl -p or null for all ports.
+ */
+const getUsbPowerPorts = () => {
+  const value = ARGS.usb_power_ports;
+  if (!value || (typeof value === "string" && !value.trim())) {
+    return null;
+  }
+  return typeof value === "string" ? value.trim() : String(value);
+};
+
+/**
+ * Gets whether uhubctl should run with sudo from arguments.
+ *
+ * @returns {bool} True if uhubctl commands should use sudo.
+ */
+const getUsbPowerSudo = () => {
+  return ARGS.usb_power_sudo === "true" || ARGS.usb_power_sudo === true;
+};
+
+/**
+ * Gets the command label used for USB power logging.
+ *
+ * @returns {string} Command label for logs.
+ */
+const getUsbPowerCommandLabel = () => {
+  return HARDWARE.usb.power.sudo ? "sudo uhubctl" : "uhubctl";
+};
+
+/**
+ * Executes uhubctl synchronously with the configured elevation mode.
+ *
+ * @param {Array<string>} args - uhubctl arguments.
+ * @returns {string|null} Command output or null on error.
+ */
+const execSyncUhubctl = (args) => {
+  if (HARDWARE.usb.power.sudo) {
+    return execSyncCommand("sudo", ["uhubctl", ...args]);
+  }
+  return execSyncCommand("uhubctl", args);
+};
+
+/**
+ * Executes uhubctl asynchronously with the configured elevation mode.
+ *
+ * @param {Array<string>} args - uhubctl arguments.
+ * @param {Function} callback - A callback function that receives the output or error.
+ * @returns {Object} The spawned process object.
+ */
+const execAsyncUhubctl = (args, callback = null) => {
+  if (HARDWARE.usb.power.sudo) {
+    return execAsyncCommand("sudo", ["uhubctl", ...args], callback);
+  }
+  return execAsyncCommand("uhubctl", args, callback);
+};
+
+/**
+ * Parses uhubctl port status output.
+ *
+ * @param {string} output - uhubctl command output.
+ * @returns {Object} Port numbers mapped to ON/OFF status.
+ */
+const parseUhubctlPorts = (output) => {
+  const ports = {};
+  const regex = /^\s*Port\s+(\d+):\s+\w+\s+(power|off)/gm;
+  let match = null;
+  while ((match = regex.exec(output)) !== null) {
+    ports[match[1]] = match[2] === "power" ? "ON" : "OFF";
+  }
+  return ports;
+};
+
+/**
+ * Expands a uhubctl port filter into individual port numbers.
+ *
+ * @param {string|null} portFilter - Optional comma/range port filter.
+ * @returns {Array<string>|null} Port numbers or null for all ports.
+ */
+const expandPortFilter = (portFilter) => {
+  if (!portFilter) {
+    return null;
+  }
+  const ports = [];
+  for (const part of portFilter.split(",")) {
+    const trimmed = part.trim();
+    if (!trimmed) {
+      continue;
+    }
+    if (trimmed.includes("-")) {
+      const [start, end] = trimmed.split("-").map((value) => parseInt(value, 10));
+      if (!isNaN(start) && !isNaN(end)) {
+        for (let port = start; port <= end; port++) {
+          ports.push(String(port));
+        }
+      }
+    } else {
+      ports.push(trimmed);
+    }
+  }
+  return ports.length ? ports : null;
+};
+
+/**
+ * Aggregates port statuses into a single ON/OFF value.
+ *
+ * @param {Object} ports - Port numbers mapped to ON/OFF status.
+ * @param {string|null} portFilter - Optional comma-separated port filter.
+ * @returns {string|null} Aggregated status or null if no ports were found.
+ */
+const aggregateUsbPowerStatus = (ports, portFilter = null) => {
+  const portNumbers = expandPortFilter(portFilter) || Object.keys(ports);
+  const statuses = portNumbers.map((port) => ports[port]).filter(Boolean);
+  if (!statuses.length) {
+    return null;
+  }
+  if (statuses.every((status) => status === "ON")) {
+    return "ON";
+  }
+  if (statuses.every((status) => status === "OFF")) {
+    return "OFF";
+  }
+  return "OFF";
+};
+
+/**
+ * Probes whether uhubctl works with the configured elevation mode.
+ *
+ * @returns {bool} True if uhubctl can query the configured hub location.
+ */
+const uhubctlProbe = () => {
+  if (!commandExists("uhubctl") || !HARDWARE.usb.power.locations.length) {
+    return false;
+  }
+  if (HARDWARE.usb.power.sudo && !sudoRights()) {
+    return false;
+  }
+  const output = execSyncUhubctl(["-l", HARDWARE.usb.power.locations[0]]);
+  return output !== null && /Port\s+\d+:/.test(output);
+};
+
+/**
+ * Logs setup hints when USB power is configured but unavailable.
+ */
+const logUsbPowerHint = () => {
+  if (HARDWARE.usb.power.sudo) {
+    console.warn(
+      "USB power control requires passwordless sudo for uhubctl or set usb_power_sudo to false with udev rules.",
+    );
+    return;
+  }
+  console.warn(
+    "USB power control requires udev rules for uhubctl or set usb_power_sudo to true with passwordless sudo.",
+  );
+  console.warn("See https://github.com/mvp/uhubctl/blob/master/udev/rules.d/52-usb.rules");
+};
+
+/**
+ * Gets the USB hub power status using `uhubctl`.
+ *
+ * @returns {string|null} USB power status ON/OFF or null if unavailable.
+ */
+const getUsbPowerStatus = () => {
+  if (!HARDWARE.support.usbPower) {
+    return null;
+  }
+  const statuses = [];
+  for (const location of HARDWARE.usb.power.locations) {
+    const output = execSyncUhubctl(["-l", location]);
+    if (!output) {
+      return null;
+    }
+    const status = aggregateUsbPowerStatus(parseUhubctlPorts(output), HARDWARE.usb.power.ports);
+    if (!status) {
+      return null;
+    }
+    statuses.push(status);
+  }
+  if (!statuses.length) {
+    return null;
+  }
+  if (statuses.every((status) => status === "ON")) {
+    return "ON";
+  }
+  return "OFF";
+};
+
+/**
+ * Sets the USB hub power status using `uhubctl`.
+ *
+ * @param {string} status - The desired status ('ON' or 'OFF').
+ * @param {Function} callback - A callback function that receives the output or error.
+ */
+const setUsbPowerStatus = (status, callback = null) => {
+  if (!HARDWARE.support.usbPower) {
+    if (typeof callback === "function") callback(null, "Not supported");
+    return;
+  }
+  if (!["ON", "OFF"].includes(status)) {
+    console.error("Status must be 'ON' or 'OFF'");
+    if (typeof callback === "function") callback(null, "Invalid status");
+    return;
+  }
+  const action = status === "ON" ? "1" : "0";
+  const locations = HARDWARE.usb.power.locations;
+  const runLocation = (index) => {
+    if (index >= locations.length) {
+      HARDWARE.usb.power.value.status = status;
+      if (typeof callback === "function") callback("", null);
+      return;
+    }
+    const args = ["-a", action, "-l", locations[index]];
+    if (HARDWARE.usb.power.ports) {
+      args.push("-p", HARDWARE.usb.power.ports);
+    }
+    execAsyncUhubctl(args, (reply, error) => {
+      if (error) {
+        if (typeof callback === "function") callback(null, error);
+        return;
+      }
+      runLocation(index + 1);
+    });
+  };
+  runLocation(0);
 };
 
 /**
@@ -1428,6 +1708,8 @@ module.exports = {
   setMicrophoneVolume,
   getKeyboardVisibility,
   setKeyboardVisibility,
+  getUsbPowerStatus,
+  setUsbPowerStatus,
   checkPackageUpgrades,
   shutdownSystem,
   rebootSystem,

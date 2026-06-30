@@ -182,6 +182,18 @@ const initArgs = async () => {
   if (!Array.isArray(args.app_reset)) {
     args.app_reset = args.app_reset.split(",").map((reset) => reset.trim());
   }
+  if (args.usb_power_location && !Array.isArray(args.usb_power_location)) {
+    args.usb_power_location = args.usb_power_location
+      .split(",")
+      .map((location) => location.trim())
+      .filter(Boolean);
+  }
+  if (args.usb_power_ports === "") {
+    delete args.usb_power_ports;
+  }
+  if ("usb_power_sudo" in args) {
+    args.usb_power_sudo = args.usb_power_sudo === "true" || args.usb_power_sudo === true ? "true" : "false";
+  }
 
   // Calculate arguments hash
   const argsFileHash = crypto.createHash("sha256").update(JSON.stringify(args)).digest("hex");
@@ -335,6 +347,26 @@ const promptArgs = async (proc) => {
       fallback: "homeassistant",
     },
     {
+      key: "usb_power",
+      question: "\nEnable USB power control via MQTT?",
+      fallback: "y/N",
+    },
+    {
+      key: "usb_power_location",
+      question: "Enter USB hub location(s)",
+      fallback: "1-1",
+    },
+    {
+      key: "usb_power_ports",
+      question: "Enter USB port number(s) (optional)",
+      fallback: "",
+    },
+    {
+      key: "usb_power_sudo",
+      question: "Use sudo for uhubctl? (No if udev rules are configured)",
+      fallback: "y/N",
+    },
+    {
       key: "check",
       question: "\nEverything looks good?",
       fallback: "Y/n",
@@ -351,8 +383,29 @@ const promptArgs = async (proc) => {
         const answer = await read.question(prompt);
         const value = (answer.trim() || fallback.match(/[YN]/)[0]).toLowerCase();
         if (!["y", "yes"].includes(value)) {
-          ignore = ignore.concat(["mqtt_url", "mqtt_user", "mqtt_password", "mqtt_discovery"]);
+          ignore = ignore.concat([
+            "mqtt_url",
+            "mqtt_user",
+            "mqtt_password",
+            "mqtt_discovery",
+            "usb_power",
+            "usb_power_location",
+            "usb_power_ports",
+            "usb_power_sudo",
+          ]);
         }
+      } else if (key === "usb_power") {
+        const prompt = `${question} (${fallback}): `;
+        const answer = await read.question(prompt);
+        const value = (answer.trim() || fallback.match(/[YN]/)[0]).toLowerCase();
+        if (!["y", "yes"].includes(value)) {
+          ignore = ignore.concat(["usb_power_location", "usb_power_ports", "usb_power_sudo"]);
+        }
+      } else if (key === "usb_power_sudo") {
+        const prompt = `${question} (${fallback}): `;
+        const answer = await read.question(prompt);
+        const value = (answer.trim() || fallback.match(/[YN]/)[0]).toLowerCase();
+        args[key] = ["y", "yes"].includes(value) ? "true" : "false";
       } else if (key === "check") {
         const json = JSON.stringify(args, null, 2);
         const prompt = `${question}\n${json}\n(${fallback}): `;
@@ -367,6 +420,8 @@ const promptArgs = async (proc) => {
         const value = answer.trim() || fallback;
         if (key === "web_url") {
           args[key] = value.split(",").map((v) => v.trim());
+        } else if (key === "usb_power_ports" && !value) {
+          continue;
         } else {
           args[key] = value;
         }
