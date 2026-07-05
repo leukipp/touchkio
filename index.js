@@ -310,6 +310,11 @@ const promptArgs = async (proc) => {
       fallback: "true",
     },
     {
+      key: "web_window",
+      question: "Enter WEB window mode (fullscreen, maximized, framed)",
+      fallback: "fullscreen",
+    },
+    {
       key: "mqtt",
       question: "\nConnect to MQTT Broker?",
       fallback: "y/N",
