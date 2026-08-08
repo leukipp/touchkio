@@ -770,11 +770,19 @@ const videoRights = () => {
   if (!user) {
     return false;
   }
-  const groups = execSyncCommand("groups", [user]);
-  if (!groups) {
+  try {
+    const brightnessPath = HARDWARE.display.brightness.path;
+    if (!brightnessPath) {
+      return false;
+    }
+    const brightnessFile = path.join(brightnessPath, "brightness");
+    const maxBrightnessFile = path.join(brightnessPath, "max_brightness");
+    fs.accessSync(brightnessFile, fs.constants.R_OK | fs.constants.W_OK);
+    fs.accessSync(maxBrightnessFile, fs.constants.R_OK);
+    return true;
+  } catch (err) {
     return false;
   }
-  return groups.split(":")[1].split(" ").includes("video");
 }
 
 /**
