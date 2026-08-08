@@ -610,8 +610,8 @@ const getDisplayStatusCommand = () => {
   const mapping = {
     wayland: [
       { command: "ddcutil", desktops: ["*"] },
-      { command: "wlopm", desktops: ["labwc", "wayfire", "unknown"] },
-      { command: "kscreen-doctor", desktops: ["kde", "plasma", "unknown"] },
+      { command: "wlopm", desktops: ["labwc", "wayfire", "unknown", "*"] },
+      { command: "kscreen-doctor", desktops: ["kde", "plasma", "unknown", "*"] },
     ],
     x11: [
       { command: "ddcutil", desktops: ["*"] },
@@ -761,6 +761,23 @@ const getDisplayBrightnessPath = () => {
 };
 
 /**
+ * Checks if the current session has access to the display brightness files.
+ * 
+ * @returns {boolean} True if the session has access to the display brightness files, false otherwise.
+ */
+const videoRights = () => {
+  const user = HARDWARE.session.user;
+  if (!user) {
+    return false;
+  }
+  const groups = execSyncCommand("groups", [user]);
+  if (!groups) {
+    return false;
+  }
+  return groups.split(":")[1].split(" ").includes("video");
+}
+
+/**
  * Gets the available display brightness command checking for `ddcutil` and `tee`.
  *
  * @returns {string|null} The display brightness command or null if nothing was found.
@@ -794,7 +811,7 @@ const getDisplayBrightnessCommand = () => {
           }
           break;
         case "tee":
-          if (!sudoRights()) {
+          if (!(sudoRights() || videoRights())) {
             break;
           }
           if (HARDWARE.display.brightness.path) {
@@ -888,7 +905,15 @@ const setDisplayBrightness = (brightness, callback = null) => {
       const max = HARDWARE.display.brightness.value.max || 1;
       const file = path.join(HARDWARE.display.brightness.path, "brightness");
       const value = Math.max(1, Math.min(Math.round((brightness / 100) * max), max));
-      const proc = execAsyncCommand("sudo", ["tee", file], callback);
+      let proc;
+      if (videoRights()) {
+        // Don't need sudo
+        proc = execAsyncCommand("tee", [file], callback);
+      }
+      else {
+        // Fall back to sudo
+        proc = execAsyncCommand("sudo", ["tee", file], callback);
+      }
       proc.stdin.write(value.toString());
       proc.stdin.end();
       return;
