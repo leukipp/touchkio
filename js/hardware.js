@@ -670,10 +670,9 @@ const getDisplayStatus = () => {
   switch (HARDWARE.display.status.command) {
     case "ddcutil":
       const ddcutil = execSyncCommand("sudo", ["ddcutil", "getvcp", "0xD6", "--brief"]);
-      const match = ddcutil !== null ? ddcutil.match(/VCP D6 \S+ x0?([14])/) : null;
+      const match = ddcutil !== null ? ddcutil.match(/VCP D6 \S+ x([0-9a-f]+)/i) : null;
       if (match) {
-        const output = match[1] === "1";
-        return output ? "ON" : "OFF";
+        return parseInt(match[1], 16) === 0x01 ? "ON" : "OFF";
       }
       break;
     case "wlopm":
@@ -722,7 +721,7 @@ const setDisplayStatus = (status, callback = null) => {
   }
   switch (HARDWARE.display.status.command) {
     case "ddcutil":
-      execAsyncCommand("sudo", ["ddcutil", "setvcp", "0xD6", status === "ON" ? "1" : "4"], (reply, error) => {
+      execAsyncCommand("sudo", ["ddcutil", "setvcp", "0xD6", status === "ON" ? "1" : "5"], (reply, error) => {
         fs.writeFileSync(path.join(HARDWARE.display.status.path, "dpms"), status.toLowerCase());
         fs.writeFileSync(path.join(HARDWARE.display.status.path, "status"), status.toLowerCase());
         if (typeof callback === "function") callback(reply, error);
