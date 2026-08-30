@@ -139,6 +139,7 @@ const init = async () => {
   WEBVIEW.window = new BaseWindow({
     title: APP.title,
     icon: APP.icon,
+    hasShadow: false,
     autoHideMenuBar: true,
     frame: !WEBVIEW.statusEnabled,
     width: Math.floor(WEBVIEW.display.width * 0.85),
