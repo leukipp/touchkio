@@ -110,7 +110,7 @@ The necessary requirements for MQTT sensors to work are listed here:
     - `wlopm --[on,off] \*` (Raspberry Pi OS, Wayland)
     - `kscreen-doctor --dpms [on,off]` (Debian KDE, Wayland)
     - `xset dpms force [on,off]` (Generic, X11)
-  - If none of the above commands are available on your OS consider installing another one. There is a build-in command prioritization in case [ddcutil](https://github.com/leukipp/touchkio/pull/194) is installed, but it's really slow and unreliable.
+  - If none of the above commands are available on your system consider installing another OS. There is a build-in command prioritization in case [ddcutil](https://github.com/leukipp/touchkio/pull/194) is installed, but it's really slow and unreliable.
     - `sudo ddcutil setvcp D6 0x04` turns off your screen without asking for a password.
     - `sudo ddcutil setvcp D6 0x01` turns on your screen without asking for a password.
 
@@ -119,8 +119,8 @@ The necessary requirements for MQTT sensors to work are listed here:
 <details><summary>Display brightness can't be controlled through MQTT.</summary>
 
   - Have a look at the [features](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md#features) section to check if all requirements are fulfilled.
-    - The **Display** MQTT control is a light entity with brightness support. So make sure to [click on the entity](https://github.com/leukipp/touchkio/issues/75) to check for brightness support.
-    - The brightness control is also only available if the display status control (on/off) is functional.
+    - The **Display** MQTT control is a light entity with brightness support. So make sure to [click on the entity](https://github.com/leukipp/touchkio/issues/75) to test the brightness slider.
+    - The brightness slider is also only available if the display status control (on/off) is functional and the [user has permissions](https://github.com/leukipp/touchkio/issues/39#issuecomment-4470939733) to modify the brightness value.
   - HDMI screens typically do not offer brightness control out of the box, so additional setup steps are required.
     - It's recommended to install [ddcci-driver-linux](https://github.com/leukipp/touchkio/issues/132#issue-3659009749) or [ddcci-dkms](https://github.com/leukipp/touchkio/issues/101#issuecomment-3571523927), since this will create the necessary `/sys/class/backlight/*` folder structure.
     - Additional brightness support using [ddcutil](https://github.com/leukipp/touchkio/issues/101#issuecomment-3521247263) is build-in and checked on application startup, but it's really slow and unreliable.
@@ -214,10 +214,11 @@ The necessary requirements for MQTT sensors to work are listed here:
 
 </details>
 
-<details><summary>The ddcutil command doesn't seem to be used.</summary>
+<details><summary>The ddcutil command doesn't seem to work.</summary>
 
-  - Currently `ddcutil` is only used for brightness control of HDMI screens.
-    - Make sure that your screen is supporting [continuous](https://github.com/leukipp/touchkio/issues/101#issuecomment-3521247263) adjustments of brightness values.
+  - Currently `ddcutil` can be optionally installed  to control HDMI screens.
+    - Make sure that your screen is supporting [continuous](https://github.com/leukipp/touchkio/issues/101#issuecomment-3521247263) adjustments of brightness.
+  - On Raspberry Pi OS the build-in screen blanking (`wlopm`) may fail when `ddcutil` was used to alter the screen state.
 
 </details>
 
