@@ -834,24 +834,24 @@ const getDisplayBrightnessMax = () => {
 /**
  * Gets the current display brightness level using the available command.
  *
- * @returns {number|null} The brightness level as a percentage or null if an error occurs.
+ * @returns {number|null} The brightness level (1-100) as a percentage or null if an error occurs.
  */
 const getDisplayBrightness = () => {
   if (!HARDWARE.support.displayBrightness) {
     return null;
   }
+  const max = HARDWARE.display.brightness.value.max || 1;
   switch (HARDWARE.display.brightness.command) {
     case "ddcutil":
       const ddcutil = execSyncCommand("sudo", ["ddcutil", "getvcp", "0x10", "--brief"]);
       const match = ddcutil !== null ? ddcutil.match(/VCP 10 C (\d+) (\d+)/) : null;
       if (match) {
-        return parseInt(match[1], 10);
+        return Math.max(1, Math.min(Math.round((parseInt(match[1], 10) / max) * 100), 100));
       }
       return null;
     case "tee":
       const brightness = readFile(path.join(HARDWARE.display.brightness.path, "brightness"));
       if (brightness) {
-        const max = HARDWARE.display.brightness.value.max || 1;
         return Math.max(1, Math.min(Math.round((parseInt(brightness, 10) / max) * 100), 100));
       }
   }
@@ -877,19 +877,20 @@ const setDisplayBrightness = (brightness, callback = null) => {
     if (typeof callback === "function") callback(null, "Invalid brightness");
     return;
   }
+  const max = HARDWARE.display.brightness.value.max || 1;
   switch (HARDWARE.display.brightness.command) {
     case "ddcutil":
-      execAsyncCommand("sudo", ["ddcutil", "setvcp", "0x10", `${brightness}`], (reply, error) => {
-        fs.writeFileSync(path.join(HARDWARE.display.brightness.path, "brightness"), `${brightness}`);
+      const percentage = Math.max(1, Math.min(Math.round((brightness / 100) * max), max));
+      execAsyncCommand("sudo", ["ddcutil", "setvcp", "0x10", `${percentage}`], (reply, error) => {
+        fs.writeFileSync(path.join(HARDWARE.display.brightness.path, "brightness"), `${percentage}`);
         if (typeof callback === "function") callback(reply, error);
       });
       return;
     case "tee":
-      const max = HARDWARE.display.brightness.value.max || 1;
       const file = path.join(HARDWARE.display.brightness.path, "brightness");
       const value = Math.max(1, Math.min(Math.round((brightness / 100) * max), max));
       const proc = execAsyncCommand("sudo", ["tee", file], callback);
-      proc.stdin.write(value.toString());
+      proc.stdin.write(`${value}`);
       proc.stdin.end();
       return;
   }
