@@ -72,6 +72,7 @@ const init = async () => {
       initKiosk();
       initTheme();
       initDisplay();
+      initUsbPower();
       initVolume();
       initMicrophone();
       initKeyboard();
@@ -119,6 +120,7 @@ const init = async () => {
         updateDisplay();
         updateLastActive();
       });
+      EVENTS.on("updateUsbPower", updateUsbPower);
       EVENTS.on("updateScreenshot", updateScreenshot);
       EVENTS.on("consoleLog", updateErrors);
     })
@@ -544,6 +546,54 @@ const updateDisplay = async () => {
   const brightness = hardware.getDisplayBrightness();
   publishState("display/brightness", brightness);
   publishState("display/power", status);
+};
+
+/**
+ * Initializes the USB power status and handles the execute logic.
+ */
+const initUsbPower = () => {
+  const root = `${INTEGRATION.root}/usb_power`;
+  const config = {
+    name: "USB Power",
+    unique_id: `${INTEGRATION.node}_usb_power`,
+    command_topic: `${root}/power/set`,
+    state_topic: `${root}/power/state`,
+    supported_color_modes: ["onoff"],
+    icon: "mdi:usb-port",
+    platform: "light",
+    device: INTEGRATION.device,
+  };
+  if (!HARDWARE.support.usbPower || ARGS.app_disable.includes("mqtt_usb_power")) {
+    removeConfig("light", config);
+    return;
+  }
+  publishConfig("light", config)
+    .on("message", (topic, message) => {
+      if (topic === config.command_topic) {
+        const status = message.toString();
+        console.verbose("Set USB Power Status:", status);
+        hardware.setUsbPowerStatus(status, (reply, error) => {
+          if (!error) {
+            updateUsbPower();
+          } else {
+            console.warn("Command Failed:", error);
+          }
+        });
+      }
+    })
+    .subscribe(config.command_topic);
+  updateUsbPower();
+};
+
+/**
+ * Updates the USB power status via the mqtt connection.
+ */
+const updateUsbPower = async () => {
+  if (ARGS.app_disable.includes("mqtt_usb_power")) {
+    return;
+  }
+  const status = hardware.getUsbPowerStatus();
+  publishState("usb_power/power", status);
 };
 
 /**

@@ -158,6 +158,32 @@ For example:
 touchkio --web-url=http://192.168.1.42:8123 --mqtt-url=mqtt://192.168.1.42:1883 --mqtt-user=kiosk --mqtt-password=password
 ```
 
+### USB Power
+To control USB hub port power through Home Assistant (e.g. on a Raspberry Pi), configure the following optional arguments:
+| Name                            | Default | Description                                                                                      |
+| ------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| `--usb-power-location`          | `1-1`   | Comma-separated hub locations for `uhubctl -l` (e.g. `1-1` or `1-1,2-1`)                         |
+| `--usb-power-ports` (Optional)  | -       | Comma/range port list for `uhubctl -p` (e.g. `1`, `1,3`, `1-4`). Empty = all ports on each hub  |
+| `--usb-power-sudo` (Optional)   | `false` | Run `uhubctl` via `sudo` (`true`) or as the kiosk user (`false`, requires udev rules)            |
+
+The **USB Power** MQTT entity is a light with on/off support. Disable it with `--app-disable=mqtt_usb_power`.
+
+For example:
+```bash
+touchkio --web-url=http://192.168.1.42:8123 --mqtt-url=mqtt://192.168.1.42:1883 --mqtt-user=kiosk --mqtt-password=password --usb-power-location=1-1
+```
+
+In the `~/.config/touchkio/Arguments.json` file:
+```json
+{
+  "usb_power_location": ["1-1"],
+  "usb_power_ports": "2",
+  "usb_power_sudo": "false"
+}
+```
+
+See [HARDWARE.md](HARDWARE.md) for udev rules and sudo setup.
+
 ## User Interface
 TouchKio provides a simple webview window designed specifically for Touch Displays. Electron apps are known to be resource intensive due to their architecture and the inclusion of a full web browser environment. If you just run the kiosk application without other heavy loads, everything should run smoothly.
 

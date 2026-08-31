@@ -138,6 +138,21 @@ The necessary requirements for MQTT sensors to work are listed here:
 
 </details>
 
+### USB Power
+
+<details><summary>USB power can't be controlled through MQTT.</summary>
+
+  - Install `uhubctl` (`sudo apt install uhubctl`) and configure hub access using one of the following options:
+    - **Option A (recommended):** Copy [52-usb.rules](https://github.com/mvp/uhubctl/blob/master/udev/rules.d/52-usb.rules) to `/etc/udev/rules.d/`, add the kiosk user to the `dialout` group (`sudo usermod -a -G dialout $USER`), apply with `sudo udevadm trigger --attr-match=subsystem=usb`, and set `"usb_power_sudo": "false"` in `Arguments.json`.
+    - **Option B:** Add passwordless sudo for `/usr/bin/uhubctl` and set `"usb_power_sudo": "true"` in `Arguments.json`.
+  - On Raspberry Pi 4B, the onboard hub typically uses location `1-1`. Discover locations by running `uhubctl` (or `sudo uhubctl` if rules are not yet applied).
+  - Make sure the configured command works on the terminal before expecting the MQTT entity to work:
+    - `uhubctl -a 0 -l 1-1` turns USB power off.
+    - `uhubctl -a 1 -l 1-1` turns USB power on.
+  - For Pi 4B onboard hubs, uhubctl documents vendor IDs `2109` and `1d6b` in its README if you need vendor-specific udev rules.
+
+</details>
+
 ### Touch
 
 <details><summary>Automated screen blanking on inactivity.</summary>
