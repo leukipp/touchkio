@@ -670,7 +670,7 @@ const getDisplayStatus = () => {
   switch (HARDWARE.display.status.command) {
     case "ddcutil":
       const ddcutil = execSyncCommand("sudo", ["ddcutil", "getvcp", "0xD6", "--brief"]);
-      const match = ddcutil !== null ? ddcutil.match(/VCP D6 \S+ x0?([14])/) : null;
+      const match = ddcutil !== null ? ddcutil.match(/VCP D6 \S+ x0?([1-5])/) : null;
       if (match) {
         const output = match[1] === "1";
         return output ? "ON" : "OFF";
