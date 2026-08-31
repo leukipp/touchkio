@@ -119,12 +119,13 @@ The available arguments to control the kiosk application via terminal are as fol
 | `--web-theme` (Optional)  | `dark`  | Theme settings of the web browser (`light` or `dark`)                                                      |
 | `--web-zoom` (Optional)   | `1.25`  | Zoom settings of the web browser (`1.0` is `100%`)                                                         |
 | `--web-widget` (Optional) | `true`  | Enables the sidebar widget (`true` or `false`)                                                             |
+| `--web-window` (Optional) | `fullscreen` | Window mode on startup (`fullscreen`, `maximized` or `framed`)                                         |
 
 These arguments allow you to customize the appearance of the web browser view.
 
 For example:
 ```bash
-touchkio --web-url=http://192.168.1.42:8123 --web-theme=light --web-zoom=1.0
+touchkio --web-url=http://192.168.1.42:8123 --web-theme=light --web-zoom=1.0 --web-window=maximized
 ```
 
 > <a id="foot1"></a><a href="#ref1">[1]</a>: This doesn't necessarily have to be a Home Assistant Url.

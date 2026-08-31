@@ -59,6 +59,7 @@ const init = async () => {
   const widget = ARGS.web_widget ? ARGS.web_widget === "true" : true;
   const theme = ["light", "dark"].includes(ARGS.web_theme) ? ARGS.web_theme : "dark";
   const zoom = (!isNaN(parseFloat(ARGS.web_zoom)) ? parseFloat(ARGS.web_zoom) : 1.25) * 100;
+  const windowMode = ["fullscreen", "maximized", "framed"].includes(ARGS.web_window) ? ARGS.web_window : "fullscreen";
   const urls = [loaderHtml(40, 1.0, theme), ...ARGS.web_url];
 
   // Init global controls
@@ -66,6 +67,7 @@ const init = async () => {
   WEBVIEW.pagerEnabled = widget;
   WEBVIEW.widgetEnabled = widget;
   WEBVIEW.navigationEnabled = widget;
+  WEBVIEW.windowStatus = windowMode.charAt(0).toUpperCase() + windowMode.slice(1);
 
   // Init global views
   WEBVIEW.views = [];
@@ -1055,9 +1057,9 @@ const viewEvents = async () => {
       return true;
     }
 
-    // Set window status to fullscreen
+    // Set window status to the configured startup mode
     if (i === 0 && !("app_debug" in ARGS)) {
-      WEBVIEW.window.setStatus("Fullscreen");
+      WEBVIEW.window.setStatus(WEBVIEW.windowStatus);
     }
 
     // Hide loader and show first view
@@ -1226,7 +1228,7 @@ const appEvents = async () => {
     if (visibility === "ON" && ["Fullscreen"].includes(status)) {
       WEBVIEW.window.setStatus("Maximized");
     } else if (visibility === "OFF" && ["Maximized"].includes(status)) {
-      WEBVIEW.window.setStatus("Fullscreen");
+      WEBVIEW.window.setStatus(WEBVIEW.windowStatus);
     }
   });
 
