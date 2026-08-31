@@ -48,11 +48,8 @@ const init = async () => {
     return app.quit();
   }
 
-  // Clear cache and storage
-  await session.defaultSession.clearCache();
-  if (ARGS.app_reset.includes("storage")) {
-    await session.defaultSession.clearStorageData();
-  }
+  // Clear cache or full session
+  await clearData({ cache: true, session: ARGS.app_reset.includes("session") });
 
   // Parse arguments
   const debug = "app_debug" in ARGS;
@@ -522,6 +519,27 @@ const toggleStatus = (force = null) => {
 };
 
 /**
+ * Clears internal and webview application data.
+ *
+ * @param {Object} [options]
+ * @param {boolean} [options.logs] - Clear internal memory logs.
+ * @param {boolean} [options.history] - Clear navigation history of views.
+ * @param {boolean} [options.cache] - Clear cache and service workers.
+ * @param {boolean} [options.session] - Clear full session data.
+ */
+const clearData = async ({ logs = false, history = false, cache = false, session: full = false } = {}) => {
+  if (logs || full) {
+    APP.logs = [];
+  }
+  if (history || full) {
+    (WEBVIEW.views || []).forEach((view) => view.webContents.navigationHistory.clear());
+  }
+  if (cache || full) {
+    return session.defaultSession.clearData(full ? {} : { dataTypes: ["cache", "serviceWorkers"] });
+  }
+};
+
+/**
  * Decreases page zoom on the active webview.
  */
 const zoomMinus = () => {
@@ -598,7 +616,7 @@ const nextView = () => {
 /**
  * Reloads the default url and settings on the active webview.
  */
-const homeView = () => {
+const homeView = async () => {
   if (!WEBVIEW.viewActive) {
     return;
   }
@@ -606,10 +624,8 @@ const homeView = () => {
   const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
   const currentUrl = view.webContents.getURL();
 
-  // Clear logs, cache and history
-  APP.logs = [];
-  view.webContents.session.clearCache();
-  view.webContents.navigationHistory.clear();
+  // Clear logs, history and cache
+  await clearData({ logs: true, history: true, cache: true });
 
   // Reset page zoom and theme
   WEBVIEW.zoom.reset();
@@ -626,7 +642,7 @@ const homeView = () => {
 /**
  * Reloads the current url on the active webview.
  */
-const reloadView = () => {
+const reloadView = async () => {
   if (!WEBVIEW.viewActive) {
     return;
   }
@@ -635,8 +651,7 @@ const reloadView = () => {
   const currentUrl = view.webContents.getURL();
 
   // Clear logs and cache
-  APP.logs = [];
-  view.webContents.session.clearCache();
+  await clearData({ logs: true, cache: true });
 
   // Reload the default url or refresh the page
   if (currentUrl.startsWith("data:")) {
@@ -649,7 +664,7 @@ const reloadView = () => {
 /**
  * Resizes and positions all webviews.
  */
-const resizeView = () => {
+const resizeView = async () => {
   const window = WEBVIEW.window.getBounds();
   const status = WEBVIEW.status.getBounds();
   const navigation = WEBVIEW.navigation.getBounds();
