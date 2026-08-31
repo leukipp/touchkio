@@ -489,12 +489,12 @@ const initDisplay = () => {
     unique_id: `${INTEGRATION.node}_display`,
     command_topic: `${root}/power/set`,
     state_topic: `${root}/power/state`,
-    supported_color_modes: ["onoff"],
+    color_mode_state_topic: `${root}/color_mode/state`,
+    supported_color_modes: [HARDWARE.support.displayBrightness ? "brightness" : "onoff"],
     icon: "mdi:monitor-shimmer",
     platform: "light",
     device: INTEGRATION.device,
     ...(HARDWARE.support.displayBrightness && {
-      supported_color_modes: ["brightness"],
       brightness_command_topic: `${root}/brightness/set`,
       brightness_state_topic: `${root}/brightness/state`,
       brightness_scale: 100,
@@ -542,6 +542,7 @@ const updateDisplay = async () => {
   }
   const status = hardware.getDisplayStatus();
   const brightness = hardware.getDisplayBrightness();
+  publishState("display/color_mode", HARDWARE.support.displayBrightness ? "brightness" : "onoff");
   publishState("display/brightness", brightness);
   publishState("display/power", status);
 };
