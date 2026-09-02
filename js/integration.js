@@ -303,8 +303,8 @@ const updateApp = async (progress = 0) => {
     installed_version: APP.version,
     release_summary: summary,
     release_url: latest.url,
-    update_percentage: progress || null,
-    in_progress: progress && progress > 0 && progress < 100,
+    update_percentage: progress ?? null,
+    in_progress: typeof progress === "number" && progress > 0 && progress < 100,
   };
   publishState("app/version", JSON.stringify(version));
 };
