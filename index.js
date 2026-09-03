@@ -321,8 +321,8 @@ const promptArgs = async (proc) => {
     },
     {
       key: "mqtt_user",
-      question: "Enter MQTT username",
-      fallback: "kiosk",
+      question: "Enter MQTT user",
+      fallback: "user",
     },
     {
       key: "mqtt_password",
