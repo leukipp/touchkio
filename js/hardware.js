@@ -794,10 +794,11 @@ const getDisplayBrightnessCommand = () => {
           }
           break;
         case "tee":
-          if (!sudoRights()) {
+          if (!HARDWARE.display.brightness.path) {
             break;
           }
-          if (HARDWARE.display.brightness.path) {
+          const file = path.join(HARDWARE.display.brightness.path, "brightness");
+          if (sudoRights() || writeRights(file)) {
             return map.command;
           }
           break;
@@ -889,7 +890,8 @@ const setDisplayBrightness = (brightness, callback = null) => {
     case "tee":
       const file = path.join(HARDWARE.display.brightness.path, "brightness");
       const value = Math.max(1, Math.min(Math.round((brightness / 100) * max), max));
-      const proc = execAsyncCommand("sudo", ["tee", file], callback);
+      const [cmd, args] = HARDWARE.support.sudoRights ? ["sudo", ["tee", file]] : ["tee", [file]];
+      const proc = execAsyncCommand(cmd, args, callback);
       proc.stdin.write(`${value}`);
       proc.stdin.end();
       return;
@@ -1113,6 +1115,20 @@ const rebootSystem = (callback = null) => {
 const sudoRights = () => {
   try {
     cpr.execSync(`sudo -n true`, { encoding: "utf8", stdio: "ignore" });
+    return true;
+  } catch {}
+  return false;
+};
+
+/**
+ * Checks if a file has write access rights.
+ *
+ * @param {string} path - The file path to check.
+ * @returns {bool} Returns true if write access rights exists.
+ */
+const writeRights = (path) => {
+  try {
+    fs.accessSync(path, fs.constants.R_OK | fs.constants.W_OK);
     return true;
   } catch {}
   return false;
