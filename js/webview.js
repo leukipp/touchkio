@@ -141,8 +141,8 @@ const init = async () => {
     frame: !WEBVIEW.statusEnabled,
     width: Math.floor(WEBVIEW.display.width * 0.85),
     height: Math.floor(WEBVIEW.display.height * 0.75),
-    minWidth: 136,
-    minHeight: 136,
+    minWidth: 188,
+    minHeight: 188,
   });
 
   // Init global webview
@@ -303,7 +303,8 @@ const updateView = () => {
 
   // Build window title
   const host = url.startsWith("data:") ? "whoopsie" : new URL(url).host;
-  const title = `${APP.title} - ${host} (${WEBVIEW.viewActive})`;
+  const name = host.includes("github") ? `${APP.title} v${APP.version}` : APP.title;
+  const title = `${name} - ${host} (${WEBVIEW.viewActive})`;
   const previous = WEBVIEW.window.getTitle();
 
   // Update window title
@@ -937,12 +938,19 @@ const statusEvents = async () => {
     console.debug(`webview.js: statusEvents(button-click-${button.id})`);
     WEBVIEW.tracker.pointer.time = new Date();
     switch (button.id) {
+      case "release":
+        const latest = APP.releases.latest;
+        if (WEBVIEW.viewActive && latest?.url) {
+          WEBVIEW.views[WEBVIEW.viewActive].webContents.loadURL(latest.url);
+        }
+        break;
       case "minimize":
         WEBVIEW.window.setStatus("Minimized");
         break;
       case "terminate":
-        WEBVIEW.status.webContents.send("button-disabled", { id: "fullscreen", disabled: true });
+        WEBVIEW.status.webContents.send("button-disabled", { id: "release", disabled: true });
         WEBVIEW.status.webContents.send("button-disabled", { id: "minimize", disabled: true });
+        WEBVIEW.status.webContents.send("button-disabled", { id: "fullscreen", disabled: true });
         WEBVIEW.status.webContents.send("button-disabled", { id: "terminate", disabled: true });
         const button = dialog.showMessageBoxSync(WEBVIEW.window, {
           type: "question",
@@ -955,8 +963,9 @@ const statusEvents = async () => {
             WEBVIEW.window.setStatus("Terminated");
             break;
           default:
-            WEBVIEW.status.webContents.send("button-disabled", { id: "fullscreen", disabled: false });
+            WEBVIEW.status.webContents.send("button-disabled", { id: "release", disabled: false });
             WEBVIEW.status.webContents.send("button-disabled", { id: "minimize", disabled: false });
+            WEBVIEW.status.webContents.send("button-disabled", { id: "fullscreen", disabled: false });
             WEBVIEW.status.webContents.send("button-disabled", { id: "terminate", disabled: false });
         }
         break;
@@ -1242,6 +1251,16 @@ const appEvents = async () => {
       WEBVIEW.window.setStatus("Maximized");
     } else if (visibility === "OFF" && ["Maximized"].includes(status)) {
       WEBVIEW.window.setStatus("Fullscreen");
+    }
+  });
+  EVENTS.on("updateApp", () => {
+    const latest = APP.releases.latest;
+    if (latest?.version) {
+      const outdated = APP.version.localeCompare(latest.version, "en", { numeric: true }) < 0;
+      WEBVIEW.status.webContents.send("button-hidden", {
+        id: "release",
+        hidden: !outdated,
+      });
     }
   });
 

@@ -257,12 +257,14 @@ const initApp = () => {
   const config = {
     name: "App",
     unique_id: `${INTEGRATION.node}_app`,
-    command_topic: `${root}/install`,
     state_topic: `${root}/version/state`,
-    payload_install: "app_early" in ARGS ? "update early" : "update",
     device: INTEGRATION.device,
+    ...(HARDWARE.support.appUpdate && {
+      command_topic: `${root}/install`,
+      payload_install: "app_early" in ARGS ? "update early" : "update",
+    }),
   };
-  if (!HARDWARE.support.appUpdate || ARGS.app_disable.includes("mqtt_app")) {
+  if (ARGS.app_disable.includes("mqtt_app")) {
     removeConfig("update", config);
     return;
   }
@@ -289,11 +291,11 @@ const initApp = () => {
  * Updates the app update entity via the mqtt connection.
  */
 const updateApp = async (progress = 0) => {
-  if (!HARDWARE.support.appUpdate || ARGS.app_disable.includes("mqtt_app")) {
+  if (ARGS.app_disable.includes("mqtt_app")) {
     return;
   }
   const latest = APP.releases.latest;
-  if (!latest || !latest.summary) {
+  if (!latest?.summary) {
     return;
   }
   const summary = latest.summary.length > 250 ? latest.summary.slice(0, 250) + "..." : latest.summary;

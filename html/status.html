@@ -6,6 +6,7 @@
       [data-theme="dark"] {
         --primary-color: rgba(229, 229, 229, 1);
         --background-color: rgba(66, 67, 68, 1);
+        --release-color: rgba(10, 132, 255, 1);
         --minimize-color: rgba(52, 199, 89, 1);
         --fullscreen-color: rgba(255, 149, 0, 1);
         --terminate-color: rgba(255, 59, 48, 1);
@@ -13,6 +14,7 @@
       [data-theme="light"] {
         --primary-color: rgba(26, 26, 26, 1);
         --background-color: rgba(237, 236, 235, 1);
+        --release-color: rgba(0, 122, 255, 1);
         --minimize-color: rgba(52, 199, 89, 1);
         --fullscreen-color: rgba(255, 149, 0, 1);
         --terminate-color: rgba(255, 59, 48, 1);
@@ -55,23 +57,26 @@
         color: var(--primary-color);
       }
       menu {
+        z-index: 1;
         display: flex;
         flex-direction: row;
         align-items: center;
         flex: 0 0 auto;
         height: 100vh;
-        min-width: 116px;
         padding: 0px 10px;
         column-gap: 10px;
         list-style-type: none;
         background: var(--background-color);
         position: relative;
-        z-index: 1;
+        -webkit-app-region: no-drag;
       }
       li {
         display: flex;
         align-items: center;
         flex: 0 0 auto;
+      }
+      li.hidden {
+        display: none;
       }
       li.disabled {
         opacity: 0.5;
@@ -87,6 +92,9 @@
       svg {
         pointer-events: none;
       }
+      #release > svg {
+        fill: var(--release-color);
+      }
       #minimize > svg {
         fill: var(--minimize-color);
       }
@@ -99,6 +107,18 @@
     </style>
   </head>
   <body>
+    <menu>
+      <li class="hidden">
+        <button id="release">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <title>download-circle</title>
+            <path
+              d="M12 2C17.5 2 22 6.5 22 12C22 17.5 17.5 22 12 22C6.5 22 2 17.5 2 12C2 6.5 6.5 2 12 2M8 17H16V15H8V17M16 10H13.5V6H10.5V10H8L12 14L16 10Z"
+            />
+          </svg>
+        </button>
+      </li>
+    </menu>
     <header>
       <h1 id="title">TouchKio</h1>
     </header>
@@ -146,6 +166,9 @@
       const registerReceiveEvents = () => {
         ipcRenderer.on("button-disabled", (e, button) => {
           document.getElementById(button.id).parentNode.classList.toggle("disabled", button.disabled);
+        });
+        ipcRenderer.on("button-hidden", (e, button) => {
+          document.getElementById(button.id).parentNode.classList.toggle("hidden", button.hidden);
         });
         ipcRenderer.on("text-content", (e, text) => {
           document.getElementById(text.id).textContent = text.content;
