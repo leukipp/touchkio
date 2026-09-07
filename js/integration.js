@@ -283,7 +283,7 @@ const initApp = () => {
     unique_id: `${INTEGRATION.node}_app`,
     state_topic: `${root}/version/state`,
     device: INTEGRATION.device,
-    ...(HARDWARE.support.appUpdate && {
+    ...(HARDWARE.support.access.install && HARDWARE.support.access.service && HARDWARE.support.access.deb && {
       command_topic: `${root}/install`,
       payload_install: "app_early" in ARGS ? "update early" : "update",
     }),
@@ -352,7 +352,7 @@ const initShutdown = () => {
     icon: "mdi:power",
     device: INTEGRATION.device,
   };
-  if (!HARDWARE.support.sudoRights || ARGS.app_disable.includes("mqtt_shutdown")) {
+  if (!HARDWARE.support.access.shutdown || ARGS.app_disable.includes("mqtt_shutdown")) {
     removeConfig("button", config, true);
     return;
   }
@@ -382,7 +382,7 @@ const initReboot = () => {
     icon: "mdi:restart",
     device: INTEGRATION.device,
   };
-  if (!HARDWARE.support.sudoRights || ARGS.app_disable.includes("mqtt_reboot")) {
+  if (!HARDWARE.support.access.reboot || ARGS.app_disable.includes("mqtt_reboot")) {
     removeConfig("button", config, true);
     return;
   }

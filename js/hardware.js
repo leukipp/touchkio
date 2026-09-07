@@ -96,47 +96,49 @@ const init = async () => {
 
   // Show hardware infos
   process.stdout.write("\n");
-  const unsupported = "unsupported";
+  const none = () => "unsupported";
+  const sudo = (cmd) => (["ddcutil", "tee"].includes(cmd) && HARDWARE.support.access.sudo ? `sudo ${cmd}` : cmd);
+
   const batteryLevel = `${getBatteryLevel()} (sysfs)`;
-  const batteryLevelInfo = HARDWARE.support.batteryLevel ? batteryLevel : unsupported;
+  const batteryLevelInfo = HARDWARE.support.batteryLevel ? batteryLevel : none();
   console.info(
-    `Battery Level [${HARDWARE.support.batteryLevel ? HARDWARE.battery.level.path : unsupported}]:`,
+    `Battery Level [${HARDWARE.support.batteryLevel ? HARDWARE.battery.level.path : none()}]:`,
     batteryLevelInfo,
   );
   const illuminanceLevel = `${getIlluminanceLevel()} (sysfs)`;
-  const illuminanceLevelInfo = HARDWARE.support.illuminanceLevel ? illuminanceLevel : unsupported;
+  const illuminanceLevelInfo = HARDWARE.support.illuminanceLevel ? illuminanceLevel : none();
   console.info(
-    `Illuminance Level [${HARDWARE.support.illuminanceLevel ? HARDWARE.illuminance.level.path : unsupported}]:`,
+    `Illuminance Level [${HARDWARE.support.illuminanceLevel ? HARDWARE.illuminance.level.path : none()}]:`,
     illuminanceLevelInfo,
   );
-  const displayStatus = `${getDisplayStatus()} (${HARDWARE.display.status.command})`;
-  const displayStatusInfo = HARDWARE.support.displayStatus ? displayStatus : unsupported;
+  const displayStatus = `${getDisplayStatus()} (${sudo(HARDWARE.display.status.command)})`;
+  const displayStatusInfo = HARDWARE.support.displayStatus ? displayStatus : none();
   console.info(
-    `Display Status [${HARDWARE.support.displayStatus ? HARDWARE.display.status.path : unsupported}]:`,
+    `Display Status [${HARDWARE.support.displayStatus ? HARDWARE.display.status.path : none()}]:`,
     displayStatusInfo,
   );
-  const displayBrightness = `${getDisplayBrightness()} (${HARDWARE.display.brightness.command})`;
-  const displayBrightnessInfo = HARDWARE.support.displayBrightness ? displayBrightness : unsupported;
+  const displayBrightness = `${getDisplayBrightness()} (${sudo(HARDWARE.display.brightness.command)})`;
+  const displayBrightnessInfo = HARDWARE.support.displayBrightness ? displayBrightness : none();
   console.info(
-    `Display Brightness [${HARDWARE.support.displayBrightness ? HARDWARE.display.brightness.path : unsupported}]:`,
+    `Display Brightness [${HARDWARE.support.displayBrightness ? HARDWARE.display.brightness.path : none()}]:`,
     displayBrightnessInfo,
   );
   const audioVolume = `${getAudioVolume()} (pactl)`;
-  const audioVolumeInfo = HARDWARE.support.audioVolume ? audioVolume : unsupported;
+  const audioVolumeInfo = HARDWARE.support.audioVolume ? audioVolume : none();
   console.info(
-    `Audio Volume [${HARDWARE.support.audioVolume ? HARDWARE.audio.device.output : unsupported}]:`,
+    `Audio Volume [${HARDWARE.support.audioVolume ? HARDWARE.audio.device.output : none()}]:`,
     audioVolumeInfo,
   );
   const microphoneVolume = `${getMicrophoneVolume()} (pactl)`;
-  const microphoneVolumeInfo = HARDWARE.support.microphoneVolume ? microphoneVolume : unsupported;
+  const microphoneVolumeInfo = HARDWARE.support.microphoneVolume ? microphoneVolume : none();
   console.info(
-    `Microphone Volume [${HARDWARE.support.microphoneVolume ? HARDWARE.audio.device.input : unsupported}]:`,
+    `Microphone Volume [${HARDWARE.support.microphoneVolume ? HARDWARE.audio.device.input : none()}]:`,
     microphoneVolumeInfo,
   );
   const keyboardVisibility = `${getKeyboardVisibility()} (squeekboard)`;
-  const keyboardVisibilityInfo = HARDWARE.support.keyboardVisibility ? keyboardVisibility : unsupported;
+  const keyboardVisibilityInfo = HARDWARE.support.keyboardVisibility ? keyboardVisibility : none();
   console.info(
-    `Keyboard Visibility [${HARDWARE.support.keyboardVisibility ? "dbus://sm/puri/OSK0" : unsupported}]:`,
+    `Keyboard Visibility [${HARDWARE.support.keyboardVisibility ? "dbus://sm/puri/OSK0" : none()}]:`,
     keyboardVisibilityInfo,
   );
   process.stdout.write("\n");
@@ -304,11 +306,6 @@ const sessionDesktop = () => {
  * @returns {Object} The support object with boolean values.
  */
 const checkSupport = () => {
-  const sudo = sudoRights();
-  const service = serviceRuns(APP.name);
-  const keyboard = processRuns("squeekboard");
-  const release = APP.build.maker === "deb";
-
   const audioOutput = !!HARDWARE.audio.device.output;
   const audioInput = !!HARDWARE.audio.device.input;
   const batteryPath = !!HARDWARE.battery.level.path;
@@ -317,17 +314,24 @@ const checkSupport = () => {
   const statusCommand = !!HARDWARE.display.status.command;
   const brightnessPath = !!HARDWARE.display.brightness.path && !!HARDWARE.display.brightness.value.max;
   const brightnessCommand = !!HARDWARE.display.brightness.command && !!HARDWARE.display.brightness.value.max;
+  const keyboardProcess = processRuns("squeekboard");
 
   return {
     batteryLevel: batteryPath,
     illuminanceLevel: illuminancePath,
     displayStatus: statusPath && statusCommand,
     displayBrightness: statusPath && statusCommand && brightnessPath && brightnessCommand,
-    keyboardVisibility: keyboard,
+    keyboardVisibility: keyboardProcess,
     audioVolume: audioOutput,
     microphoneVolume: audioInput,
-    appUpdate: sudo && service && release,
-    sudoRights: sudo,
+    access: {
+      sudo: sudoRights(),
+      reboot: rebootRights(),
+      shutdown: shutdownRights(),
+      install: installRights(),
+      service: serviceRuns(APP.name),
+      deb: APP.build.maker === "deb",
+    },
   };
 };
 
@@ -894,7 +898,7 @@ const setDisplayBrightness = (brightness, callback = null) => {
     case "tee":
       const file = path.join(HARDWARE.display.brightness.path, "brightness");
       const value = Math.max(1, Math.min(Math.round((brightness / 100) * max), max));
-      const [cmd, args] = HARDWARE.support.sudoRights ? ["sudo", ["tee", file]] : ["tee", [file]];
+      const [cmd, args] = HARDWARE.support.access.sudo ? ["sudo", ["tee", file]] : ["tee", [file]];
       const proc = execAsyncCommand(cmd, args, callback);
       proc.stdin.write(`${value}`);
       proc.stdin.end();
@@ -1092,7 +1096,7 @@ const checkPackageUpgrades = () => {
  * @returns {void}
  */
 const shutdownSystem = (callback = null) => {
-  if (!HARDWARE.support.sudoRights) {
+  if (!HARDWARE.support.access.shutdown) {
     if (typeof callback === "function") callback(null, "Not supported");
     return;
   }
@@ -1109,7 +1113,7 @@ const shutdownSystem = (callback = null) => {
  * @returns {void}
  */
 const rebootSystem = (callback = null) => {
-  if (!HARDWARE.support.sudoRights) {
+  if (!HARDWARE.support.access.reboot) {
     if (typeof callback === "function") callback(null, "Not supported");
     return;
   }
@@ -1117,7 +1121,7 @@ const rebootSystem = (callback = null) => {
 };
 
 /**
- * Checks if sudo commands can run without a password.
+ * Checks if `sudo` commands can run without a password.
  *
  * @returns {boolean} True if password-less sudo rights exist.
  */
@@ -1130,7 +1134,46 @@ const sudoRights = () => {
 };
 
 /**
- * Checks if a file has write access rights.
+ * Checks if `apt install` can run via sudo without a password.
+ *
+ * @returns {boolean} True if password-less apt install rights exist.
+ */
+const installRights = () => {
+  try {
+    cpr.execSync(`sudo -n apt install --help`, { encoding: "utf8", stdio: "ignore" });
+    return true;
+  } catch {}
+  return false;
+};
+
+/**
+ * Checks if `reboot` can run via sudo without a password.
+ *
+ * @returns {boolean} True if password-less reboot rights exist.
+ */
+const rebootRights = () => {
+  try {
+    cpr.execSync(`sudo -n reboot --help`, { encoding: "utf8", stdio: "ignore" });
+    return true;
+  } catch {}
+  return false;
+};
+
+/**
+ * Checks if `shutdown` can run via sudo without a password.
+ *
+ * @returns {boolean} True if password-less shutdown rights exist.
+ */
+const shutdownRights = () => {
+  try {
+    cpr.execSync(`sudo -n shutdown --help`, { encoding: "utf8", stdio: "ignore" });
+    return true;
+  } catch {}
+  return false;
+};
+
+/**
+ * Checks if a file path has write access rights.
  *
  * @param {string} path - The file path to check.
  * @returns {boolean} True if write access rights exist.
