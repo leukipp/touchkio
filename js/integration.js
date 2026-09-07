@@ -186,20 +186,37 @@ const update = async () => {
 };
 
 /**
+ * Publishes a payload via the mqtt connection.
+ *
+ *  @param {string} root - The mqtt topic.
+ *  @param {string} payload - The payload to publish.
+ *  @param {boolean} [retain] - Whether to retain the message.
+ *  @param {number} [qos] - The quality of service level.
+ *  @returns {Object} Instance of the mqtt client.
+ */
+const publish = (root, payload, retain = true, qos = 1) => {
+  if (root === null || payload === null) {
+    return INTEGRATION.client;
+  }
+  return INTEGRATION.client.publish(root, payload, { qos, retain });
+};
+
+/**
  * Removes the auto-discovery config via the mqtt connection.
  *
  *  @param {string} type - The entity type name.
  *  @param {Object} config - The configuration object.
+ *  @param {boolean} [retain] - Whether to retain the message.
  *  @returns {Object} Instance of the mqtt client.
  */
-const removeConfig = (type, config) => {
+const removeConfig = (type, config, retain = true) => {
   if (type === null || config === null) {
     return INTEGRATION.client;
   }
   const path = config.unique_id.replace(`${INTEGRATION.node}_`, "");
   const root = `${INTEGRATION.discovery}/${type}/${INTEGRATION.node}/${path}/config`;
   console.debug(`integration.js: removeConfig(${path})`);
-  return INTEGRATION.client.publish(root, JSON.stringify({}), { qos: 1, retain: true });
+  return publish(root, JSON.stringify({}), retain);
 };
 
 /**
@@ -207,16 +224,17 @@ const removeConfig = (type, config) => {
  *
  *  @param {string} type - The entity type name.
  *  @param {Object} config - The configuration object.
+ *  @param {boolean} [retain] - Whether to retain the message.
  *  @returns {Object} Instance of the mqtt client.
  */
-const publishConfig = (type, config) => {
+const publishConfig = (type, config, retain = true) => {
   if (type === null || config === null) {
     return INTEGRATION.client;
   }
   const path = config.unique_id.replace(`${INTEGRATION.node}_`, "");
   const root = `${INTEGRATION.discovery}/${type}/${INTEGRATION.node}/${path}/config`;
   console.debug(`integration.js: publishConfig(${path})`);
-  return INTEGRATION.client.publish(root, JSON.stringify(config), { qos: 1, retain: true });
+  return publish(root, JSON.stringify(config), retain);
 };
 
 /**
@@ -224,14 +242,15 @@ const publishConfig = (type, config) => {
  *
  *  @param {string} path - The entity path name.
  *  @param {Object} attributes - The attributes object.
+ *  @param {boolean} [retain] - Whether to retain the message.
  *  @returns {Object} Instance of the mqtt client.
  */
-const publishAttributes = (path, attributes) => {
+const publishAttributes = (path, attributes, retain = true) => {
   if (path === null || attributes === null) {
     return INTEGRATION.client;
   }
   const root = `${INTEGRATION.root}/${path}/attributes`;
-  return INTEGRATION.client.publish(root, JSON.stringify(attributes), { qos: 1, retain: true });
+  return publish(root, JSON.stringify(attributes), retain);
 };
 
 /**
@@ -239,14 +258,15 @@ const publishAttributes = (path, attributes) => {
  *
  *  @param {string} path - The entity path name.
  *  @param {string|number} state - The state value.
+ *  @param {boolean} [retain] - Whether to retain the message.
  *  @returns {Object} Instance of the mqtt client.
  */
-const publishState = (path, state) => {
+const publishState = (path, state, retain = true) => {
   if (path === null || state === null) {
     return INTEGRATION.client;
   }
   const root = `${INTEGRATION.root}/${path}/state`;
-  return INTEGRATION.client.publish(root, `${state}`, { qos: 1, retain: true });
+  return publish(root, `${state}`, retain);
 };
 
 /**
@@ -265,10 +285,10 @@ const initApp = () => {
     }),
   };
   if (ARGS.app_disable.includes("mqtt_app")) {
-    removeConfig("update", config);
+    removeConfig("update", config, true);
     return;
   }
-  publishConfig("update", config)
+  publishConfig("update", config, true)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         console.info("Update App...");
@@ -308,7 +328,7 @@ const updateApp = async (progress = 0) => {
     update_percentage: progress ?? null,
     in_progress: typeof progress === "number" && progress > 0 && progress < 100,
   };
-  publishState("app/version", JSON.stringify(version));
+  publishState("app/version", JSON.stringify(version), true);
 };
 
 /**
@@ -324,10 +344,10 @@ const initShutdown = () => {
     device: INTEGRATION.device,
   };
   if (!HARDWARE.support.sudoRights || ARGS.app_disable.includes("mqtt_shutdown")) {
-    removeConfig("button", config);
+    removeConfig("button", config, true);
     return;
   }
-  publishConfig("button", config)
+  publishConfig("button", config, true)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         console.verbose("Shutdown system...");
@@ -352,10 +372,10 @@ const initReboot = () => {
     device: INTEGRATION.device,
   };
   if (!HARDWARE.support.sudoRights || ARGS.app_disable.includes("mqtt_reboot")) {
-    removeConfig("button", config);
+    removeConfig("button", config, true);
     return;
   }
-  publishConfig("button", config)
+  publishConfig("button", config, true)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         console.verbose("Rebooting system...");
@@ -380,10 +400,10 @@ const initRefresh = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_refresh")) {
-    removeConfig("button", config);
+    removeConfig("button", config, true);
     return;
   }
-  publishConfig("button", config)
+  publishConfig("button", config, true)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         console.verbose("Refreshing webview...");
@@ -411,10 +431,10 @@ const initKiosk = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_kiosk")) {
-    removeConfig("select", config);
+    removeConfig("select", config, true);
     return;
   }
-  publishConfig("select", config)
+  publishConfig("select", config, true)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const status = message.toString();
@@ -436,7 +456,7 @@ const updateKiosk = async () => {
     return;
   }
   const kiosk = WEBVIEW.tracker.window.status;
-  publishState("kiosk", kiosk);
+  publishState("kiosk", kiosk, true);
 };
 
 /**
@@ -455,10 +475,10 @@ const initTheme = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_theme")) {
-    removeConfig("select", config);
+    removeConfig("select", config, true);
     return;
   }
-  publishConfig("select", config)
+  publishConfig("select", config, true)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const theme = message.toString().toLowerCase();
@@ -478,7 +498,7 @@ const updateTheme = async () => {
     return;
   }
   const theme = WEBVIEW.theme.get();
-  publishState("theme", theme.charAt(0).toUpperCase() + theme.slice(1));
+  publishState("theme", theme.charAt(0).toUpperCase() + theme.slice(1), true);
 };
 
 /**
@@ -503,10 +523,10 @@ const initDisplay = () => {
     }),
   };
   if (!HARDWARE.support.displayStatus || ARGS.app_disable.includes("mqtt_display")) {
-    removeConfig("light", config);
+    removeConfig("light", config, true);
     return;
   }
-  publishConfig("light", config)
+  publishConfig("light", config, true)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const status = message.toString();
@@ -544,9 +564,9 @@ const updateDisplay = async () => {
   }
   const status = hardware.getDisplayStatus();
   const brightness = hardware.getDisplayBrightness();
-  publishState("display/color_mode", HARDWARE.support.displayBrightness ? "brightness" : "onoff");
-  publishState("display/brightness", brightness);
-  publishState("display/power", status);
+  publishState("display/color_mode", HARDWARE.support.displayBrightness ? "brightness" : "onoff", true);
+  publishState("display/brightness", brightness, true);
+  publishState("display/power", status, true);
 };
 
 /**
@@ -568,10 +588,10 @@ const initVolume = () => {
     device: INTEGRATION.device,
   };
   if (!HARDWARE.support.audioVolume || ARGS.app_disable.includes("mqtt_volume")) {
-    removeConfig("number", config);
+    removeConfig("number", config, true);
     return;
   }
-  publishConfig("number", config)
+  publishConfig("number", config, true)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const volume = parseInt(message, 10);
@@ -591,7 +611,7 @@ const updateVolume = async () => {
     return;
   }
   const volume = hardware.getAudioVolume();
-  publishState("volume", volume);
+  publishState("volume", volume, true);
 };
 
 /**
@@ -613,10 +633,10 @@ const initMicrophone = () => {
     device: INTEGRATION.device,
   };
   if (!HARDWARE.support.microphoneVolume || ARGS.app_disable.includes("mqtt_microphone")) {
-    removeConfig("number", config);
+    removeConfig("number", config, true);
     return;
   }
-  publishConfig("number", config)
+  publishConfig("number", config, true)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const volume = parseInt(message, 10);
@@ -636,7 +656,7 @@ const updateMicrophone = async () => {
     return;
   }
   const volume = hardware.getMicrophoneVolume();
-  publishState("microphone", volume);
+  publishState("microphone", volume, true);
 };
 
 /**
@@ -653,10 +673,10 @@ const initKeyboard = () => {
     device: INTEGRATION.device,
   };
   if (!HARDWARE.support.keyboardVisibility || ARGS.app_disable.includes("mqtt_keyboard")) {
-    removeConfig("switch", config);
+    removeConfig("switch", config, true);
     return;
   }
-  publishConfig("switch", config)
+  publishConfig("switch", config, true)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const status = message.toString();
@@ -678,7 +698,7 @@ const updateKeyboard = async () => {
     return;
   }
   const visibility = hardware.getKeyboardVisibility();
-  publishState("keyboard", visibility);
+  publishState("keyboard", visibility, true);
 };
 
 /**
@@ -700,10 +720,10 @@ const initPageNumber = () => {
     device: INTEGRATION.device,
   };
   if (WEBVIEW.viewUrls.length <= 2 || ARGS.app_disable.includes("mqtt_page_number")) {
-    removeConfig("number", config);
+    removeConfig("number", config, true);
     return;
   }
-  publishConfig("number", config)
+  publishConfig("number", config, true)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const number = parseInt(message, 10);
@@ -726,7 +746,7 @@ const updatePageNumber = async () => {
     return;
   }
   const pageNumber = WEBVIEW.viewUrls.length <= 2 ? null : WEBVIEW.viewActive || 1;
-  publishState("page_number", pageNumber);
+  publishState("page_number", pageNumber, true);
 };
 
 /**
@@ -749,10 +769,10 @@ const initPageZoom = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_page_zoom")) {
-    removeConfig("number", config);
+    removeConfig("number", config, true);
     return;
   }
-  publishConfig("number", config)
+  publishConfig("number", config, true)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const zoom = parseInt(message, 10);
@@ -775,7 +795,7 @@ const updatePageZoom = async () => {
     return;
   }
   const pageZoom = WEBVIEW.zoom.get();
-  publishState("page_zoom", pageZoom);
+  publishState("page_zoom", pageZoom, true);
 };
 
 /**
@@ -794,10 +814,10 @@ const initPageUrl = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_page_url")) {
-    removeConfig("text", config);
+    removeConfig("text", config, true);
     return;
   }
-  publishConfig("text", config)
+  publishConfig("text", config, true)
     .on("message", (topic, message) => {
       if (topic === config.command_topic) {
         const url = message.toString();
@@ -821,7 +841,7 @@ const updatePageUrl = async () => {
   const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive || 1];
   const currentUrl = WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.getURL();
   const pageUrl = !currentUrl || currentUrl.startsWith("data:") ? defaultUrl : currentUrl;
-  publishState("page_url", pageUrl.length < 255 ? pageUrl : null);
+  publishState("page_url", pageUrl.length < 255 ? pageUrl : null, true);
 };
 
 /**
@@ -839,10 +859,10 @@ const initModel = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_model")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateModel();
 };
 
@@ -854,8 +874,8 @@ const updateModel = async () => {
     return;
   }
   const model = hardware.getModel();
-  publishState("model", model);
-  publishAttributes("model", HARDWARE.support);
+  publishState("model", model, true);
+  publishAttributes("model", HARDWARE.support, true);
 };
 
 /**
@@ -872,10 +892,10 @@ const initSerialNumber = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_serial_number")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateSerialNumber();
 };
 
@@ -887,7 +907,7 @@ const updateSerialNumber = async () => {
     return;
   }
   const serialNumber = hardware.getSerialNumber();
-  publishState("serial_number", serialNumber);
+  publishState("serial_number", serialNumber, true);
 };
 
 /**
@@ -905,10 +925,10 @@ const initNetworkAddress = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_network_address")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateNetworkAddress();
 };
 
@@ -923,8 +943,8 @@ const updateNetworkAddress = async () => {
   const [name] = Object.keys(networkAddresses);
   const [family] = name ? Object.keys(networkAddresses[name]) : [];
   const networkAddress = networkAddresses[name]?.[family]?.[0] || null;
-  publishState("network_address", networkAddress);
-  publishAttributes("network_address", networkAddresses);
+  publishState("network_address", networkAddress, true);
+  publishAttributes("network_address", networkAddresses, true);
 };
 
 /**
@@ -941,10 +961,10 @@ const initHostName = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_host_name")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateHostName();
 };
 
@@ -956,7 +976,7 @@ const updateHostName = async () => {
     return;
   }
   const hostName = hardware.getHostName();
-  publishState("host_name", hostName);
+  publishState("host_name", hostName, true);
 };
 
 /**
@@ -975,10 +995,10 @@ const initUpTime = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_up_time")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateUpTime();
 };
 
@@ -994,8 +1014,8 @@ const updateUpTime = async () => {
     app: APP.start,
     boot: new Date(new Date().getTime() - upTime * 60 * 1000),
   };
-  publishState("up_time", upTime);
-  publishAttributes("up_time", startTime);
+  publishState("up_time", upTime, true);
+  publishAttributes("up_time", startTime, true);
 };
 
 /**
@@ -1013,10 +1033,10 @@ const initMemorySize = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_memory_size")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateMemorySize();
 };
 
@@ -1028,7 +1048,7 @@ const updateMemorySize = async () => {
     return;
   }
   const memorySize = hardware.getMemorySize();
-  publishState("memory_size", memorySize);
+  publishState("memory_size", memorySize, true);
 };
 
 /**
@@ -1046,10 +1066,10 @@ const initMemoryUsage = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_memory_usage")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateMemoryUsage();
 };
 
@@ -1061,7 +1081,7 @@ const updateMemoryUsage = async () => {
     return;
   }
   const memoryUsage = hardware.getMemoryUsage();
-  publishState("memory_usage", memoryUsage);
+  publishState("memory_usage", memoryUsage, true);
 };
 
 /**
@@ -1079,10 +1099,10 @@ const initProcessorUsage = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_processor_usage")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateProcessorUsage();
 };
 
@@ -1094,7 +1114,7 @@ const updateProcessorUsage = async () => {
     return;
   }
   const processorUsage = hardware.getProcessorUsage();
-  publishState("processor_usage", processorUsage);
+  publishState("processor_usage", processorUsage, true);
 };
 
 /**
@@ -1112,10 +1132,10 @@ const initProcessorTemperature = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_processor_temperature")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateProcessorTemperature();
 };
 
@@ -1127,7 +1147,7 @@ const updateProcessorTemperature = async () => {
     return;
   }
   const processorTemperature = hardware.getProcessorTemperature();
-  publishState("processor_temperature", processorTemperature);
+  publishState("processor_temperature", processorTemperature, true);
 };
 
 /**
@@ -1145,10 +1165,10 @@ const initBatteryLevel = () => {
     device: INTEGRATION.device,
   };
   if (!HARDWARE.support.batteryLevel || ARGS.app_disable.includes("mqtt_battery_level")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateBatteryLevel();
 };
 
@@ -1160,7 +1180,7 @@ const updateBatteryLevel = async () => {
     return;
   }
   const batteryLevel = hardware.getBatteryLevel();
-  publishState("battery_level", batteryLevel);
+  publishState("battery_level", batteryLevel, true);
 };
 
 /**
@@ -1179,10 +1199,10 @@ const initIlluminanceLevel = () => {
     device: INTEGRATION.device,
   };
   if (!HARDWARE.support.illuminanceLevel || ARGS.app_disable.includes("mqtt_illuminance_level")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateIlluminanceLevel();
 };
 
@@ -1194,7 +1214,7 @@ const updateIlluminanceLevel = async () => {
     return;
   }
   const illuminanceLevel = hardware.getIlluminanceLevel();
-  publishState("illuminance_level", illuminanceLevel);
+  publishState("illuminance_level", illuminanceLevel, true);
 };
 
 /**
@@ -1212,10 +1232,10 @@ const initPackageUpgrades = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_package_upgrades")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updatePackageUpgrades();
 };
 
@@ -1233,8 +1253,8 @@ const updatePackageUpgrades = async () => {
       return { [name]: version };
     }),
   };
-  publishState("package_upgrades", packages.length);
-  publishAttributes("package_upgrades", upgrades);
+  publishState("package_upgrades", packages.length, true);
+  publishAttributes("package_upgrades", upgrades, true);
 };
 
 /**
@@ -1253,10 +1273,10 @@ const initLastActive = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_last_active")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateLastActive();
 };
 
@@ -1274,8 +1294,8 @@ const updateLastActive = async () => {
     ...WEBVIEW.tracker.pointer.position,
     ...WEBVIEW.tracker.display,
   };
-  publishState("last_active", lastActive);
-  publishAttributes("last_active", tracker);
+  publishState("last_active", lastActive, true);
+  publishAttributes("last_active", tracker, true);
 };
 
 /**
@@ -1294,10 +1314,10 @@ const initScreenshot = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_screenshot")) {
-    removeConfig("image", config);
+    removeConfig("image", config, true);
     return;
   }
-  publishConfig("image", config);
+  publishConfig("image", config, true);
   updateScreenshot();
 };
 
@@ -1309,11 +1329,11 @@ const updateScreenshot = async () => {
     return;
   }
   const screenshot = WEBVIEW.tracker.screenshot;
-  publishState("screenshot", screenshot);
+  publishState("screenshot", screenshot, false);
 };
 
 /**
- * Initializes the heartbeat sensor.
+ * Initializes the heartbeat sensor. (deprecated, will be removed in v1.6.0)
  */
 const initHeartbeat = () => {
   const root = `${INTEGRATION.root}/heartbeat`;
@@ -1328,15 +1348,15 @@ const initHeartbeat = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_heartbeat")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateHeartbeat();
 };
 
 /**
- * Updates the heartbeat sensor via the mqtt connection.
+ * Updates the heartbeat sensor via the mqtt connection. (deprecated, will be removed in v1.6.0)
  */
 const updateHeartbeat = async () => {
   if (ARGS.app_disable.includes("mqtt_heartbeat")) {
@@ -1346,8 +1366,8 @@ const updateHeartbeat = async () => {
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60 * 1000);
   const heartbeat = local.toISOString().replace(/\.\d{3}Z$/, "");
   const attributes = { date: now };
-  publishState("heartbeat", heartbeat);
-  publishAttributes("heartbeat", attributes);
+  publishState("heartbeat", heartbeat, false);
+  publishAttributes("heartbeat", attributes, false);
 };
 
 /**
@@ -1366,10 +1386,10 @@ const initErrors = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_errors")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateErrors();
 };
 
@@ -1390,8 +1410,8 @@ const updateErrors = async () => {
     acc[time].push({ [log.level.toUpperCase()]: log.text });
     return acc;
   }, {});
-  publishState("errors", errors.length);
-  publishAttributes("errors", history);
+  publishState("errors", errors.length, true);
+  publishAttributes("errors", history, true);
 };
 
 /**
@@ -1410,10 +1430,10 @@ const initVersion = () => {
     device: INTEGRATION.device,
   };
   if (ARGS.app_disable.includes("mqtt_version")) {
-    removeConfig("sensor", config);
+    removeConfig("sensor", config, true);
     return;
   }
-  publishConfig("sensor", config);
+  publishConfig("sensor", config, true);
   updateVersion();
 };
 
@@ -1424,8 +1444,8 @@ const updateVersion = async () => {
   if (ARGS.app_disable.includes("mqtt_version")) {
     return;
   }
-  publishState("version", APP.version);
-  publishAttributes("version", APP.build);
+  publishState("version", APP.version, true);
+  publishAttributes("version", APP.build, true);
 };
 
 module.exports = {
