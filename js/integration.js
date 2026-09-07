@@ -9,7 +9,7 @@ global.INTEGRATION = global.INTEGRATION || {
 /**
  * Initializes the integration with the provided arguments.
  *
- * @returns {bool} Returns true if the initialization was successful.
+ * @returns {Promise<boolean>} True if the initialization was successful.
  */
 const init = async () => {
   if (!ARGS.mqtt_url) {
@@ -168,6 +168,8 @@ const init = async () => {
 
 /**
  * Updates the shared integration properties.
+ *
+ * @returns {Promise<void>}
  */
 const update = async () => {
   if (!INTEGRATION.initialized || APP.exiting) {
@@ -188,11 +190,11 @@ const update = async () => {
 /**
  * Publishes a payload via the mqtt connection.
  *
- *  @param {string} root - The mqtt topic.
- *  @param {string} payload - The payload to publish.
- *  @param {boolean} [retain] - Whether to retain the message.
- *  @param {number} [qos] - The quality of service level.
- *  @returns {Object} Instance of the mqtt client.
+ * @param {string} root - The mqtt topic.
+ * @param {string} payload - The payload to publish.
+ * @param {boolean} [retain] - Whether to retain the message.
+ * @param {number} [qos] - The quality of service level.
+ * @returns {Object} Instance of the mqtt client.
  */
 const publish = (root, payload, retain = true, qos = 1) => {
   if (root === null || payload === null) {
@@ -204,10 +206,10 @@ const publish = (root, payload, retain = true, qos = 1) => {
 /**
  * Removes the auto-discovery config via the mqtt connection.
  *
- *  @param {string} type - The entity type name.
- *  @param {Object} config - The configuration object.
- *  @param {boolean} [retain] - Whether to retain the message.
- *  @returns {Object} Instance of the mqtt client.
+ * @param {string} type - The entity type name.
+ * @param {Object} config - The configuration object.
+ * @param {boolean} [retain] - Whether to retain the message.
+ * @returns {Object} Instance of the mqtt client.
  */
 const removeConfig = (type, config, retain = true) => {
   if (type === null || config === null) {
@@ -222,10 +224,10 @@ const removeConfig = (type, config, retain = true) => {
 /**
  * Publishes the auto-discovery config via the mqtt connection.
  *
- *  @param {string} type - The entity type name.
- *  @param {Object} config - The configuration object.
- *  @param {boolean} [retain] - Whether to retain the message.
- *  @returns {Object} Instance of the mqtt client.
+ * @param {string} type - The entity type name.
+ * @param {Object} config - The configuration object.
+ * @param {boolean} [retain] - Whether to retain the message.
+ * @returns {Object} Instance of the mqtt client.
  */
 const publishConfig = (type, config, retain = true) => {
   if (type === null || config === null) {
@@ -240,10 +242,10 @@ const publishConfig = (type, config, retain = true) => {
 /**
  * Publishes the sensor attributes via the mqtt connection.
  *
- *  @param {string} path - The entity path name.
- *  @param {Object} attributes - The attributes object.
- *  @param {boolean} [retain] - Whether to retain the message.
- *  @returns {Object} Instance of the mqtt client.
+ * @param {string} path - The entity path name.
+ * @param {Object} attributes - The attributes object.
+ * @param {boolean} [retain] - Whether to retain the message.
+ * @returns {Object} Instance of the mqtt client.
  */
 const publishAttributes = (path, attributes, retain = true) => {
   if (path === null || attributes === null) {
@@ -256,10 +258,10 @@ const publishAttributes = (path, attributes, retain = true) => {
 /**
  * Publishes the sensor state via the mqtt connection.
  *
- *  @param {string} path - The entity path name.
- *  @param {string|number} state - The state value.
- *  @param {boolean} [retain] - Whether to retain the message.
- *  @returns {Object} Instance of the mqtt client.
+ * @param {string} path - The entity path name.
+ * @param {string|number} state - The state value.
+ * @param {boolean} [retain] - Whether to retain the message.
+ * @returns {Object} Instance of the mqtt client.
  */
 const publishState = (path, state, retain = true) => {
   if (path === null || state === null) {
@@ -271,6 +273,8 @@ const publishState = (path, state, retain = true) => {
 
 /**
  * Initializes the app update entity and handles the execute logic.
+ *
+ * @returns {void}
  */
 const initApp = () => {
   const root = `${INTEGRATION.root}/app`;
@@ -309,6 +313,9 @@ const initApp = () => {
 
 /**
  * Updates the app update entity via the mqtt connection.
+ *
+ * @param {number} [progress] - The update progress percentage.
+ * @returns {Promise<void>}
  */
 const updateApp = async (progress = 0) => {
   if (ARGS.app_disable.includes("mqtt_app")) {
@@ -333,6 +340,8 @@ const updateApp = async (progress = 0) => {
 
 /**
  * Initializes the shutdown button and handles the execute logic.
+ *
+ * @returns {void}
  */
 const initShutdown = () => {
   const root = `${INTEGRATION.root}/shutdown`;
@@ -361,6 +370,8 @@ const initShutdown = () => {
 
 /**
  * Initializes the reboot button and handles the execute logic.
+ *
+ * @returns {void}
  */
 const initReboot = () => {
   const root = `${INTEGRATION.root}/reboot`;
@@ -389,6 +400,8 @@ const initReboot = () => {
 
 /**
  * Initializes the refresh button and handles the execute logic.
+ *
+ * @returns {void}
  */
 const initRefresh = () => {
   const root = `${INTEGRATION.root}/refresh`;
@@ -417,6 +430,8 @@ const initRefresh = () => {
 
 /**
  * Initializes the kiosk select status and handles the execute logic.
+ *
+ * @returns {void}
  */
 const initKiosk = () => {
   const root = `${INTEGRATION.root}/kiosk`;
@@ -450,6 +465,8 @@ const initKiosk = () => {
 
 /**
  * Updates the kiosk status via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateKiosk = async () => {
   if (ARGS.app_disable.includes("mqtt_kiosk")) {
@@ -461,6 +478,8 @@ const updateKiosk = async () => {
 
 /**
  * Initializes the application theme and handles the execute logic.
+ *
+ * @returns {void}
  */
 const initTheme = () => {
   const root = `${INTEGRATION.root}/theme`;
@@ -492,6 +511,8 @@ const initTheme = () => {
 
 /**
  * Updates the application theme via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateTheme = async () => {
   if (ARGS.app_disable.includes("mqtt_theme")) {
@@ -503,6 +524,8 @@ const updateTheme = async () => {
 
 /**
  * Initializes the display status, brightness and handles the execute logic.
+ *
+ * @returns {void}
  */
 const initDisplay = () => {
   const root = `${INTEGRATION.root}/display`;
@@ -557,6 +580,8 @@ const initDisplay = () => {
 
 /**
  * Updates the display status, brightness via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateDisplay = async () => {
   if (ARGS.app_disable.includes("mqtt_display")) {
@@ -571,6 +596,8 @@ const updateDisplay = async () => {
 
 /**
  * Initializes the audio volume and handles the execute logic.
+ *
+ * @returns {void}
  */
 const initVolume = () => {
   const root = `${INTEGRATION.root}/volume`;
@@ -605,6 +632,8 @@ const initVolume = () => {
 
 /**
  * Updates the audio volume via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateVolume = async () => {
   if (ARGS.app_disable.includes("mqtt_volume")) {
@@ -616,6 +645,8 @@ const updateVolume = async () => {
 
 /**
  * Initializes the microphone volume and handles the execute logic.
+ *
+ * @returns {void}
  */
 const initMicrophone = () => {
   const root = `${INTEGRATION.root}/microphone`;
@@ -650,6 +681,8 @@ const initMicrophone = () => {
 
 /**
  * Updates the microphone volume via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateMicrophone = async () => {
   if (ARGS.app_disable.includes("mqtt_microphone")) {
@@ -661,6 +694,8 @@ const updateMicrophone = async () => {
 
 /**
  * Initializes the keyboard visibility and handles the execute logic.
+ *
+ * @returns {void}
  */
 const initKeyboard = () => {
   const root = `${INTEGRATION.root}/keyboard`;
@@ -692,6 +727,8 @@ const initKeyboard = () => {
 
 /**
  * Updates the keyboard visibility via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateKeyboard = async () => {
   if (ARGS.app_disable.includes("mqtt_keyboard")) {
@@ -703,6 +740,8 @@ const updateKeyboard = async () => {
 
 /**
  * Initializes the page number and handles the execute logic.
+ *
+ * @returns {void}
  */
 const initPageNumber = () => {
   const root = `${INTEGRATION.root}/page_number`;
@@ -740,6 +779,8 @@ const initPageNumber = () => {
 
 /**
  * Updates the page number via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updatePageNumber = async () => {
   if (ARGS.app_disable.includes("mqtt_page_number")) {
@@ -751,6 +792,8 @@ const updatePageNumber = async () => {
 
 /**
  * Initializes the page zoom and handles the execute logic.
+ *
+ * @returns {void}
  */
 const initPageZoom = () => {
   const root = `${INTEGRATION.root}/page_zoom`;
@@ -789,6 +832,8 @@ const initPageZoom = () => {
 
 /**
  * Updates the page zoom via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updatePageZoom = async () => {
   if (ARGS.app_disable.includes("mqtt_page_zoom")) {
@@ -800,6 +845,8 @@ const updatePageZoom = async () => {
 
 /**
  * Initializes the page url and handles the execute logic.
+ *
+ * @returns {void}
  */
 const initPageUrl = () => {
   const root = `${INTEGRATION.root}/page_url`;
@@ -833,6 +880,8 @@ const initPageUrl = () => {
 
 /**
  * Updates the page url via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updatePageUrl = async () => {
   if (ARGS.app_disable.includes("mqtt_page_url")) {
@@ -846,6 +895,8 @@ const updatePageUrl = async () => {
 
 /**
  * Initializes the model sensor.
+ *
+ * @returns {void}
  */
 const initModel = () => {
   const root = `${INTEGRATION.root}/model`;
@@ -868,6 +919,8 @@ const initModel = () => {
 
 /**
  * Updates the model sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateModel = async () => {
   if (ARGS.app_disable.includes("mqtt_model")) {
@@ -880,6 +933,8 @@ const updateModel = async () => {
 
 /**
  * Initializes the serial number sensor.
+ *
+ * @returns {void}
  */
 const initSerialNumber = () => {
   const root = `${INTEGRATION.root}/serial_number`;
@@ -901,6 +956,8 @@ const initSerialNumber = () => {
 
 /**
  * Updates the serial number sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateSerialNumber = async () => {
   if (ARGS.app_disable.includes("mqtt_serial_number")) {
@@ -912,6 +969,8 @@ const updateSerialNumber = async () => {
 
 /**
  * Initializes the network address sensor.
+ *
+ * @returns {void}
  */
 const initNetworkAddress = () => {
   const root = `${INTEGRATION.root}/network_address`;
@@ -934,6 +993,8 @@ const initNetworkAddress = () => {
 
 /**
  * Updates the network address sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateNetworkAddress = async () => {
   if (ARGS.app_disable.includes("mqtt_network_address")) {
@@ -949,6 +1010,8 @@ const updateNetworkAddress = async () => {
 
 /**
  * Initializes the host name sensor.
+ *
+ * @returns {void}
  */
 const initHostName = () => {
   const root = `${INTEGRATION.root}/host_name`;
@@ -970,6 +1033,8 @@ const initHostName = () => {
 
 /**
  * Updates the host name sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateHostName = async () => {
   if (ARGS.app_disable.includes("mqtt_host_name")) {
@@ -981,6 +1046,8 @@ const updateHostName = async () => {
 
 /**
  * Initializes the up time sensor.
+ *
+ * @returns {void}
  */
 const initUpTime = () => {
   const root = `${INTEGRATION.root}/up_time`;
@@ -1004,6 +1071,8 @@ const initUpTime = () => {
 
 /**
  * Updates the up time sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateUpTime = async () => {
   if (ARGS.app_disable.includes("mqtt_up_time")) {
@@ -1020,6 +1089,8 @@ const updateUpTime = async () => {
 
 /**
  * Initializes the memory size sensor.
+ *
+ * @returns {void}
  */
 const initMemorySize = () => {
   const root = `${INTEGRATION.root}/memory_size`;
@@ -1042,6 +1113,8 @@ const initMemorySize = () => {
 
 /**
  * Updates the memory size sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateMemorySize = async () => {
   if (ARGS.app_disable.includes("mqtt_memory_size")) {
@@ -1053,6 +1126,8 @@ const updateMemorySize = async () => {
 
 /**
  * Initializes the memory usage sensor.
+ *
+ * @returns {void}
  */
 const initMemoryUsage = () => {
   const root = `${INTEGRATION.root}/memory_usage`;
@@ -1075,6 +1150,8 @@ const initMemoryUsage = () => {
 
 /**
  * Updates the memory usage sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateMemoryUsage = async () => {
   if (ARGS.app_disable.includes("mqtt_memory_usage")) {
@@ -1086,6 +1163,8 @@ const updateMemoryUsage = async () => {
 
 /**
  * Initializes the processor usage sensor.
+ *
+ * @returns {void}
  */
 const initProcessorUsage = () => {
   const root = `${INTEGRATION.root}/processor_usage`;
@@ -1108,6 +1187,8 @@ const initProcessorUsage = () => {
 
 /**
  * Updates the processor usage sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateProcessorUsage = async () => {
   if (ARGS.app_disable.includes("mqtt_processor_usage")) {
@@ -1119,6 +1200,8 @@ const updateProcessorUsage = async () => {
 
 /**
  * Initializes the processor temperature sensor.
+ *
+ * @returns {void}
  */
 const initProcessorTemperature = () => {
   const root = `${INTEGRATION.root}/processor_temperature`;
@@ -1141,6 +1224,8 @@ const initProcessorTemperature = () => {
 
 /**
  * Updates the processor temperature sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateProcessorTemperature = async () => {
   if (ARGS.app_disable.includes("mqtt_processor_temperature")) {
@@ -1152,6 +1237,8 @@ const updateProcessorTemperature = async () => {
 
 /**
  * Initializes the battery level sensor.
+ *
+ * @returns {void}
  */
 const initBatteryLevel = () => {
   const root = `${INTEGRATION.root}/battery_level`;
@@ -1174,6 +1261,8 @@ const initBatteryLevel = () => {
 
 /**
  * Updates the battery level sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateBatteryLevel = async () => {
   if (ARGS.app_disable.includes("mqtt_battery_level")) {
@@ -1185,6 +1274,8 @@ const updateBatteryLevel = async () => {
 
 /**
  * Initializes the illuminance level sensor.
+ *
+ * @returns {void}
  */
 const initIlluminanceLevel = () => {
   const root = `${INTEGRATION.root}/illuminance_level`;
@@ -1208,6 +1299,8 @@ const initIlluminanceLevel = () => {
 
 /**
  * Updates the illuminance level sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateIlluminanceLevel = async () => {
   if (ARGS.app_disable.includes("mqtt_illuminance_level")) {
@@ -1219,6 +1312,8 @@ const updateIlluminanceLevel = async () => {
 
 /**
  * Initializes the package upgrades sensor.
+ *
+ * @returns {void}
  */
 const initPackageUpgrades = () => {
   const root = `${INTEGRATION.root}/package_upgrades`;
@@ -1241,6 +1336,8 @@ const initPackageUpgrades = () => {
 
 /**
  * Updates the package upgrades sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updatePackageUpgrades = async () => {
   if (ARGS.app_disable.includes("mqtt_package_upgrades")) {
@@ -1259,6 +1356,8 @@ const updatePackageUpgrades = async () => {
 
 /**
  * Initializes the last active sensor.
+ *
+ * @returns {void}
  */
 const initLastActive = () => {
   const root = `${INTEGRATION.root}/last_active`;
@@ -1282,6 +1381,8 @@ const initLastActive = () => {
 
 /**
  * Updates the last active sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateLastActive = async () => {
   if (ARGS.app_disable.includes("mqtt_last_active")) {
@@ -1300,6 +1401,8 @@ const updateLastActive = async () => {
 
 /**
  * Initializes the page screenshot.
+ *
+ * @returns {void}
  */
 const initScreenshot = () => {
   const root = `${INTEGRATION.root}/screenshot`;
@@ -1323,6 +1426,8 @@ const initScreenshot = () => {
 
 /**
  * Updates the page screenshot via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateScreenshot = async () => {
   if (ARGS.app_disable.includes("mqtt_screenshot")) {
@@ -1334,6 +1439,8 @@ const updateScreenshot = async () => {
 
 /**
  * Initializes the heartbeat sensor. (deprecated, will be removed in v1.6.0)
+ *
+ * @returns {void}
  */
 const initHeartbeat = () => {
   const root = `${INTEGRATION.root}/heartbeat`;
@@ -1357,6 +1464,8 @@ const initHeartbeat = () => {
 
 /**
  * Updates the heartbeat sensor via the mqtt connection. (deprecated, will be removed in v1.6.0)
+ *
+ * @returns {Promise<void>}
  */
 const updateHeartbeat = async () => {
   if (ARGS.app_disable.includes("mqtt_heartbeat")) {
@@ -1372,6 +1481,8 @@ const updateHeartbeat = async () => {
 
 /**
  * Initializes the error log sensor.
+ *
+ * @returns {void}
  */
 const initErrors = () => {
   const root = `${INTEGRATION.root}/errors`;
@@ -1395,6 +1506,8 @@ const initErrors = () => {
 
 /**
  * Updates the error log sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateErrors = async () => {
   if (ARGS.app_disable.includes("mqtt_errors")) {
@@ -1416,6 +1529,8 @@ const updateErrors = async () => {
 
 /**
  * Initializes the version sensor.
+ *
+ * @returns {void}
  */
 const initVersion = () => {
   const root = `${INTEGRATION.root}/version`;
@@ -1439,6 +1554,8 @@ const initVersion = () => {
 
 /**
  * Updates the version sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
  */
 const updateVersion = async () => {
   if (ARGS.app_disable.includes("mqtt_version")) {

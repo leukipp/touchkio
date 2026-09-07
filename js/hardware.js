@@ -44,7 +44,7 @@ global.HARDWARE = global.HARDWARE || {
 /**
  * Initializes the hardware with the provided arguments.
  *
- * @returns {bool} Returns true if the initialization was successful.
+ * @returns {Promise<boolean>} True if the initialization was successful.
  */
 const init = async () => {
   if (!compatibleSystem()) {
@@ -185,6 +185,8 @@ const init = async () => {
 
 /**
  * Updates the shared hardware properties.
+ *
+ * @returns {Promise<void>}
  */
 const update = async () => {
   if (!HARDWARE.initialized || APP.exiting) {
@@ -247,7 +249,7 @@ const update = async () => {
 /**
  * Verifies system compatibility by checking the presence of necessary sys paths.
  *
- * @returns {bool} Returns true if all paths exists.
+ * @returns {boolean} True if all paths exist.
  */
 const compatibleSystem = () => {
   if (os.platform() !== "linux") {
@@ -260,7 +262,7 @@ const compatibleSystem = () => {
 /**
  * Gets the session user name using `os.userInfo()`.
  *
- * @returns {string|null} Returns session user name or null if an error occurs.
+ * @returns {string|null} The session user name or null if an error occurs.
  */
 const sessionUser = () => {
   try {
@@ -272,7 +274,7 @@ const sessionUser = () => {
 /**
  * Gets the session type for the user using `loginctl`.
  *
- * @returns {string|null} Returns session type 'x11'/'wayland' or null if an error occurs.
+ * @returns {string|null} The session type 'x11'/'wayland' or null if an error occurs.
  */
 const sessionType = () => {
   if (!commandExists("loginctl")) {
@@ -288,7 +290,7 @@ const sessionType = () => {
 /**
  * Gets the desktop environment name by checking environment variables.
  *
- * @returns {string} Returns desktop environment name or 'unknown' if not detected.
+ * @returns {string} The desktop environment name or 'unknown' if not detected.
  */
 const sessionDesktop = () => {
   const envs = ["XDG_CURRENT_DESKTOP", "XDG_DESKTOP_SESSION", "DESKTOP_SESSION"];
@@ -299,7 +301,7 @@ const sessionDesktop = () => {
 /**
  * Checks supported features based on hardware and software.
  *
- * @returns {Object} Returns support object with boolean values.
+ * @returns {Object} The support object with boolean values.
  */
 const checkSupport = () => {
   const sudo = sudoRights();
@@ -708,7 +710,8 @@ const getDisplayStatus = () => {
  * the appropriate command to set the display status.
  *
  * @param {string} status - The desired status ('ON' or 'OFF').
- * @param {Function} callback - A callback function that receives the output or error.
+ * @param {Function} [callback] - A callback function that receives the output or error.
+ * @returns {void}
  */
 const setDisplayStatus = (status, callback = null) => {
   if (!HARDWARE.support.displayStatus) {
@@ -866,7 +869,8 @@ const getDisplayBrightness = () => {
  * maps it to the proper range and writes it to the system.
  *
  * @param {number} brightness - The desired brightness level (1-100).
- * @param {Function} callback - A callback function that receives the output or error.
+ * @param {Function} [callback] - A callback function that receives the output or error.
+ * @returns {void}
  */
 const setDisplayBrightness = (brightness, callback = null) => {
   if (!HARDWARE.support.displayBrightness) {
@@ -945,7 +949,8 @@ const getAudioVolume = () => {
  * This function takes a volume value between 0 to 100 percent and sends it to the output device.
  *
  * @param {number} volume - The desired volume level (0-100).
- * @param {Function} callback - A callback function that receives the output or error.
+ * @param {Function} [callback] - A callback function that receives the output or error.
+ * @returns {void}
  */
 const setAudioVolume = (volume, callback = null) => {
   if (!HARDWARE.support.audioVolume) {
@@ -1008,7 +1013,8 @@ const getMicrophoneVolume = () => {
  * This function takes a volume value between 0 to 100 percent and sends it to the input device.
  *
  * @param {number} volume - The desired volume level (0-100).
- * @param {Function} callback - A callback function that receives the output or error.
+ * @param {Function} [callback] - A callback function that receives the output or error.
+ * @returns {void}
  */
 const setMicrophoneVolume = (volume, callback = null) => {
   if (!HARDWARE.support.microphoneVolume) {
@@ -1042,8 +1048,9 @@ const getKeyboardVisibility = () => {
  * This function takes a desired visibility ('ON' or 'OFF') and executes
  * the appropriate command to show or hide the keyboard.
  *
- * @param {bool} visibility - The desired visibility ('ON' or 'OFF').
- * @param {Function} callback - A callback function that receives the output or error.
+ * @param {string} visibility - The desired visibility ('ON' or 'OFF').
+ * @param {Function} [callback] - A callback function that receives the output or error.
+ * @returns {void}
  */
 const setKeyboardVisibility = (visibility, callback = null) => {
   if (!HARDWARE.support.keyboardVisibility) {
@@ -1081,7 +1088,8 @@ const checkPackageUpgrades = () => {
  * This function executes the command asynchronously.
  * The output of the command will be provided through the callback function.
  *
- * @param {Function} callback - A callback function that receives the output or error.
+ * @param {Function} [callback] - A callback function that receives the output or error.
+ * @returns {void}
  */
 const shutdownSystem = (callback = null) => {
   if (!HARDWARE.support.sudoRights) {
@@ -1097,7 +1105,8 @@ const shutdownSystem = (callback = null) => {
  * This function executes the command asynchronously.
  * The output of the command will be provided through the callback function.
  *
- * @param {Function} callback - A callback function that receives the output or error.
+ * @param {Function} [callback] - A callback function that receives the output or error.
+ * @returns {void}
  */
 const rebootSystem = (callback = null) => {
   if (!HARDWARE.support.sudoRights) {
@@ -1110,7 +1119,7 @@ const rebootSystem = (callback = null) => {
 /**
  * Checks if sudo commands can run without a password.
  *
- * @returns {bool} Returns true if password-less sudo rights exists.
+ * @returns {boolean} True if password-less sudo rights exist.
  */
 const sudoRights = () => {
   try {
@@ -1124,7 +1133,7 @@ const sudoRights = () => {
  * Checks if a file has write access rights.
  *
  * @param {string} path - The file path to check.
- * @returns {bool} Returns true if write access rights exists.
+ * @returns {boolean} True if write access rights exist.
  */
 const writeRights = (path) => {
   try {
@@ -1138,7 +1147,7 @@ const writeRights = (path) => {
  * Checks if a service is running using `systemctl`.
  *
  * @param {string} name - The service name to check.
- * @returns {bool} Returns true if the service runs.
+ * @returns {boolean} True if the service runs.
  */
 const serviceRuns = (name) => {
   try {
@@ -1152,7 +1161,7 @@ const serviceRuns = (name) => {
  * Checks if a process is running using `pidof`.
  *
  * @param {string} name - The process name to check.
- * @returns {bool} Returns true if the process runs.
+ * @returns {boolean} True if the process runs.
  */
 const processRuns = (name) => {
   try {
@@ -1166,7 +1175,7 @@ const processRuns = (name) => {
  * Checks if a command is available using `which`.
  *
  * @param {string} name - The command name to check.
- * @returns {bool} Returns true if the command is available.
+ * @returns {boolean} True if the command is available.
  */
 const commandExists = (name) => {
   try {
@@ -1199,7 +1208,7 @@ const execSyncCommand = (cmd, args) => {
  *
  * @param {string} cmd - The command to execute.
  * @param {Array<string>} args - The arguments for the command.
- * @param {Function} callback - A callback function that receives the output or error.
+ * @param {Function} [callback] - A callback function that receives the output or error.
  * @returns {Object} The spawned process object.
  */
 const execAsyncCommand = (cmd, args, callback = null) => {
@@ -1235,7 +1244,7 @@ const execAsyncCommand = (cmd, args, callback = null) => {
  *
  * @param {string} cmd - The script to execute.
  * @param {Array<string>} args - The arguments for the command.
- * @param {Function} callback - A callback function that receives the progress or error.
+ * @param {Function} [callback] - A callback function that receives the progress or error.
  * @returns {Object} The spawned process object.
  */
 const execScriptCommand = (cmd, args, callback = null) => {
@@ -1285,7 +1294,7 @@ const execScriptCommand = (cmd, args, callback = null) => {
  *
  * @param {string} cmd - The command to monitor.
  * @param {Array<string>} args - The arguments for the command.
- * @param {Function} callback - A callback function that receives the output or error.
+ * @param {Function} [callback] - A callback function that receives the output or error.
  * @returns {Object} The spawned process object.
  */
 const commandMonitor = (cmd, args, callback = null) => {
@@ -1310,7 +1319,7 @@ const commandMonitor = (cmd, args, callback = null) => {
  * Monitors D-Bus property changes asynchronously using `dbus-monitor`.
  *
  * @param {string} path - The D-Bus object path.
- * @param {Function} callback - A callback function that receives the changed property.
+ * @param {Function} [callback] - A callback function that receives the changed property.
  * @returns {Object} The spawned process object.
  */
 const dbusMonitor = (path, callback = null) => {
@@ -1357,7 +1366,8 @@ const dbusMonitor = (path, callback = null) => {
  * @param {string} path - The D-Bus object path.
  * @param {string} method - The D-Bus method name.
  * @param {Array<string>} values - The argument values for the D-Bus method.
- * @param {Function} callback - A callback function that receives the output or error.
+ * @param {Function} [callback] - A callback function that receives the output or error.
+ * @returns {void}
  */
 const dbusCall = (path, method, values, callback = null) => {
   const cmd = "dbus-send";
@@ -1378,7 +1388,7 @@ const dbusCall = (path, method, values, callback = null) => {
  * Reads file content synchronously or asynchronously from the filesystem.
  *
  * @param {string} path - Path of the file.
- * @param {boolean} sync - If true, reads the file synchronously, otherwise asynchronously.
+ * @param {boolean} [sync] - If true, reads the file synchronously, otherwise asynchronously.
  * @returns {string|null|Promise<string|null>} The file content or null if an error occurs.
  */
 const readFile = (path, sync = true) => {
@@ -1404,6 +1414,7 @@ const readFile = (path, sync = true) => {
  *
  * @param {Function} callback - An async callback function.
  * @param {number} ms - Sleep time in milliseconds.
+ * @returns {void}
  */
 const interval = (callback, ms) => {
   const run = () => {

@@ -36,7 +36,7 @@ global.WEBVIEW = global.WEBVIEW || {
 /**
  * Initializes the webview with the provided arguments.
  *
- * @returns {bool} Returns true if the initialization was successful.
+ * @returns {Promise<boolean>} True if the initialization was successful.
  */
 const init = async () => {
   if (ARGS.web_url.length === 0) {
@@ -229,6 +229,8 @@ const init = async () => {
 
 /**
  * Updates the shared webview properties.
+ *
+ * @returns {Promise<void>}
  */
 const update = async () => {
   if (!WEBVIEW.initialized || APP.exiting) {
@@ -251,6 +253,8 @@ const update = async () => {
 
 /**
  * Updates the application theme.
+ *
+ * @returns {void}
  */
 const updateTheme = () => {
   if (APP.exiting) {
@@ -276,6 +280,8 @@ const updateTheme = () => {
 
 /**
  * Updates the page zoom.
+ *
+ * @returns {void}
  */
 const updateZoom = () => {
   if (APP.exiting) {
@@ -293,6 +299,8 @@ const updateZoom = () => {
 
 /**
  * Updates the active view.
+ *
+ * @returns {void}
  */
 const updateView = () => {
   if (!WEBVIEW.viewActive) {
@@ -341,6 +349,8 @@ const updateView = () => {
 
 /**
  * Updates the window status.
+ *
+ * @returns {void}
  */
 const updateStatus = () => {
   const previous = WEBVIEW.tracker.window.status;
@@ -365,6 +375,8 @@ const updateStatus = () => {
 
 /**
  * Updates the pager control.
+ *
+ * @returns {void}
  */
 const updatePager = () => {
   // Disable pager buttons
@@ -380,6 +392,8 @@ const updatePager = () => {
 
 /**
  * Updates the widget control.
+ *
+ * @returns {void}
  */
 const updateWidget = () => {
   // Hide keyboard button
@@ -397,6 +411,8 @@ const updateWidget = () => {
 
 /**
  * Updates the navigation control.
+ *
+ * @returns {void}
  */
 const updateNavigation = () => {
   if (!WEBVIEW.viewActive) {
@@ -461,7 +477,8 @@ const updateNavigation = () => {
 /**
  * Shows or hides the webview navigation bar.
  *
- * @param {string} force - Force the navigation bar visibility to 'ON' or 'OFF'.
+ * @param {string} [force] - Force the navigation bar visibility to 'ON' or 'OFF'.
+ * @returns {void}
  */
 const toggleNavigation = (force = null) => {
   if (!WEBVIEW.navigationEnabled) {
@@ -492,7 +509,8 @@ const toggleNavigation = (force = null) => {
 /**
  * Shows or hides the webview status bar.
  *
- * @param {string} force - Force the status bar visibility to 'ON' or 'OFF'.
+ * @param {string} [force] - Force the status bar visibility to 'ON' or 'OFF'.
+ * @returns {void}
  */
 const toggleStatus = (force = null) => {
   if (!WEBVIEW.statusEnabled) {
@@ -522,11 +540,12 @@ const toggleStatus = (force = null) => {
 /**
  * Clears internal and webview application data.
  *
- * @param {Object} [options]
+ * @param {Object} [options] - Options for which application data to clear.
  * @param {boolean} [options.logs] - Clear internal memory logs.
  * @param {boolean} [options.history] - Clear navigation history of views.
  * @param {boolean} [options.cache] - Clear cache and service workers.
  * @param {boolean} [options.session] - Clear full session data.
+ * @returns {Promise<void>}
  */
 const clearData = async ({ logs = false, history = false, cache = false, session: full = false } = {}) => {
   if (logs || full) {
@@ -542,6 +561,8 @@ const clearData = async ({ logs = false, history = false, cache = false, session
 
 /**
  * Decreases page zoom on the active webview.
+ *
+ * @returns {void}
  */
 const zoomMinus = () => {
   if (!WEBVIEW.viewActive) {
@@ -553,6 +574,8 @@ const zoomMinus = () => {
 
 /**
  * Increases page zoom on the active webview.
+ *
+ * @returns {void}
  */
 const zoomPlus = () => {
   if (!WEBVIEW.viewActive) {
@@ -564,6 +587,8 @@ const zoomPlus = () => {
 
 /**
  * Navigates backward in the history of the active webview.
+ *
+ * @returns {void}
  */
 const historyBackward = () => {
   if (!WEBVIEW.viewActive) {
@@ -577,6 +602,8 @@ const historyBackward = () => {
 
 /**
  * Navigates forward in the history of the active webview.
+ *
+ * @returns {void}
  */
 const historyForward = () => {
   if (!WEBVIEW.viewActive) {
@@ -590,6 +617,8 @@ const historyForward = () => {
 
 /**
  * Activates the previous webview page.
+ *
+ * @returns {void}
  */
 const previousView = () => {
   if (!WEBVIEW.viewActive) {
@@ -603,6 +632,8 @@ const previousView = () => {
 
 /**
  * Activates the next webview page.
+ *
+ * @returns {void}
  */
 const nextView = () => {
   if (!WEBVIEW.viewActive) {
@@ -616,6 +647,8 @@ const nextView = () => {
 
 /**
  * Reloads the default url and settings on the active webview.
+ *
+ * @returns {Promise<void>}
  */
 const homeView = async () => {
   if (!WEBVIEW.viewActive) {
@@ -642,6 +675,8 @@ const homeView = async () => {
 
 /**
  * Reloads the current url on the active webview.
+ *
+ * @returns {Promise<void>}
  */
 const reloadView = async () => {
   if (!WEBVIEW.viewActive) {
@@ -664,6 +699,8 @@ const reloadView = async () => {
 
 /**
  * Resizes and positions all webviews.
+ *
+ * @returns {Promise<void>}
  */
 const resizeView = async () => {
   const window = WEBVIEW.window.getBounds();
@@ -743,6 +780,8 @@ const resizeView = async () => {
 
 /**
  * Register window events and handler.
+ *
+ * @returns {Promise<void>}
  */
 const windowEvents = async () => {
   console.debug("webview.js: windowEvents()");
@@ -857,6 +896,8 @@ const windowEvents = async () => {
 
 /**
  * Register widget events and handler.
+ *
+ * @returns {Promise<void>}
  */
 const widgetEvents = async () => {
   if (!WEBVIEW.widgetEnabled) {
@@ -926,6 +967,8 @@ const widgetEvents = async () => {
 
 /**
  * Register status events and handler.
+ *
+ * @returns {Promise<void>}
  */
 const statusEvents = async () => {
   if (!WEBVIEW.statusEnabled) {
@@ -975,6 +1018,8 @@ const statusEvents = async () => {
 
 /**
  * Register navigation events and handler.
+ *
+ * @returns {Promise<void>}
  */
 const navigationEvents = async () => {
   if (!WEBVIEW.navigationEnabled) {
@@ -1070,6 +1115,8 @@ const navigationEvents = async () => {
 
 /**
  * Register view events and handler.
+ *
+ * @returns {Promise<void>}
  */
 const viewEvents = async () => {
   const ready = [];
@@ -1223,6 +1270,8 @@ const viewEvents = async () => {
 
 /**
  * Register app events and handler.
+ *
+ * @returns {Promise<void>}
  */
 const appEvents = async () => {
   console.debug("webview.js: appEvents()");
@@ -1310,6 +1359,8 @@ const appEvents = async () => {
 
 /**
  * Fetches the latest app release infos from github.
+ *
+ * @returns {Promise<void>}
  */
 const latestRelease = async () => {
   if (ARGS.app_disable.includes("mqtt_app")) {
@@ -1338,9 +1389,9 @@ const latestRelease = async () => {
  * Checks for network connectivity by requesting a known url.
  *
  * @param {string} url - Url to request.
- * @param {number} interval - Interval between requests in milliseconds.
- * @param {number} timeout - Maximum time to repeat requests in milliseconds.
- * @returns {Promise<boolean>} Resolves true if online, false on timeout.
+ * @param {number} [interval] - Interval between requests in milliseconds.
+ * @param {number} [timeout] - Maximum time to repeat requests in milliseconds.
+ * @returns {Promise<boolean>} True if online, false on timeout.
  */
 const onlineStatus = (url, interval = 1000, timeout = 60000) => {
   return new Promise((resolve) => {
@@ -1376,8 +1427,8 @@ const onlineStatus = (url, interval = 1000, timeout = 60000) => {
  *
  * @param {string} key - The key of the webview cookie.
  * @param {string|number} value - The value of the webview cookie.
- * @param {WebContentsView} view - The webview that stores the cookie.
- * @returns {Promise<string|number>} The value of the webview cookie.
+ * @param {WebContentsView} [view] - The webview that stores the cookie.
+ * @returns {Promise<string|number|null>} The cookie value, or null if deleted or unavailable.
  */
 const cookieStore = async (key, value, view = WEBVIEW.views[WEBVIEW.viewActive]) => {
   const url = view ? view.webContents.getURL() : null;
@@ -1412,7 +1463,7 @@ const cookieStore = async (key, value, view = WEBVIEW.views[WEBVIEW.viewActive])
  * Captures a webview screenshot as a base64 image.
  *
  * @param {number} wait - The time to wait before capturing in milliseconds.
- * @param {WebContentsView} view - The webview that captures the page.
+ * @param {WebContentsView} [view] - The webview that captures the page.
  * @returns {Promise<string|null>} The base64 image of the captured page or null if failed.
  */
 const captureView = async (wait, view = WEBVIEW.views[WEBVIEW.viewActive]) => {
@@ -1541,6 +1592,7 @@ const errorHtml = (code, text, url, theme) => {
  *
  * @param {Function} callback - The function to execute.
  * @param {number} ms - The interval time in milliseconds.
+ * @returns {void}
  */
 const interval = (callback, ms) => {
   const delay = ms - (Date.now() % ms);

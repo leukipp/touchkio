@@ -17,6 +17,8 @@ global.EVENTS = global.EVENTS || new Events();
  * This method resolves when the app has finished initializing,
  * allowing to safely create browser windows and perform other
  * initialization tasks.
+ *
+ * @returns {Promise<void>}
  */
 app.whenReady().then(async () => {
   if (!(await initApp()) || !(await initArgs()) || !(await initLog())) {
@@ -49,7 +51,7 @@ app.whenReady().then(async () => {
 /**
  * Initializes the global app object.
  *
- * @returns {bool} Returns true if the initialization was successful.
+ * @returns {Promise<boolean>} True if the initialization was successful.
  */
 const initApp = async () => {
   const packageJsonPath = path.join(app.getAppPath(), "package.json");
@@ -130,7 +132,7 @@ const initApp = async () => {
 /**
  * Initializes the global args object.
  *
- * @returns {bool} Returns true if the initialization was successful.
+ * @returns {Promise<boolean>} True if the initialization was successful.
  */
 const initArgs = async () => {
   let args = parseArgs(process);
@@ -202,7 +204,7 @@ const initArgs = async () => {
 /**
  * Initializes the global log object.
  *
- * @returns {bool} Returns true if the initialization was successful.
+ * @returns {Promise<boolean>} True if the initialization was successful.
  */
 const initLog = async () => {
   try {
@@ -279,7 +281,7 @@ const parseArgs = (proc) => {
  * Prompts argument values on the command-line.
  *
  * @param {Object} proc - The process object.
- * @returns {Object} An object mapping argument names to their corresponding values.
+ * @returns {Promise<Object>} An object mapping argument names to their corresponding values.
  */
 const promptArgs = async (proc) => {
   const read = readline.createInterface({
@@ -388,6 +390,7 @@ const promptArgs = async (proc) => {
  *
  * @param {string} file - Path of the .json file.
  * @param {Object} args - The arguments object.
+ * @returns {void}
  */
 const writeArgs = (file, args) => {
   try {
@@ -460,7 +463,7 @@ const decrypt = (value) => {
  * Helper function for asynchronous sleep.
  *
  * @param {number} ms - Sleep time in milliseconds.
- * @returns {Promise} A promise resolving after the timeout.
+ * @returns {Promise<void>}
  */
 const sleep = (ms) => {
   return new Promise((r) => setTimeout(r, ms));
@@ -470,6 +473,8 @@ const sleep = (ms) => {
  * This method runs immediately when the process starts,
  * allowing to check necessary environment variables and
  * append internal command line switches.
+ *
+ * @returns {void}
  */
 (() => {
   console.debug = () => {};
