@@ -146,7 +146,7 @@ To broadcast your local sensor data to Home Assistant, you can use the following
 | Name                          | Default         | Description                                                                              |
 | ----------------------------- | --------------- | ---------------------------------------------------------------------------------------- |
 | `--mqtt-url` (Required)       | -               | Url of the MQTT broker instance (MQTT(S)://IP:PORT)                                      |
-| `--mqtt-user` (Required)      | -               | Username which is available in Home Assistant (e.g. create a user named `kiosk`)         |
+| `--mqtt-user` (Required)      | -               | Username which is available in Home Assistant (e.g. create a user named `user`)          |
 | `--mqtt-password` (Required)  | -               | The password of the user (e.g. use `password`, because it's secure and easy to remember) |
 | `--mqtt-discovery` (Optional) | `homeassistant` | The discovery prefix for MQTT (`homeassistant` works with default setups)                |
 
@@ -155,7 +155,7 @@ You can find them under **Settings** -> **Devices and Services** -> **Devices** 
 
 For example:
 ```bash
-touchkio --web-url=http://192.168.1.42:8123 --mqtt-url=mqtt://192.168.1.42:1883 --mqtt-user=kiosk --mqtt-password=password
+touchkio --web-url=http://192.168.1.42:8123 --mqtt-url=mqtt://192.168.1.42:1883 --mqtt-user=user --mqtt-password=password
 ```
 
 ## User Interface
