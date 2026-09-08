@@ -57,6 +57,9 @@ const init = async () => {
   const theme = ["light", "dark"].includes(ARGS.web_theme) ? ARGS.web_theme : "dark";
   const zoom = (!isNaN(parseFloat(ARGS.web_zoom)) ? parseFloat(ARGS.web_zoom) : 1.25) * 100;
   const urls = [loaderHtml(40, 1.0, theme), ...ARGS.web_url];
+  const kiosk = ["framed", "fullscreen", "maximized", "minimized"].includes(ARGS.app_kiosk)
+    ? ARGS.app_kiosk
+    : "fullscreen";
 
   // Init global controls
   WEBVIEW.statusEnabled = !debug;
@@ -213,6 +216,7 @@ const init = async () => {
   // Init global layout
   const { width, height, x, y } = WEBVIEW.window.getBounds();
   console.info(`Open Window: ${width}x${height}+${x}+${y}`);
+  WEBVIEW.kiosk = kiosk.charAt(0).toUpperCase() + kiosk.slice(1);
   WEBVIEW.theme.init(theme, updateTheme);
   WEBVIEW.zoom.init(zoom, updateZoom);
 
@@ -1126,9 +1130,9 @@ const viewEvents = async () => {
       return true;
     }
 
-    // Set window status to fullscreen
+    // Set initial kiosk window status
     if (i === 0 && !("app_debug" in ARGS)) {
-      WEBVIEW.window.setStatus("Fullscreen");
+      WEBVIEW.window.setStatus(WEBVIEW.kiosk);
     }
 
     // Hide loader and show first view
