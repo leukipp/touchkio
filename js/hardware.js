@@ -616,8 +616,8 @@ const getDisplayStatusCommand = () => {
   const mapping = {
     wayland: [
       { command: "ddcutil", desktops: ["*"] },
-      { command: "wlopm", desktops: ["labwc", "wayfire", "unknown"] },
-      { command: "kscreen-doctor", desktops: ["kde", "plasma", "unknown"] },
+      { command: "wlopm", desktops: ["labwc", "wayfire", "*"] },
+      { command: "kscreen-doctor", desktops: ["kde", "plasma", "*"] },
     ],
     x11: [
       { command: "ddcutil", desktops: ["*"] },
