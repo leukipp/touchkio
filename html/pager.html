@@ -4,16 +4,19 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'unsafe-inline'" />
     <style>
       [data-theme="dark"] {
+        --primary-color: rgba(225, 225, 225, 0.85);
         --background-color: rgba(225, 225, 225, 0.15);
         --previous-cursor: w-resize;
         --next-cursor: e-resize;
       }
       [data-theme="light"] {
+        --primary-color: rgba(33, 33, 33, 0.85);
         --background-color: rgba(33, 33, 33, 0.15);
         --previous-cursor: w-resize;
         --next-cursor: e-resize;
       }
       [data-theme="hidden"] {
+        --primary-color: rgba(0, 0, 0, 0);
         --background-color: rgba(0, 0, 0, 0);
         --previous-cursor: none;
         --next-cursor: none;
@@ -55,15 +58,38 @@
         width: 100vw;
         height: 50vh;
         border: none;
+        position: relative;
         cursor: not-allowed;
+        color: transparent;
         background-color: transparent;
       }
       button:not(:active) {
-        transition: background-color 500ms step-end;
+        transition: 750ms step-end;
       }
       menu:has(button:active) button {
+        color: var(--primary-color);
         background-color: var(--background-color);
         transition-duration: 0ms;
+      }
+      button::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        width: 8px;
+        height: 8px;
+        margin-top: -4px;
+        transform: rotate(45deg);
+        border: solid;
+      }
+      #previous::before {
+        left: 50%;
+        margin-left: -2px;
+        border-width: 0 0 2px 2px;
+      }
+      #next::before {
+        right: 50%;
+        margin-right: -2px;
+        border-width: 2px 2px 0 0;
       }
     </style>
   </head>
