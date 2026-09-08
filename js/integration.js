@@ -49,8 +49,8 @@ const init = async () => {
   };
 
   // Init options
-  const masked = password === null ? null : "*".repeat(password.length);
-  const options = user === null || password === null ? {} : { username: user, password: password };
+  const masked = password && "*".repeat(password.length);
+  const options = user && password ? { username: user, password: password } : {};
   options.will = { topic: `${INTEGRATION.root}/kiosk/state`, payload: "Terminated", qos: 1, retain: true };
   options.rejectUnauthorized = !("ignore_certificate_errors" in ARGS);
   options.reconnectPeriod = 10 * 1000;
