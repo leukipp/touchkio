@@ -22,9 +22,9 @@ const init = async () => {
 
   // Parse arguments
   const url = new URL(ARGS.mqtt_url);
-  const user = ARGS.mqtt_user ? ARGS.mqtt_user : null;
-  const password = ARGS.mqtt_password ? ARGS.mqtt_password : null;
-  const discovery = ARGS.mqtt_discovery ? ARGS.mqtt_discovery : "homeassistant";
+  const user = ARGS.mqtt_user || null;
+  const password = ARGS.mqtt_password || null;
+  const discovery = ARGS.mqtt_discovery || "homeassistant";
 
   const model = hardware.getModel();
   const vendor = hardware.getVendor();
@@ -283,10 +283,12 @@ const initApp = () => {
     unique_id: `${INTEGRATION.node}_app`,
     state_topic: `${root}/version/state`,
     device: INTEGRATION.device,
-    ...(HARDWARE.support.access.install && HARDWARE.support.access.service && HARDWARE.support.access.deb && {
-      command_topic: `${root}/install`,
-      payload_install: "app_early" in ARGS ? "update early" : "update",
-    }),
+    ...(HARDWARE.support.access.install &&
+      HARDWARE.support.access.service &&
+      HARDWARE.support.access.deb && {
+        command_topic: `${root}/install`,
+        payload_install: "app_early" in ARGS ? "update early" : "update",
+      }),
   };
   if (ARGS.app_disable.includes("mqtt_app")) {
     removeConfig("update", config, true);

@@ -53,13 +53,11 @@ const init = async () => {
 
   // Parse arguments
   const debug = "app_debug" in ARGS;
-  const widget = ARGS.web_widget ? ARGS.web_widget === "true" : true;
-  const theme = ["light", "dark"].includes(ARGS.web_theme) ? ARGS.web_theme : "dark";
-  const zoom = (!isNaN(parseFloat(ARGS.web_zoom)) ? parseFloat(ARGS.web_zoom) : 1.25) * 100;
+  const widget = ARGS.web_widget !== "false";
+  const zoom = (parseFloat(ARGS.web_zoom) || 1.25) * 100;
+  const theme = ["light", "dark"].find((v) => v === ARGS.web_theme) || "dark";
+  const kiosk = ["framed", "fullscreen", "maximized", "minimized"].find((v) => v === ARGS.app_kiosk) || "fullscreen";
   const urls = [loaderHtml(40, 1.0, theme), ...ARGS.web_url];
-  const kiosk = ["framed", "fullscreen", "maximized", "minimized"].includes(ARGS.app_kiosk)
-    ? ARGS.app_kiosk
-    : "fullscreen";
 
   // Init global controls
   WEBVIEW.statusEnabled = !debug;
@@ -1473,6 +1471,9 @@ const cookieStore = async (key, value, view = WEBVIEW.views[WEBVIEW.viewActive])
 const captureView = async (wait, view = WEBVIEW.views[WEBVIEW.viewActive]) => {
   if (!WEBVIEW.viewActive || ARGS.app_disable.includes("mqtt_screenshot")) {
     return null;
+  }
+  if (["Minimized"].includes(WEBVIEW.tracker.window.status)) {
+    return WEBVIEW.tracker.screenshot;
   }
   try {
     await new Promise((r) => setTimeout(r, wait));
