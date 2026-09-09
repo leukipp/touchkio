@@ -29,24 +29,27 @@
         padding: 0;
         cursor: none;
       }
+      html {
+        width: 100%;
+        height: 100%;
+      }
       body {
         display: flex;
         align-items: center;
-        width: 100vw;
-        height: 100vh;
+        width: 100%;
+        height: 100%;
       }
       menu {
         display: flex;
         flex-direction: column;
-        align-items: center;
-        width: 100vw;
-        height: 100vh;
         list-style-type: none;
+        width: 100%;
+        height: 100%;
       }
       li {
         display: flex;
-        align-items: center;
-        flex: 0 0 auto;
+        flex: 1 1 50%;
+        width: 100%;
       }
       li:not(.disabled) #previous {
         cursor: var(--previous-cursor);
@@ -55,51 +58,51 @@
         cursor: var(--next-cursor);
       }
       button {
-        width: 100vw;
-        height: 50vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
         border: none;
-        position: relative;
         cursor: not-allowed;
         color: transparent;
         background-color: transparent;
+      }
+      svg {
+        width: 12px;
+        height: 20px;
+        pointer-events: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 3;
+        fill: none;
       }
       button:not(:active) {
         transition: 750ms step-end;
       }
       menu:has(button:active) button {
-        color: var(--primary-color);
         background-color: var(--background-color);
+        color: var(--primary-color);
         transition-duration: 0ms;
-      }
-      button::before {
-        content: "";
-        position: absolute;
-        top: 50%;
-        width: 8px;
-        height: 8px;
-        margin-top: -4px;
-        transform: rotate(45deg);
-        border: solid;
-      }
-      #previous::before {
-        left: 50%;
-        margin-left: -2px;
-        border-width: 0 0 2px 2px;
-      }
-      #next::before {
-        right: 50%;
-        margin-right: -2px;
-        border-width: 2px 2px 0 0;
       }
     </style>
   </head>
   <body>
     <menu>
       <li>
-        <button id="previous"></button>
+        <button id="previous">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 20">
+            <polyline points="8.5 3 2.5 10 8.5 17" />
+          </svg>
+        </button>
       </li>
       <li>
-        <button id="next"></button>
+        <button id="next">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 20">
+            <polyline points="3.5 3 9.5 10 3.5 17" />
+          </svg>
+        </button>
       </li>
     </menu>
     <script>
