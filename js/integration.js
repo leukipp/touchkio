@@ -98,9 +98,9 @@ const init = async () => {
 
       // Init client diagnostic
       initScreenshot();
-      initHeartbeat();
       initErrors();
       initVersion();
+      initHeartbeat();
 
       // Integration initialized
       INTEGRATION.initialized = true;
@@ -145,7 +145,6 @@ const init = async () => {
       return;
     }
     updateLastActive();
-    updateHeartbeat();
     updateErrors();
   }, 30 * 1000);
 
@@ -1536,48 +1535,6 @@ const updateScreenshot = async () => {
 };
 
 /**
- * Initializes the heartbeat sensor. (deprecated, will be removed in v1.6.0)
- *
- * @returns {void}
- */
-const initHeartbeat = () => {
-  const root = `${INTEGRATION.root}/heartbeat`;
-  const config = {
-    name: "Heartbeat",
-    unique_id: `${INTEGRATION.node}_heartbeat`,
-    state_topic: `${root}/state`,
-    json_attributes_topic: `${root}/attributes`,
-    value_template: "{{ value }}",
-    entity_category: "diagnostic",
-    icon: "mdi:heart-flash",
-    device: INTEGRATION.device,
-  };
-  if (ARGS.app_disable.includes("mqtt_heartbeat")) {
-    removeConfig("sensor", config, true);
-    return;
-  }
-  publishConfig("sensor", config, true);
-  updateHeartbeat();
-};
-
-/**
- * Updates the heartbeat sensor via the mqtt connection. (deprecated, will be removed in v1.6.0)
- *
- * @returns {Promise<void>}
- */
-const updateHeartbeat = async () => {
-  if (ARGS.app_disable.includes("mqtt_heartbeat")) {
-    return;
-  }
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60 * 1000);
-  const heartbeat = local.toISOString().replace(/\.\d{3}Z$/, "");
-  const attributes = { date: now };
-  publishState("heartbeat", heartbeat, false);
-  publishAttributes("heartbeat", attributes, false);
-};
-
-/**
  * Initializes the error log sensor.
  *
  * @returns {void}
@@ -1661,6 +1618,15 @@ const updateVersion = async () => {
   }
   publishState("version", APP.version, true);
   publishAttributes("version", APP.build, true);
+};
+
+/**
+ * Removes any existing heartbeat sensor. (deleted in v1.6.0)
+ *
+ * @returns {void}
+ */
+const initHeartbeat = () => {
+  removeConfig("sensor", { unique_id: `${INTEGRATION.node}_heartbeat` }, true);
 };
 
 module.exports = {
