@@ -26,8 +26,18 @@ global.WEBVIEW = global.WEBVIEW || {
     window: {
       status: null,
     },
+    header: {
+      enabled: null,
+    },
+    pager: {
+      enabled: null,
+    },
     widget: {
+      enabled: null,
       focused: null,
+    },
+    navigation: {
+      enabled: null,
     },
     screenshot: null,
   },
@@ -54,21 +64,22 @@ const init = async () => {
   // Parse arguments
   const debug = "app_debug" in ARGS;
   const widget = ARGS.web_widget !== "false";
+  const pager = ARGS.web_pager !== "false";
   const zoom = (parseFloat(ARGS.web_zoom) || 1.25) * 100;
   const theme = ["light", "dark"].find((v) => v === ARGS.web_theme) || "dark";
   const kiosk = ["framed", "fullscreen", "maximized", "minimized"].find((v) => v === ARGS.app_kiosk) || "fullscreen";
   const urls = [loaderHtml(40, 1.0, theme), ...ARGS.web_url];
 
-  // Init global controls
-  WEBVIEW.statusEnabled = !debug;
-  WEBVIEW.pagerEnabled = widget;
-  WEBVIEW.widgetEnabled = widget;
-  WEBVIEW.navigationEnabled = widget;
-
   // Init global views
   WEBVIEW.views = [];
   WEBVIEW.viewUrls = urls;
   WEBVIEW.viewActive = 0;
+
+  // Init global controls
+  WEBVIEW.tracker.header.enabled = !debug;
+  WEBVIEW.tracker.pager.enabled = pager;
+  WEBVIEW.tracker.widget.enabled = widget;
+  WEBVIEW.tracker.navigation.enabled = widget;
 
   // Init global display
   const display = screen.getPrimaryDisplay();
@@ -139,7 +150,7 @@ const init = async () => {
     icon: APP.icon,
     hasShadow: false,
     autoHideMenuBar: true,
-    frame: !WEBVIEW.statusEnabled,
+    frame: !WEBVIEW.tracker.header.enabled,
     width: Math.floor(WEBVIEW.display.width * 0.85),
     height: Math.floor(WEBVIEW.display.height * 0.75),
     minWidth: 188,
@@ -187,17 +198,17 @@ const init = async () => {
   WEBVIEW.window.contentView.addChildView(WEBVIEW.widget);
   WEBVIEW.widget.webContents.loadFile(path.join(APP.path, "html", "widget.html"));
 
-  // Init global status
-  WEBVIEW.status = new WebContentsView({
+  // Init global header
+  WEBVIEW.header = new WebContentsView({
     transparent: true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
     },
   });
-  WEBVIEW.status.setBackgroundColor("#00000000");
-  WEBVIEW.window.contentView.addChildView(WEBVIEW.status);
-  WEBVIEW.status.webContents.loadFile(path.join(APP.path, "html", "status.html"));
+  WEBVIEW.header.setBackgroundColor("#00000000");
+  WEBVIEW.window.contentView.addChildView(WEBVIEW.header);
+  WEBVIEW.header.webContents.loadFile(path.join(APP.path, "html", "header.html"));
 
   // Init global navigation
   WEBVIEW.navigation = new WebContentsView({
@@ -220,8 +231,9 @@ const init = async () => {
 
   // Register global events
   await windowEvents();
+  await headerEvents();
   await widgetEvents();
-  await statusEvents();
+  await pagerEvents();
   await navigationEvents();
   await viewEvents();
   await appEvents();
@@ -265,7 +277,7 @@ const updateTheme = () => {
   const theme = WEBVIEW.theme.get();
 
   // Update controls theme
-  WEBVIEW.statusTheme = theme;
+  WEBVIEW.headerTheme = theme;
   WEBVIEW.pagerTheme = theme;
   WEBVIEW.widgetTheme = theme;
   WEBVIEW.navigationTheme = theme;
@@ -321,7 +333,7 @@ const updateView = () => {
   if (previous !== title) {
     console.info(`Update View: ${title}`);
   }
-  WEBVIEW.status.webContents.send("text-content", { id: "title", content: title });
+  WEBVIEW.header.webContents.send("text-content", { id: "title", content: title });
   WEBVIEW.window.setTitle(title);
 
   // Hide all other webviews and show only the active one
@@ -407,7 +419,7 @@ const updateWidget = () => {
   // Hide navigation button
   WEBVIEW.widget.webContents.send("button-hidden", {
     id: "navigation",
-    hidden: !WEBVIEW.navigationEnabled,
+    hidden: !WEBVIEW.tracker.navigation.enabled,
   });
 };
 
@@ -483,11 +495,11 @@ const updateNavigation = () => {
  * @returns {void}
  */
 const toggleNavigation = (force = null) => {
-  if (!WEBVIEW.navigationEnabled) {
+  if (!WEBVIEW.tracker.navigation.enabled) {
     return;
   }
   const window = WEBVIEW.window.getBounds();
-  const status = WEBVIEW.status.getBounds();
+  const header = WEBVIEW.header.getBounds();
   const navigation = WEBVIEW.navigation.getBounds();
 
   // Calculate navigation height
@@ -499,7 +511,7 @@ const toggleNavigation = (force = null) => {
   // Show or hide navigation based on height
   WEBVIEW.navigation.setBounds({
     x: 0,
-    y: window.height - status.height - height,
+    y: window.height - header.height - height,
     width: window.width,
     height: height,
   });
@@ -509,26 +521,26 @@ const toggleNavigation = (force = null) => {
 };
 
 /**
- * Shows or hides the webview status bar.
+ * Shows or hides the webview header.
  *
- * @param {string} [force] - Force the status bar visibility to 'ON' or 'OFF'.
+ * @param {string} [force] - Force the header visibility to 'ON' or 'OFF'.
  * @returns {void}
  */
-const toggleStatus = (force = null) => {
-  if (!WEBVIEW.statusEnabled) {
+const toggleHeader = (force = null) => {
+  if (!WEBVIEW.tracker.header.enabled) {
     return;
   }
   const window = WEBVIEW.window.getBounds();
-  const status = WEBVIEW.status.getBounds();
+  const header = WEBVIEW.header.getBounds();
 
-  // Calculate status height
-  const height = force === "ON" ? 40 : force === "OFF" ? 0 : status.height > 0 ? 0 : 40;
-  if (height === status.height) {
+  // Calculate header height
+  const height = force === "ON" ? 40 : force === "OFF" ? 0 : header.height > 0 ? 0 : 40;
+  if (height === header.height) {
     return;
   }
 
-  // Show or hide status based on height
-  WEBVIEW.status.setBounds({
+  // Show or hide header based on height
+  WEBVIEW.header.setBounds({
     x: 0,
     y: 0,
     width: window.width,
@@ -706,7 +718,7 @@ const reloadView = async () => {
  */
 const resizeView = async () => {
   const window = WEBVIEW.window.getBounds();
-  const status = WEBVIEW.status.getBounds();
+  const header = WEBVIEW.header.getBounds();
   const navigation = WEBVIEW.navigation.getBounds();
   const pager = { width: 20, height: window.height };
   const widget = { width: 60, height: 200 };
@@ -716,53 +728,60 @@ const resizeView = async () => {
     console.debug(`webview.js: resizeView(${i})`);
     view.setBounds({
       x: 0,
-      y: status.height,
+      y: header.height,
       width: window.width,
-      height: window.height - status.height - navigation.height,
+      height: window.height - header.height - (WEBVIEW.tracker.navigation.enabled ? navigation.height : 0),
     });
   });
 
   // Update pager size
-  if (WEBVIEW.pagerEnabled) {
+  if (WEBVIEW.tracker.pager.enabled) {
     WEBVIEW.pager.setBounds({
       x: window.width - pager.width,
-      y: status.height,
+      y: header.height,
       width: pager.width,
-      height: pager.height - status.height - navigation.height,
+      height: pager.height - header.height - (WEBVIEW.tracker.navigation.enabled ? navigation.height : 0),
     });
     WEBVIEW.pager.webContents.send("data-theme", {
       theme: WEBVIEW.viewUrls.length > 2 ? WEBVIEW.pagerTheme : "hidden",
     });
+  } else {
+    WEBVIEW.pager.setBounds({ x: 0, y: 0, width: 0, height: 0 });
+    WEBVIEW.pager.webContents.send("data-theme", { theme: "hidden" });
   }
 
   // Update widget size
-  if (WEBVIEW.widgetEnabled) {
+  if (WEBVIEW.tracker.widget.enabled) {
     WEBVIEW.widget.setBounds({
       x: WEBVIEW.tracker.widget.focused ? window.width - widget.width : window.width - pager.width,
-      y: status.height + parseInt((window.height - status.height - widget.height) / 2, 10),
+      y: header.height + parseInt((window.height - header.height - widget.height) / 2, 10),
       width: widget.width,
       height: widget.height,
     });
     WEBVIEW.widget.webContents.send("data-theme", {
       theme: WEBVIEW.tracker.widget.focused ? WEBVIEW.widgetTheme : "hidden",
     });
+  } else {
+    WEBVIEW.tracker.widget.focused = false;
+    WEBVIEW.widget.setBounds({ x: 0, y: 0, width: 0, height: 0 });
+    WEBVIEW.widget.webContents.send("data-theme", { theme: "hidden" });
   }
 
-  // Update status size
-  if (WEBVIEW.statusEnabled) {
-    WEBVIEW.status.setBounds({
+  // Update header size
+  if (WEBVIEW.tracker.header.enabled) {
+    WEBVIEW.header.setBounds({
       x: 0,
       y: 0,
       width: window.width,
-      height: status.height,
+      height: header.height,
     });
-    WEBVIEW.status.webContents.send("data-theme", {
-      theme: WEBVIEW.statusTheme,
+    WEBVIEW.header.webContents.send("data-theme", {
+      theme: WEBVIEW.headerTheme,
     });
   }
 
   // Update navigation size
-  if (WEBVIEW.navigationEnabled) {
+  if (WEBVIEW.tracker.navigation.enabled) {
     WEBVIEW.navigation.setBounds({
       x: 0,
       y: window.height - navigation.height,
@@ -772,6 +791,9 @@ const resizeView = async () => {
     WEBVIEW.navigation.webContents.send("data-theme", {
       theme: WEBVIEW.navigationTheme,
     });
+  } else {
+    WEBVIEW.navigation.setBounds({ x: 0, y: window.height, width: window.width, height: 0 });
+    WEBVIEW.navigation.webContents.send("data-theme", { theme: "hidden" });
   }
 
   // Update webview screenshot
@@ -897,18 +919,72 @@ const windowEvents = async () => {
 };
 
 /**
+ * Register header events and handler.
+ *
+ * @returns {Promise<void>}
+ */
+const headerEvents = async () => {
+  console.debug("webview.js: headerEvents()");
+
+  // Handle header button click events
+  ipcMain.on("button-click", (e, button) => {
+    console.debug(`webview.js: headerEvents(button-click-${button.id})`);
+    WEBVIEW.tracker.pointer.time = new Date();
+    switch (button.id) {
+      case "release":
+        const latest = APP.releases.latest;
+        if (WEBVIEW.viewActive && latest?.url) {
+          WEBVIEW.views[WEBVIEW.viewActive].webContents.loadURL(latest.url);
+        }
+        break;
+      case "minimize":
+        WEBVIEW.window.setStatus("Minimized");
+        break;
+      case "terminate":
+        WEBVIEW.header.webContents.send("button-disabled", { id: "release", disabled: true });
+        WEBVIEW.header.webContents.send("button-disabled", { id: "minimize", disabled: true });
+        WEBVIEW.header.webContents.send("button-disabled", { id: "fullscreen", disabled: true });
+        WEBVIEW.header.webContents.send("button-disabled", { id: "terminate", disabled: true });
+        const button = dialog.showMessageBoxSync(WEBVIEW.window, {
+          type: "question",
+          title: "Confirm",
+          message: `\nExit ${APP.title}?`,
+          buttons: ["No", "Yes"],
+        });
+        switch (button) {
+          case 1:
+            WEBVIEW.window.setStatus("Terminated");
+            break;
+          default:
+            WEBVIEW.header.webContents.send("button-disabled", { id: "release", disabled: false });
+            WEBVIEW.header.webContents.send("button-disabled", { id: "minimize", disabled: false });
+            WEBVIEW.header.webContents.send("button-disabled", { id: "fullscreen", disabled: false });
+            WEBVIEW.header.webContents.send("button-disabled", { id: "terminate", disabled: false });
+        }
+        break;
+    }
+  });
+};
+
+/**
  * Register widget events and handler.
  *
  * @returns {Promise<void>}
  */
 const widgetEvents = async () => {
-  if (!WEBVIEW.widgetEnabled) {
-    return;
-  }
   console.debug("webview.js: widgetEvents()");
+
+  // Handle widget enabled updates
+  WEBVIEW.widget.setEnabled = (enabled) => {
+    WEBVIEW.tracker.widget.enabled = enabled;
+    WEBVIEW.navigation.setEnabled(enabled);
+  };
 
   // Handle widget focus events
   WEBVIEW.widget.webContents.on("focus", () => {
+    if (!WEBVIEW.tracker.widget.enabled) {
+      return;
+    }
     WEBVIEW.tracker.pointer.time = new Date();
     const window = WEBVIEW.window.getBounds();
     const widget = WEBVIEW.widget.getBounds();
@@ -929,6 +1005,9 @@ const widgetEvents = async () => {
 
   // Handle widget blur events
   WEBVIEW.widget.webContents.on("blur", () => {
+    if (!WEBVIEW.tracker.widget.enabled) {
+      return;
+    }
     const window = WEBVIEW.window.getBounds();
     const widget = WEBVIEW.widget.getBounds();
 
@@ -968,54 +1047,19 @@ const widgetEvents = async () => {
 };
 
 /**
- * Register status events and handler.
+ * Register pager events and handler.
  *
  * @returns {Promise<void>}
  */
-const statusEvents = async () => {
-  if (!WEBVIEW.statusEnabled) {
-    return;
-  }
-  console.debug("webview.js: statusEvents()");
+const pagerEvents = async () => {
+  console.debug("webview.js: pagerEvents()");
 
-  // Handle status button click events
-  ipcMain.on("button-click", (e, button) => {
-    console.debug(`webview.js: statusEvents(button-click-${button.id})`);
-    WEBVIEW.tracker.pointer.time = new Date();
-    switch (button.id) {
-      case "release":
-        const latest = APP.releases.latest;
-        if (WEBVIEW.viewActive && latest?.url) {
-          WEBVIEW.views[WEBVIEW.viewActive].webContents.loadURL(latest.url);
-        }
-        break;
-      case "minimize":
-        WEBVIEW.window.setStatus("Minimized");
-        break;
-      case "terminate":
-        WEBVIEW.status.webContents.send("button-disabled", { id: "release", disabled: true });
-        WEBVIEW.status.webContents.send("button-disabled", { id: "minimize", disabled: true });
-        WEBVIEW.status.webContents.send("button-disabled", { id: "fullscreen", disabled: true });
-        WEBVIEW.status.webContents.send("button-disabled", { id: "terminate", disabled: true });
-        const button = dialog.showMessageBoxSync(WEBVIEW.window, {
-          type: "question",
-          title: "Confirm",
-          message: `\nExit ${APP.title}?`,
-          buttons: ["No", "Yes"],
-        });
-        switch (button) {
-          case 1:
-            WEBVIEW.window.setStatus("Terminated");
-            break;
-          default:
-            WEBVIEW.status.webContents.send("button-disabled", { id: "release", disabled: false });
-            WEBVIEW.status.webContents.send("button-disabled", { id: "minimize", disabled: false });
-            WEBVIEW.status.webContents.send("button-disabled", { id: "fullscreen", disabled: false });
-            WEBVIEW.status.webContents.send("button-disabled", { id: "terminate", disabled: false });
-        }
-        break;
-    }
-  });
+  // Handle pager enabled updates
+  WEBVIEW.pager.setEnabled = (enabled) => {
+    WEBVIEW.tracker.pager.enabled = enabled;
+    resizeView();
+    update();
+  };
 };
 
 /**
@@ -1024,10 +1068,14 @@ const statusEvents = async () => {
  * @returns {Promise<void>}
  */
 const navigationEvents = async () => {
-  if (!WEBVIEW.navigationEnabled) {
-    return;
-  }
   console.debug("webview.js: navigationEvents()");
+
+  // Handle navigation enabled updates
+  WEBVIEW.navigation.setEnabled = (enabled) => {
+    WEBVIEW.tracker.navigation.enabled = enabled;
+    resizeView();
+    update();
+  };
 
   // Handle input blur events
   let selected = false;
@@ -1293,7 +1341,7 @@ const appEvents = async () => {
     if (visibility === "ON" && ["Fullscreen", "Minimized"].includes(status)) {
       hardware.setKeyboardVisibility("OFF");
     }
-    toggleStatus(["Framed", "Minimized"].includes(status) ? "ON" : "OFF");
+    toggleHeader(["Framed", "Minimized"].includes(status) ? "ON" : "OFF");
   });
   EVENTS.on("updateKeyboard", () => {
     const status = WEBVIEW.tracker.window.status;
@@ -1308,7 +1356,7 @@ const appEvents = async () => {
     const latest = APP.releases.latest;
     if (latest?.version) {
       const outdated = APP.version.localeCompare(latest.version, "en", { numeric: true }) < 0;
-      WEBVIEW.status.webContents.send("button-hidden", {
+      WEBVIEW.header.webContents.send("button-hidden", {
         id: "release",
         hidden: !outdated,
       });

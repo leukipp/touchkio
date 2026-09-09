@@ -71,6 +71,7 @@ const init = async () => {
       initRefresh();
       initKiosk();
       initTheme();
+      initWidget();
       initDisplay();
       initVolume();
       initMicrophone();
@@ -78,6 +79,7 @@ const init = async () => {
       initPageNumber();
       initPageZoom();
       initPageUrl();
+      initPager();
 
       // Init client sensors
       initModel();
@@ -525,6 +527,53 @@ const updateTheme = async () => {
 };
 
 /**
+ * Initializes the widget visibility and handles the execute logic.
+ *
+ * @returns {void}
+ */
+const initWidget = () => {
+  const root = `${INTEGRATION.root}/widget`;
+  const config = {
+    name: "Widget",
+    unique_id: `${INTEGRATION.node}_widget`,
+    command_topic: `${root}/set`,
+    state_topic: `${root}/state`,
+    value_template: "{{ value }}",
+    options: ["Enabled", "Disabled"],
+    icon: "mdi:page-layout-sidebar-right",
+    device: INTEGRATION.device,
+  };
+  if (ARGS.app_disable.includes("mqtt_widget")) {
+    removeConfig("select", config, true);
+    return;
+  }
+  publishConfig("select", config, true)
+    .on("message", (topic, message) => {
+      if (topic === config.command_topic) {
+        const status = message.toString();
+        console.verbose("Set Widget:", status);
+        WEBVIEW.widget.setEnabled(status === "Enabled");
+        updateWidget();
+      }
+    })
+    .subscribe(config.command_topic);
+  updateWidget();
+};
+
+/**
+ * Updates the widget visibility via the mqtt connection.
+ *
+ * @returns {Promise<void>}
+ */
+const updateWidget = async () => {
+  if (ARGS.app_disable.includes("mqtt_widget")) {
+    return;
+  }
+  const status = WEBVIEW.tracker.widget.enabled ? "Enabled" : "Disabled";
+  publishState("widget", status, true);
+};
+
+/**
  * Initializes the display status, brightness and handles the execute logic.
  *
  * @returns {void}
@@ -893,6 +942,53 @@ const updatePageUrl = async () => {
   const currentUrl = WEBVIEW.views[WEBVIEW.viewActive || 1].webContents.getURL();
   const pageUrl = !currentUrl || currentUrl.startsWith("data:") ? defaultUrl : currentUrl;
   publishState("page_url", pageUrl.length < 255 ? pageUrl : null, true);
+};
+
+/**
+ * Initializes the pager visibility and handles the execute logic.
+ *
+ * @returns {void}
+ */
+const initPager = () => {
+  const root = `${INTEGRATION.root}/pager`;
+  const config = {
+    name: "Pager",
+    unique_id: `${INTEGRATION.node}_pager`,
+    command_topic: `${root}/set`,
+    state_topic: `${root}/state`,
+    value_template: "{{ value }}",
+    options: ["Enabled", "Disabled"],
+    icon: "mdi:view-carousel",
+    device: INTEGRATION.device,
+  };
+  if (WEBVIEW.viewUrls.length <= 2 || ARGS.app_disable.includes("mqtt_pager")) {
+    removeConfig("select", config, true);
+    return;
+  }
+  publishConfig("select", config, true)
+    .on("message", (topic, message) => {
+      if (topic === config.command_topic) {
+        const status = message.toString();
+        console.verbose("Set Pager:", status);
+        WEBVIEW.pager.setEnabled(status === "Enabled");
+        updatePager();
+      }
+    })
+    .subscribe(config.command_topic);
+  updatePager();
+};
+
+/**
+ * Updates the pager visibility via the mqtt connection.
+ *
+ * @returns {Promise<void>}
+ */
+const updatePager = async () => {
+  if (ARGS.app_disable.includes("mqtt_pager")) {
+    return;
+  }
+  const status = WEBVIEW.tracker.pager.enabled ? "Enabled" : "Disabled";
+  publishState("pager", status, true);
 };
 
 /**

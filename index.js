@@ -312,6 +312,11 @@ const promptArgs = async (proc) => {
       fallback: "true",
     },
     {
+      key: "web_pager",
+      question: "Enter WEB pager enabled",
+      fallback: "true",
+    },
+    {
       key: "mqtt",
       question: "\nConnect to MQTT Broker?",
       fallback: "y/N",
