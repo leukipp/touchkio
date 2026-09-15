@@ -265,7 +265,7 @@ const initLog = async () => {
 /**
  * Discovers a Home Assistant IPv4 via Bonjour/mDNS on the local network.
  *
- * @param {number} wait - Minimum wait in milliseconds.
+ * @param {number} [wait] - Minimum wait in milliseconds.
  * @returns {Promise<string|null>} The first IPv4 address found or null.
  */
 const discover = async (wait = 3000) => {

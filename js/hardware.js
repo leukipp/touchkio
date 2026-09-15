@@ -1074,7 +1074,7 @@ const setKeyboardVisibility = (visibility, callback = null) => {
 /**
  * Checks if system upgrades are available using `apt`.
  *
- * @returns {Array<string>} A list of package names that are available for upgrade.
+ * @returns {Array<string>} A list of packages that are available for upgrade.
  */
 const checkPackageUpgrades = () => {
   if (!commandExists("apt")) {
@@ -1330,6 +1330,7 @@ const execScriptCommand = (cmd, args, callback = null) => {
       if (typeof callback === "function") callback(100, null);
     }
   });
+  return proc;
 };
 
 /**
@@ -1456,7 +1457,7 @@ const readFile = (path, sync = true) => {
  * Helper function for asynchronous interval calls.
  *
  * @param {Function} callback - An async callback function.
- * @param {number} ms - Sleep time in milliseconds.
+ * @param {number} ms - Interval time in milliseconds.
  * @returns {void}
  */
 const interval = (callback, ms) => {

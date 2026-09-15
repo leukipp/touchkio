@@ -547,7 +547,7 @@ const updateNavigation = () => {
 /**
  * Shows or hides the webview navigation bar.
  *
- * @param {string} [force] - Force the navigation bar visibility to 'ON' or 'OFF'.
+ * @param {string|null} [force] - Force the navigation bar visibility to 'ON' or 'OFF'.
  * @returns {void}
  */
 const toggleNavigation = (force = null) => {
@@ -579,7 +579,7 @@ const toggleNavigation = (force = null) => {
 /**
  * Shows or hides the webview header.
  *
- * @param {string} [force] - Force the header visibility to 'ON' or 'OFF'.
+ * @param {string|null} [force] - Force the header visibility to 'ON' or 'OFF'.
  * @returns {void}
  */
 const toggleHeader = (force = null) => {
@@ -1509,7 +1509,7 @@ const latestRelease = async () => {
  * @param {number} [timeout] - Maximum time to repeat requests in milliseconds.
  * @returns {Promise<boolean>} True if online, false on timeout.
  */
-const onlineStatus = (url, interval = 1000, timeout = 60000) => {
+const onlineStatus = (url, interval = 1000, timeout = 60 * 1000) => {
   return new Promise((resolve) => {
     if (url.startsWith("data:")) {
       return resolve(true);
@@ -1543,7 +1543,7 @@ const onlineStatus = (url, interval = 1000, timeout = 60000) => {
  * Stores, retrieves or deletes a cookie from the active webview.
  *
  * @param {string} key - The key of the webview cookie.
- * @param {string|number} [value] - The value to store, null to delete, omit to read.
+ * @param {string|number|null} [value] - The value to store, null to delete, omit to read.
  * @param {WebContentsView} [view] - The webview that stores the cookie.
  * @returns {Promise<string|number|null|undefined>} The cookie value, null if deleted, undefined if unavailable.
  */
