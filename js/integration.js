@@ -1489,6 +1489,7 @@ const updateLastActive = async () => {
   const then = WEBVIEW.tracker.pointer.time;
   const lastActive = (now - then) / (1000 * 60);
   const tracker = {
+    idle: WEBVIEW.tracker.view.idle,
     ...WEBVIEW.tracker.pointer.position,
     ...WEBVIEW.tracker.display,
   };
@@ -1531,7 +1532,10 @@ const updateScreenshot = async () => {
     return;
   }
   const screenshot = WEBVIEW.tracker.screenshot;
-  publishState("screenshot", screenshot, false);
+  if (!screenshot.changed) {
+    return;
+  }
+  publishState("screenshot", screenshot.data, false);
 };
 
 /**

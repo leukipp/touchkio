@@ -18,13 +18,20 @@ const {
 global.WEBVIEW = global.WEBVIEW || {
   initialized: false,
   tracker: {
-    display: {},
+    display: {
+      on: null,
+      off: null,
+    },
     pointer: {
       position: {},
       time: new Date(),
     },
     window: {
       status: null,
+    },
+    view: {
+      idle: null,
+      timer: null,
     },
     header: {
       enabled: null,
@@ -39,7 +46,11 @@ global.WEBVIEW = global.WEBVIEW || {
     navigation: {
       enabled: null,
     },
-    screenshot: null,
+    screenshot: {
+      data: null,
+      changed: null,
+      capturing: null,
+    },
   },
 };
 
@@ -68,7 +79,7 @@ const init = async () => {
   const zoom = (parseFloat(ARGS.web_zoom) || 1.25) * 100;
   const theme = ["light", "dark"].find((v) => v === ARGS.web_theme) || "dark";
   const kiosk = ["framed", "fullscreen", "maximized", "minimized"].find((v) => v === ARGS.app_kiosk) || "fullscreen";
-  const urls = [loaderHtml(40, 1.0, theme), ...ARGS.web_url];
+  const urls = [loaderHtml(theme), ...ARGS.web_url];
 
   // Init global views
   WEBVIEW.views = [];
@@ -312,6 +323,54 @@ const updateZoom = () => {
 };
 
 /**
+ * Shows the active view or the idle page.
+ *
+ * @param {boolean} idle - True to show the idle page, false to show the active view.
+ * @returns {void}
+ */
+const applyView = (idle) => {
+  const off = WEBVIEW.tracker.display.off > WEBVIEW.tracker.display.on;
+  if (!off || ARGS.app_disable.includes("web_idle")) {
+    if (WEBVIEW.tracker.view.timer) {
+      clearTimeout(WEBVIEW.tracker.view.timer);
+      WEBVIEW.tracker.view.timer = null;
+    }
+    WEBVIEW.tracker.view.idle = idle = false;
+  }
+  WEBVIEW.views.forEach((view, i) => view.setVisible(idle ? i === 0 : i === WEBVIEW.viewActive));
+};
+
+/**
+ * Idles the active view after a delay or shows it immediately.
+ *
+ * @param {boolean} idle - True to hide after the delay, false to show immediately.
+ * @param {number} [delay] - Idle set delay in milliseconds.
+ * @returns {void}
+ */
+const idleView = (idle, delay = 600 * 1000) => {
+  if (ARGS.app_disable.includes("web_idle")) {
+    return;
+  }
+  if (!idle) {
+    if (WEBVIEW.tracker.view.idle) {
+      console.verbose("Set View Idle:", false);
+    }
+    applyView(false);
+    return;
+  }
+  if (!WEBVIEW.tracker.view.timer) {
+    WEBVIEW.tracker.view.timer = setTimeout(() => {
+      if (!WEBVIEW.tracker.view.idle) {
+        console.verbose("Set View Idle:", true);
+      }
+      WEBVIEW.tracker.view.timer = null;
+      WEBVIEW.tracker.view.idle = true;
+      applyView(true);
+    }, delay);
+  }
+};
+
+/**
  * Updates the active view.
  *
  * @returns {void}
@@ -336,11 +395,6 @@ const updateView = () => {
   WEBVIEW.header.webContents.send("text-content", { id: "title", content: title });
   WEBVIEW.window.setTitle(title);
 
-  // Hide all other webviews and show only the active one
-  WEBVIEW.views.forEach((view, i) => {
-    view.setVisible(i === WEBVIEW.viewActive);
-  });
-
   // Update stored theme and zoom
   cookieStore("web-theme").then((value) => {
     if (value && value !== WEBVIEW.theme.get()) {
@@ -354,7 +408,9 @@ const updateView = () => {
   });
 
   // Update webview screenshot
+  applyView(false);
   captureView(1000).then(() => {
+    applyView(WEBVIEW.tracker.view.idle);
     EVENTS.emit("updateScreenshot");
   });
   EVENTS.emit("updatePage");
@@ -671,19 +727,20 @@ const homeView = async () => {
   const view = WEBVIEW.views[WEBVIEW.viewActive];
   const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
   const currentUrl = view.webContents.getURL();
-
-  // Clear logs, history and cache
-  await clearData({ logs: true, history: true, cache: true });
+  const targetUrl = currentUrl != defaultUrl ? defaultUrl : currentUrl;
 
   // Reset page zoom and theme
   WEBVIEW.zoom.reset();
   WEBVIEW.theme.reset();
 
-  // Reload the default url or refresh the page
-  if (currentUrl != defaultUrl) {
-    view.webContents.loadURL(defaultUrl);
-  } else {
+  // Clear logs, history and cache
+  await clearData({ logs: true, history: true, cache: true });
+
+  // Refresh the page or reload the target url
+  if (targetUrl.includes("#") && targetUrl === currentUrl) {
     view.webContents.reloadIgnoringCache();
+  } else {
+    view.webContents.loadURL(targetUrl);
   }
 };
 
@@ -699,15 +756,16 @@ const reloadView = async () => {
   const view = WEBVIEW.views[WEBVIEW.viewActive];
   const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
   const currentUrl = view.webContents.getURL();
+  const targetUrl = currentUrl.startsWith("data:") ? defaultUrl : currentUrl;
 
   // Clear logs and cache
   await clearData({ logs: true, cache: true });
 
-  // Reload the default url or refresh the page
-  if (currentUrl.startsWith("data:")) {
-    view.webContents.loadURL(defaultUrl);
-  } else {
+  // Refresh the page or reload the target url
+  if (targetUrl.includes("#") && targetUrl === currentUrl) {
     view.webContents.reloadIgnoringCache();
+  } else {
+    view.webContents.loadURL(targetUrl);
   }
 };
 
@@ -797,7 +855,9 @@ const resizeView = async () => {
   }
 
   // Update webview screenshot
+  applyView(false);
   captureView(1000).then(() => {
+    applyView(WEBVIEW.tracker.view.idle);
     EVENTS.emit("updateScreenshot");
   });
 };
@@ -1169,8 +1229,6 @@ const navigationEvents = async () => {
  * @returns {Promise<void>}
  */
 const viewEvents = async () => {
-  const ready = [];
-
   const loaded = (i) => {
     if (WEBVIEW.viewActive) {
       return true;
@@ -1182,9 +1240,11 @@ const viewEvents = async () => {
     }
 
     // Hide loader and show first view
+    const ready = WEBVIEW.views.filter((view) => view.webContents.ready);
     const done = ready.length >= WEBVIEW.views.length;
     if (done) {
       WEBVIEW.viewActive = 1;
+      WEBVIEW.views[0].webContents.loadURL(idleHtml(WEBVIEW.theme.get()));
       updateView();
     }
     console.debug(`webview.js: viewEvents(${i},loaded-${ready.length}/${WEBVIEW.views.length})`);
@@ -1195,11 +1255,13 @@ const viewEvents = async () => {
   // Handle events per webview
   WEBVIEW.views.forEach((view, i) => {
     // Enable webview touch emulation
-    view.webContents.debugger.attach("1.1");
-    view.webContents.debugger.sendCommand("Emulation.setEmitTouchEventsForMouse", {
-      configuration: "mobile",
-      enabled: true,
-    });
+    if (!ARGS.app_disable.includes("web_touch")) {
+      view.webContents.debugger.attach("1.1");
+      view.webContents.debugger.sendCommand("Emulation.setEmitTouchEventsForMouse", {
+        configuration: "mobile",
+        enabled: true,
+      });
+    }
 
     // Redirect webview hyperlinks
     view.webContents.setWindowOpenHandler(({ url }) => {
@@ -1214,11 +1276,15 @@ const viewEvents = async () => {
         cookieStore("web-theme", WEBVIEW.theme.default, view);
         cookieStore("web-zoom", WEBVIEW.zoom.default, view);
       }
-      ready.push(i);
     });
-    view.webContents.on("dom-ready", () => {
-      view.webContents.insertCSS("html, body { scrollbar-width: none !important; }");
-      view.webContents.insertCSS("::-webkit-scrollbar { display: none !important; }");
+    view.webContents.on("dom-ready", async () => {
+      if (view.webContents.ready) {
+        return;
+      }
+      view.webContents.ready = true;
+      await view.webContents.insertCSS(
+        "html, body { scrollbar-width: none !important; } ::-webkit-scrollbar { display: none !important; }",
+      );
     });
 
     // Webview fully loaded
@@ -1242,7 +1308,7 @@ const viewEvents = async () => {
             break;
           default:
             console.error(`Load Error: ${url}, ${text} (${code})`);
-            view.webContents.loadURL(errorHtml(code, text, url, WEBVIEW.theme.get()));
+            view.webContents.loadURL(errorHtml(WEBVIEW.theme.get(), code, text, url));
         }
         loaded(i);
       }
@@ -1251,6 +1317,7 @@ const viewEvents = async () => {
     // Webview url changed
     view.webContents.on("did-navigate", () => {
       console.debug(`webview.js: viewEvents(${i},did-navigate)`);
+      view.webContents.ready = false;
       updateView();
     });
     view.webContents.on("did-navigate-in-page", (e, url, mainframe) => {
@@ -1296,13 +1363,14 @@ const viewEvents = async () => {
               console.debug(`webview.js: viewEvents(${i},display-${off ? "off" : "on"})`);
 
               // Ignore touch event if display was off
-              if (off) {
+              if (off && !ARGS.app_disable.includes("web_wake")) {
                 console.verbose("Display Touch Event: Ignored");
                 e.preventDefault();
 
                 // Turn display on if it was off
                 hardware.setDisplayStatus("ON");
                 WEBVIEW.tracker.display.on = now;
+                idleView(false);
               }
               break;
             case "back":
@@ -1334,6 +1402,7 @@ const appEvents = async () => {
     if (status) {
       WEBVIEW.tracker.display[status.toLowerCase()] = new Date();
     }
+    idleView(status === "OFF");
   });
   EVENTS.on("updateStatus", () => {
     const status = WEBVIEW.tracker.window.status;
@@ -1413,9 +1482,6 @@ const appEvents = async () => {
  * @returns {Promise<void>}
  */
 const latestRelease = async () => {
-  if (ARGS.app_disable.includes("mqtt_app")) {
-    return;
-  }
   try {
     const response = await axios.get(APP.releases.url, { timeout: 20000 });
     const release = response?.data?.find((item) => {
@@ -1445,14 +1511,15 @@ const latestRelease = async () => {
  */
 const onlineStatus = (url, interval = 1000, timeout = 60000) => {
   return new Promise((resolve) => {
+    if (url.startsWith("data:")) {
+      return resolve(true);
+    }
     const start = Date.now();
+    const agent = new https.Agent({ rejectUnauthorized: !("ignore_certificate_errors" in ARGS) });
     const check = async () => {
       const elapsed = Date.now() - start;
       try {
-        if (!url.startsWith("data:")) {
-          const agent = new https.Agent({ rejectUnauthorized: !("ignore_certificate_errors" in ARGS) });
-          await axios.get(url, { httpsAgent: agent, timeout: 20000 });
-        }
+        await axios.get(url, { httpsAgent: agent, timeout: 20000 });
         resolve(true);
       } catch (error) {
         if (elapsed >= interval) {
@@ -1476,81 +1543,95 @@ const onlineStatus = (url, interval = 1000, timeout = 60000) => {
  * Stores, retrieves or deletes a cookie from the active webview.
  *
  * @param {string} key - The key of the webview cookie.
- * @param {string|number} value - The value of the webview cookie.
+ * @param {string|number} [value] - The value to store, null to delete, omit to read.
  * @param {WebContentsView} [view] - The webview that stores the cookie.
- * @returns {Promise<string|number|null>} The cookie value, or null if deleted or unavailable.
+ * @returns {Promise<string|number|null|undefined>} The cookie value, null if deleted, undefined if unavailable.
  */
 const cookieStore = async (key, value, view = WEBVIEW.views[WEBVIEW.viewActive]) => {
   const url = view ? view.webContents.getURL() : null;
-  if (!url || url.startsWith("data:")) {
+  if (!/^https?:\/\//.test(url)) {
     return;
   }
+  try {
+    // Use origin session cookies
+    const name = `${APP.name}-${key}`;
+    const origin = new URL(url).origin;
+    const cookies = view.webContents.session.cookies;
+    const expires = Math.floor(Date.now() / 1000) + 3600 * 24 * 365;
 
-  // Use origin session cookies
-  const name = `${APP.name}-${key}`;
-  const origin = new URL(url).origin;
-  const cookies = view.webContents.session.cookies;
-  const expires = Math.floor(Date.now() / 1000) + 3600 * 24 * 365;
+    // Delete cookie if value is null
+    if (value === null) {
+      await cookies.remove(origin, name);
+      return null;
+    }
 
-  // Delete cookie if value is null
-  if (value === null) {
-    await cookies.remove(origin, name);
-    return null;
+    // Write cookie if value is provided
+    if (value !== undefined) {
+      await cookies.set({ url: origin, name: name, value: `${value}`, expirationDate: expires });
+      return value;
+    }
+
+    // Read cookie if no value is provided
+    const cookie = (await cookies.get({ url: origin, name: name }))[0] || {};
+    return !isNaN(Number(cookie.value)) ? Number(cookie.value) : cookie.value;
+  } catch (error) {
+    console.warn("Cookie Store Error:", error.message);
   }
-
-  // Write cookie if value is provided
-  if (value !== undefined) {
-    await cookies.set({ url: origin, name: name, value: `${value}`, expirationDate: expires });
-    return value;
-  }
-
-  // Read cookie if no value is provided
-  const cookie = (await cookies.get({ url: origin, name: name }))[0] || {};
-  return !isNaN(Number(cookie.value)) ? Number(cookie.value) : cookie.value;
 };
 
 /**
  * Captures a webview screenshot as a base64 image.
  *
  * @param {number} wait - The time to wait before capturing in milliseconds.
- * @param {WebContentsView} [view] - The webview that captures the page.
- * @returns {Promise<string|null>} The base64 image of the captured page or null if failed.
+ * @returns {Promise<void>}
  */
-const captureView = async (wait, view = WEBVIEW.views[WEBVIEW.viewActive]) => {
-  if (!WEBVIEW.viewActive || ARGS.app_disable.includes("mqtt_screenshot")) {
-    return null;
+const captureView = async (wait) => {
+  if (!WEBVIEW.viewActive || WEBVIEW.tracker.screenshot.capturing) {
+    return;
   }
-  if (["Minimized"].includes(WEBVIEW.tracker.window.status)) {
-    return WEBVIEW.tracker.screenshot;
+  if (ARGS.app_disable.includes("mqtt_screenshot") || ["Minimized"].includes(WEBVIEW.tracker.window.status)) {
+    return;
   }
+  WEBVIEW.tracker.screenshot.changed = false;
+  WEBVIEW.tracker.screenshot.capturing = true;
   try {
     await new Promise((r) => setTimeout(r, wait));
+    const view = WEBVIEW.views[WEBVIEW.viewActive];
     const image = await view.webContents.capturePage();
-    const max = 800;
-    const size = image.getSize();
+    if (image.isEmpty()) {
+      return;
+    }
+    const [size, max] = [image.getSize(), 800];
     const scale = Math.min(max / size.width, max / size.height, 1);
-    const resized = image.resize({
-      width: Math.max(1, Math.floor(size.width * scale)),
-      height: Math.max(1, Math.floor(size.height * scale)),
-    });
-    const dataUrl = resized.toDataURL();
-    const dataString = dataUrl.replace(/^data:image\/\w+;base64,/, "").trim();
-    WEBVIEW.tracker.screenshot = dataString || WEBVIEW.tracker.screenshot;
+    const png = (
+      scale < 1
+        ? image.resize({
+            width: Math.max(1, Math.floor(size.width * scale)),
+            height: Math.max(1, Math.floor(size.height * scale)),
+          })
+        : image
+    ).toPNG();
+    const data = png.toString("base64");
+    if (data && data !== WEBVIEW.tracker.screenshot.data) {
+      WEBVIEW.tracker.screenshot.data = data;
+      WEBVIEW.tracker.screenshot.changed = true;
+    }
   } catch (error) {
     console.warn("Screenshot Error:", error.message);
+  } finally {
+    WEBVIEW.tracker.screenshot.capturing = false;
   }
-  return WEBVIEW.tracker.screenshot;
 };
 
 /**
  * Generates a html template for a spinning loader.
  *
- * @param {number} size - The size of the circle.
- * @param {number} speed - The rotation speed of the circle.
  * @param {string} theme - The theme used for spinner colors.
+ * @param {number} [size] - The size of the circle.
+ * @param {number} [speed] - The rotation speed of the circle.
  * @returns {string} A data string with the generated html.
  */
-const loaderHtml = (size, speed, theme) => {
+const loaderHtml = (theme, size = 50, speed = 1.0) => {
   const color = {
     dark: { border: "#2A2A2A", spinner: "#03A9F4", background: "#111111" },
     light: { border: "#DCDCDC", spinner: "#03A9F4", background: "#FAFAFA" },
@@ -1586,15 +1667,52 @@ const loaderHtml = (size, speed, theme) => {
 };
 
 /**
+ * Generates a html template for an idle icon.
+ *
+ * @param {string} theme - The theme used for icon colors.
+ * @param {number} [size] - The size of the icon.
+ * @returns {string} A data string with the generated html.
+ */
+const idleHtml = (theme, size = 50) => {
+  const color = {
+    dark: { icon: "#03A9F4", background: "#111111" },
+    light: { icon: "#03A9F4", background: "#FAFAFA" },
+  }[theme];
+  const html = `
+    <html>
+      <head>
+        <style>
+          body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: ${color.background};
+          }
+          .icon {
+            width: ${size}px;
+            height: ${size}px;
+            border-radius: 50%;
+            box-shadow: inset ${Math.round(size * 0.3)}px 0 0 0 ${color.icon};
+          }
+        </style>
+      </head>
+      <body>
+        <div class="icon"></div>
+      </body>
+    </html>`;
+  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+};
+
+/**
  * Generates a html template for an error page.
  *
+ * @param {string} theme - The theme used for text colors.
  * @param {number} code - The error code of the response.
  * @param {string} text - The error text of the response.
  * @param {string} url - The url of the requested page.
- * @param {string} theme - The theme used for text colors.
  * @returns {string} A data string with the generated html.
  */
-const errorHtml = (code, text, url, theme) => {
+const errorHtml = (theme, code, text, url) => {
   const color = {
     dark: { icon: "#FFA500", text: "#E5E5E5", background: "#111111" },
     light: { icon: "#FFA500", text: "#1A1A1A", background: "#FAFAFA" },
