@@ -5,7 +5,7 @@
 [![downloads](https://img.shields.io/github/downloads/leukipp/touchkio/total?style=flat-square)](https://github.com/leukipp/touchkio/releases)
 [![sponsor](https://img.shields.io/github/sponsors/leukipp?color=red&logo=github&style=flat-square)](https://github.com/sponsors/leukipp)
 
-**TouchKio** is a Node.js application that utilizes Electron to create a kiosk mode window specifically designed for a Home Assistant dashboard.
+**TouchKio** is a Node.js application that utilizes [Electron](https://www.electronjs.org) to create a kiosk mode window specifically designed for a Home Assistant dashboard.
 This tool is packaged as a **.deb** file, making it easy to launch the kiosk application on any Debian based Linux [hardware](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md) (e.g. **Raspberry Pi**) equipped with a **DSI or HDMI** Touch Display.
 Additional releases for other Linux systems are available as **.zip** file.
 
@@ -40,7 +40,7 @@ Additionally, a **MQTT endpoint** can be defined, allowing the application to pr
 
 ## Setup
 Before you begin, make sure that you have a Linux device configured and operational with a [compatible](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md) Touch Display.
-This guide assumes that you are using a Raspberry Pi with the latest version of Raspberry Pi OS **(64-bit)**, along with a desktop environment (preferred using **labwc**).
+This guide assumes that you are using a Raspberry Pi with the latest version of Raspberry Pi OS **(64-bit)**, along with a desktop environment (preferably using **labwc**).
 However, the **.deb** setup procedure is also compatible with any other Debian based 64-bit system.
 
 ### Optional
@@ -119,6 +119,7 @@ The available arguments to control the kiosk application via terminal are as fol
 | `--web-theme` (Optional)  | `dark`  | Theme settings of the web browser (`light` or `dark`)                                                      |
 | `--web-zoom` (Optional)   | `1.25`  | Zoom settings of the web browser (`1.0` is `100%`)                                                         |
 | `--web-widget` (Optional) | `true`  | Enables the sidebar widget (`true` or `false`)                                                             |
+| `--web-pager` (Optional)  | `true`  | Enables the sidebar pager (`true` or `false`)                                                              |
 
 These arguments allow you to customize the appearance of the web browser view.
 
@@ -166,9 +167,8 @@ Additional controls can be found along the right edge of the kiosk application. 
 | Name         | Description                                              |
 | ------------ | -------------------------------------------------------- |
 | `Widget`     | [See #16](https://github.com/leukipp/touchkio/issues/16) |
-| `Navigation` | [See #45](https://github.com/leukipp/touchkio/issues/45) |
 | `Pager`      | [See #64](https://github.com/leukipp/touchkio/issues/64) |
-
+| `Navigation` | [See #45](https://github.com/leukipp/touchkio/issues/45) |
 
 ### Keyboard Shortcuts
 The application also supports basic shortcuts to enhance navigation and usability for users who prefer or require non-touch input methods:
@@ -194,6 +194,39 @@ export DISPLAY=":0"
 export WAYLAND_DISPLAY="wayland-0"
 ```
 To make this permanent, consider adding the export variables into the `~/.bashrc` file.
+
+### Flags
+
+<details><summary>Warranty void if opened.</summary><div></br>
+
+These flags are primarily meant for development and debugging, but may also come in handy for some special use cases.
+They can be added into `Arguments.json`, but may change in future versions.
+
+| Name            | Default      | Description                                                                |
+| --------------- | ------------ | -------------------------------------------------------------------------- |
+| `--app-kiosk`   | `fullscreen` | Initial window status (`framed`, `fullscreen`, `maximized` or `minimized`) |
+| `--app-reset`   | -            | Reset stored data (`session` or `arguments`)                               |
+| `--app-disable` | -            | List of disabled features (`web_*` or `mqtt_*`)                            |
+| `--app-early`   | -            | Include pre-release versions for app updates                               |
+| `--app-debug`   | -            | Opens dev tools and raises the log level                                   |
+
+For example:
+```bash
+touchkio --web-url=http://192.168.1.42:8123 --app-kiosk=framed --app-disable=mqtt_screenshot,web_touch
+```
+
+In the `~/.config/touchkio/Arguments.json` file:
+```json
+{
+  "app_kiosk":"framed",
+  "app_disable": [
+    "mqtt_screenshot",
+    "web_touch"
+  ]
+}
+```
+
+</div></details>
 
 ### Extensions
 
@@ -234,14 +267,14 @@ While using external sensors that directly integrate with Home Assistant and by 
 
 <details><summary>Don't waste your time reading this.</summary><div></br>
 
-The Raspberry Pi's **build-in on-screen keyboard** named `squeekboard` (it squeaks because some _Rust_ got inside), is specifically designed for Wayland environments and features a **D-Bus interface** that allows applications to show or hide the keyboard as needed.
+The Raspberry Pi's **built-in on-screen keyboard** named `squeekboard` (it squeaks because some _Rust_ got inside), is specifically designed for Wayland environments and features a **D-Bus interface** that allows applications to show or hide the keyboard as needed.
 The kiosk application interacts with squeekboard via the `D-Bus` object path `/sm/puri/OSK0`, enabling the keyboard to be hidden or shown based on **MQTT** user input or system events.
 
-The Raspberry Pi's **build-in screen blanking** function uses the command `swayidle -w timeout 600 'wlopm --off \*' resume 'wlopm --on \*' &` inside `~/.config/labwc/autostart` to blank the screen after **10 minutes**.
+The Raspberry Pi's **built-in screen blanking** function uses the command `swayidle -w timeout 600 'wlopm --off \*' resume 'wlopm --on \*' &` inside `~/.config/labwc/autostart` to blank the screen after **10 minutes**.
 The `wlopm --off \*` command changes the `/sys/class/backlight/*/bl_power` value to **4**, when setting the value to **0** the screen will turn on again.
 However, `swayidle` still seems to consider the screen to be off and as a result it will not turn off again unless there is some interaction in the meantime.
 
-When using Raspberry Pi OS with labwc/Wayland and `wayvnc`, display power control through `wlopm` will fail while a VNC client is actively connected.
+When using Raspberry Pi OS with `labwc` and `wayvnc`, display power control through `wlopm` will fail while a **VNC client** is actively connected.
 In this state, commands such as `wlopm --off DSI-2` or `wlopm --on DSI-2` return `ERROR: Setting power mode for output 'DSI-2' failed.`
 The issue occurs during an active VNC screen capture session. After disconnecting the VNC client, `wlopm` starts working again without rebooting the device or restarting TouchKio.
 If display power control is automated through Home Assistant, it is recommended to avoid testing or relying on display on/off commands while a VNC session is active, or to verify that the requested display state was actually applied.
