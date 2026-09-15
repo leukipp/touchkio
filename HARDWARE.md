@@ -61,7 +61,7 @@ Hardware support is verified during application startup and can be checked in th
 The necessary requirements for MQTT sensors to work are listed here:
 | Name                 | Requirements                                                                             | References                                                                                                   |
 | -------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| App (Update)         | Requires `sudo apt` rights, `.deb` install and `touchkio.service` running .              | [#70](https://github.com/leukipp/touchkio/issues/70), [#77](https://github.com/leukipp/touchkio/issues/77)   |
+| App (Update)         | Requires `sudo apt install` rights, `.deb` install and `touchkio.service` running.       | [#70](https://github.com/leukipp/touchkio/issues/70), [#77](https://github.com/leukipp/touchkio/issues/77)   |
 | Display (Status)     | Working `wlopm`, `kscreen-doctor`, `xset` or `sudo ddcutil` command.                     | [#57](https://github.com/leukipp/touchkio/issues/57), [#194](https://github.com/leukipp/touchkio/pull/194)   |
 | Display (Brightness) | File under `/sys/class/backlight/*/brightness` exists or working `sudo ddcutil` command. | [#30](https://github.com/leukipp/touchkio/issues/30), [#101](https://github.com/leukipp/touchkio/issues/101) |
 | Keyboard             | Raspberry Pi OS (Wayland) with `squeekboard` running.                                    | [#7](https://github.com/leukipp/touchkio/issues/7), [#85](https://github.com/leukipp/touchkio/issues/85)     |
@@ -79,8 +79,16 @@ The necessary requirements for MQTT sensors to work are listed here:
 <details><summary>I have installed Ubuntu GNOME.</summary>
 
   - On some Debian based systems (e.g. Ubuntu GNOME), the display status control is only available when using X11 (`xset`).
-  - GNOME running on wayland is the least supported window manager.
-    - It's recommended to switch to KDE wayland, if you want better support for display status control (`kscreen-doctor`).
+  - GNOME running on Wayland is the least supported window manager.
+    - It's recommended to switch to KDE Wayland, if you want proper support for display status control (`kscreen-doctor`).
+    - If you enjoy GNOME Wayland and suffering, install [ddcutil](https://github.com/leukipp/touchkio/pull/194) instead.
+
+</details>
+
+<details><summary>I have installed Raspberry Pi OS Lite.</summary>
+
+  - Starting with Raspberry Pi OS Lite is not recommended, use the default desktop image instead (not Lite/Full).
+    - Display and Keyboard MQTT controls may [not work](https://github.com/leukipp/touchkio/issues/239#issuecomment-5422999509) on Lite installs.
 
 </details>
 
@@ -111,7 +119,7 @@ The necessary requirements for MQTT sensors to work are listed here:
     - `wlopm --[on,off] \*` (Raspberry Pi OS, Wayland)
     - `kscreen-doctor --dpms [on,off]` (Debian KDE, Wayland)
     - `xset dpms force [on,off]` (Generic, X11)
-  - If none of the above commands are available on your system consider installing another OS. There is a build-in command prioritization in case [ddcutil](https://github.com/leukipp/touchkio/pull/194) is installed, but it's really slow and unreliable.
+  - If none of the above commands are available on your system consider installing another OS. There is a built-in command prioritization in case [ddcutil](https://github.com/leukipp/touchkio/pull/194) is installed, but it's really slow and unreliable.
     - `sudo ddcutil setvcp D6 0x04` turns off your screen [without asking](https://github.com/leukipp/touchkio/issues/39#issuecomment-4470939733) for a password.
     - `sudo ddcutil setvcp D6 0x01` turns on your screen [without asking](https://github.com/leukipp/touchkio/issues/39#issuecomment-4470939733) for a password.
 
@@ -124,7 +132,7 @@ The necessary requirements for MQTT sensors to work are listed here:
     - The brightness slider is also only available if the display status control (on/off) is functional and the [user has permissions](https://github.com/leukipp/touchkio/issues/39#issuecomment-4470939733) to modify the brightness value.
   - HDMI screens typically do not offer brightness control out of the box, so additional setup steps are required.
     - It's recommended to install [ddcci-driver-linux](https://github.com/leukipp/touchkio/issues/132#issue-3659009749) or [ddcci-dkms](https://github.com/leukipp/touchkio/issues/101#issuecomment-3571523927), since this will create the necessary `/sys/class/backlight/*` folder structure.
-    - Additional brightness support using [ddcutil](https://github.com/leukipp/touchkio/issues/101#issuecomment-3521247263) is build-in and checked on application startup, but it's really slow and unreliable.
+    - Additional brightness support using [ddcutil](https://github.com/leukipp/touchkio/issues/101#issuecomment-3521247263) is built-in and checked on application startup, but it's really slow and unreliable.
   - Make sure that one of these works for your display when you run it directly on the terminal, otherwise the MQTT switch will not show the brightness control.
     - `sudo cat /sys/class/backlight/*/brightness` returns some numeric value.
     - `sudo ddcutil setvcp 10 42` changes the brightness to 42% [without asking](https://github.com/leukipp/touchkio/issues/39#issuecomment-4470939733) for a password.
@@ -139,18 +147,24 @@ The necessary requirements for MQTT sensors to work are listed here:
 
 </details>
 
+<details><summary>Using a GPIO/PWM/USB power controlled screen.</summary>
+
+  - Controlling the screen via [USB](https://github.com/leukipp/touchkio/issues/119) hub power, [PWM](https://github.com/leukipp/touchkio/issues/190) backlight or [GPIO](https://github.com/leukipp/touchkio/issues/152) is not planned.
+
+</details>
+
 ### Touch
 
 <details><summary>Automated screen blanking on inactivity.</summary>
 
-  - You can use Raspberry Pi's build-in [screen blanking](https://www.raspberrypi.com/documentation/computers/configuration.html#screen-blanking-3) functionality, however, if the screen is turned on through Home Assistant after being automatically turned off, it will remain on indefinitely.
+  - You can use Raspberry Pi's built-in [screen blanking](https://www.raspberrypi.com/documentation/computers/configuration.html#screen-blanking-3) functionality, however, if the screen is turned on through Home Assistant after being automatically turned off, it will remain on indefinitely.
     - It's recommended to either use the built-in screen blanking feature or implement a Home Assistant [automation](https://www.home-assistant.io/docs/automation/basics) (e.g. presence detection or **Last Active** MQTT sensor) to manage the screen status.
 
 </details>
 
 <details><summary>Touch in multitouch mode not waking the screen.</summary>
 
-  - It's recommended to use **Mouse Emulation** for touch screens, otherwise touch based [screen wake-up](https://github.com/leukipp/touchkio/issues/127) from display off state will fail, especially if build-in [screen blanking](https://www.raspberrypi.com/documentation/computers/configuration.html#screen-blanking-3) is disabled.
+  - It's recommended to use **Mouse Emulation** for touch screens, otherwise touch based [screen wake-up](https://github.com/leukipp/touchkio/issues/127) from display off state will fail, especially if built-in [screen blanking](https://www.raspberrypi.com/documentation/computers/configuration.html#screen-blanking-3) is disabled.
 
 </details>
 
@@ -160,12 +174,28 @@ The necessary requirements for MQTT sensors to work are listed here:
 
 </details>
 
+<details><summary>The on-screen keyboard doesn't automatically pop-out.</summary>
+
+  - Most of the available on-screen keyboards will not render above any [fullscreen window](https://forums.raspberrypi.com/viewtopic.php?p=2327148).
+  - There is a [workaround](https://github.com/leukipp/touchkio/issues/85) for `squeekboard`, which will only work on Raspberry Pi OS.
+    - If the on-screen keyboard still doesn't [automatically pop-out](https://github.com/leukipp/touchkio/issues/4) when entering a text field inside the webview you can use the side [widget](https://github.com/leukipp/touchkio/issues/16) to toggle the visibility.
+
+</details>
+
 ### Network
 
 <details><summary>Connecting via https/mqtts with a self-signed certificate.</summary>
 
   - When connecting to a service with a [custom certificate](https://github.com/leukipp/touchkio/issues/42#issuecomment-3041870215), ensure the specified FQDN matches.
     - Using the `--ignore-certificate-errors` flag is [not recommended](https://github.com/leukipp/touchkio/issues/76) for browsing external sites.
+
+</details>
+
+<details><summary>During VNC access the display control fails.</summary>
+
+  - On Raspberry Pi OS the display command may [fail](https://github.com/leukipp/touchkio#the-nitty-gritty) with `ERROR: Setting power mode for output '[DSI-*,HDMI-*]' failed`.
+    - This can happen if you have `wayvnc` running for remote access and is [known](https://github.com/leukipp/touchkio/issues/78#issuecomment-3316245615) behavior.
+    - Don't use VNC except when needed to initially setting up the device.
 
 </details>
 
@@ -179,10 +209,11 @@ The necessary requirements for MQTT sensors to work are listed here:
 
 </details>
 
-<details><summary>During VNC access the display turns gray.</summary>
+<details><summary>Starting TouchKio from a SSH terminal.</summary>
 
-  - On Raspberry Pi OS the display command may fail with `ERROR: Setting power mode for output '[DSI-*,HDMI-*]' failed`.
-    - This can happen if you have `wayvnc` running for remote access and is caused by a [known bug](https://github.com/leukipp/touchkio/issues/78).
+  - Electron needs a graphical session, the required exports are logged in the terminal.
+    - You can start `touchkio.service` after `--setup` has finished, otherwise default arguments are missing.
+    - Add `--ozone-platform=wayland` for on-screen keyboard [auto pop-out](https://github.com/leukipp/touchkio/issues/85) support.
 
 </details>
 
@@ -206,39 +237,58 @@ The necessary requirements for MQTT sensors to work are listed here:
 
 </details>
 
+<details><summary>Some music/movie focused websites do not load correctly.</summary>
+
+  - Sites like Spotify and Disney+ need Widevine (DRM), which is [not supported](https://github.com/leukipp/touchkio/issues/188#issuecomment-5619996374) in the foreseeable future.
+
+</details>
+
 ### Dependencies
 
 <details><summary>Some of the MQTT controls are missing.</summary>
 
   - Certain [features](https://github.com/leukipp/touchkio/blob/main/HARDWARE.md#features) from the MQTT integration may require elevated privileges to work correctly.
-    - Test if your local user has the [necessary permissions](https://github.com/leukipp/touchkio/issues/39) to run `sudo -n true` without being [prompted for a password](https://github.com/leukipp/touchkio/issues/116#issuecomment-3471566411).
+    - Test if your local user has the [necessary permissions](https://github.com/leukipp/touchkio/issues/39#issuecomment-4470939733) to run `sudo -n true` without being [prompted for a password](https://github.com/leukipp/touchkio/issues/116#issuecomment-3471566411).
+  - Check the `Supported` section on the terminal or via `cat ~/.config/touchkio/logs/main.log` and look for `access.sudo` to be `true`.
+  
+</details>
+
+<details><summary>Assign granular access to MQTT commands.</summary>
+
+  - Instead of granting `NOPASSWD: ALL` you may want to [restrict access](https://github.com/leukipp/touchkio/issues/39#issuecomment-4470939733) to the `sudo` commands you actually need.
+    - Replace `user` with the output of `whoami`, then run `sudo visudo /etc/sudoers.d/touchkio` and add:
+      ```bash
+      user ALL=(ALL) NOPASSWD: \
+        /usr/sbin/reboot, \
+        /usr/sbin/shutdown, \
+        /usr/bin/apt install
+      ```
+  - Restart TouchKio and check `access.reboot`, `access.shutdown` and `access.install` in the log.
 
 </details>
 
 <details><summary>The ddcutil command doesn't seem to be used.</summary>
 
   - Currently `ddcutil` can be optionally installed to control HDMI screens.
-    - Test if your local user has the [necessary permissions](https://github.com/leukipp/touchkio/issues/39) to run `sudo -n true` without being [prompted for a password](https://github.com/leukipp/touchkio/issues/116#issuecomment-3471566411).
+    - Test if your local user has the [necessary permissions](https://github.com/leukipp/touchkio/issues/39#issuecomment-4470939733) to run `sudo -n true` without being [prompted for a password](https://github.com/leukipp/touchkio/issues/116#issuecomment-3471566411).
     - Make sure that your screen is supporting [continuous](https://github.com/leukipp/touchkio/issues/101#issuecomment-3521247263) adjustments of brightness.
-  - On Raspberry Pi OS the build-in screen blanking (`wlopm`) may fail when `ddcutil` was used to alter the screen state.
+  - On Raspberry Pi OS the built-in screen blanking (`wlopm`) may fail when `ddcutil` was used to alter the screen state.
 
 </details>
 
-<details><summary>The on-screen keyboard doesn't automatically pop-out.</summary>
+<details><summary>Unicode Emoji characters are not rendered correctly.</summary>
 
-  - Most of the available on-screen keyboards will not render above any [fullscreen window](https://forums.raspberrypi.com/viewtopic.php?p=2327148).
-  - There is a [workaround](https://github.com/leukipp/touchkio/issues/85) for `squeekboard`, which will only work on Raspberry Pi OS.
-    - If the on-screen keyboard still doesn't [automatically pop-out](https://github.com/leukipp/touchkio/issues/4) when entering a text field inside the webview you can use the side [widget](https://github.com/leukipp/touchkio/issues/16) to toggle the visibility.
+  - Depending on your OS you may need to install some [extra packages](https://github.com/leukipp/touchkio/issues/209#issuecomment-4477980609).
 
 </details>
 
 ### Errors
 
-<details><summary>CPU and RAM usage increases without reason.</summary>
+<details><summary>Error message "Setting power mode for output * failed".</summary>
 
-  - This was [especially observed](https://github.com/leukipp/touchkio/issues/123) when the screen is permanently on and renders a dashboard with interactive elements (e.g. custom lovelace cards).  
-    - Switching to another **Page Url** or turning the **Display** off during idle times improves resource usage.  
-    - Alternatively a timed **Refresh** of the webview via MQTT can also help.
+  - The display command `wlopm` may fail with this error while a VNC client is connected.
+    - This is [known](https://github.com/leukipp/touchkio/issues/78#issuecomment-3316245615) behavior, also documented in the [README](https://github.com/leukipp/touchkio#the-nitty-gritty).
+    - Don't use VNC except when needed to initially setting up the device.
 
 </details>
 
@@ -254,6 +304,14 @@ The necessary requirements for MQTT sensors to work are listed here:
   - _Render Process killed (code 9)_ will lead to a temporary [white screen](https://github.com/leukipp/touchkio/issues/115).
   - The problem likely stems from Electron’s calculated RAM limit (~2GB) and the dashboard using too much memory.
     - Although there are flags to [increase the limit](https://github.com/leukipp/touchkio/issues/36#issuecomment-3406441947), a standard webview shouldn’t require that much RAM.
+
+</details>
+
+<details><summary>CPU and RAM usage increases without reason.</summary>
+
+  - This was [especially observed](https://github.com/leukipp/touchkio/issues/123) when the screen is permanently on and renders a dashboard with interactive elements (e.g. custom lovelace cards).  
+    - Switching to another **Page Url** or turning the **Display** off during idle times improves resource usage.  
+    - Alternatively a timed **Refresh** of the webview via MQTT can also help.
 
 </details>
 
@@ -273,4 +331,13 @@ bash <(wget -qO- https://raw.githubusercontent.com/leukipp/touchkio/main/install
 
 - If you encounter any problems, please create a new [issue](https://github.com/leukipp/touchkio/issues).
 - If you encounter any problems and are able to fix it yourself, feel free to create a [pull request](https://github.com/leukipp/touchkio/pulls).
-- If everything works as expected and your hardware is not yet listed, you are welcome to [report](https://github.com/leukipp/touchkio/issues/12) it or create a [pull request](https://github.com/leukipp/touchkio/pulls).
+- If everything works as expected and your hardware is not yet listed, you are welcome to [share](https://github.com/leukipp/touchkio/discussions/categories/hardware) it or create a [pull request](https://github.com/leukipp/touchkio/pulls).
+
+### Discussions
+TouchKio is built with and for the community and seeing how others use it is what keeps the project alive.
+If you have a display on the wall, a clever dashboard, a custom mount or an unusual hardware combo, please share it.
+
+Your setup, configuration or photos might be exactly what someone else needs to get started.
+
+Join the conversation on [GitHub Discussions](https://github.com/leukipp/touchkio/discussions) or the [Home Assistant Community](https://community.home-assistant.io/t/kiosk-mode-for-raspberry-pi-with-touch-display/821196) thread.
+[Questions](https://github.com/leukipp/touchkio/discussions/categories/q-a), [hardware](https://github.com/leukipp/touchkio/discussions/categories/hardware) and [show and tell](https://github.com/leukipp/touchkio/discussions/categories/show-and-tell) posts are all welcome.
