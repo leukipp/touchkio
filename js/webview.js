@@ -756,7 +756,7 @@ const reloadView = async () => {
   const view = WEBVIEW.views[WEBVIEW.viewActive];
   const defaultUrl = WEBVIEW.viewUrls[WEBVIEW.viewActive];
   const currentUrl = view.webContents.getURL();
-  const targetUrl = currentUrl.startsWith("data:") ? defaultUrl : currentUrl;
+  const targetUrl = !currentUrl || currentUrl.startsWith("data:") ? defaultUrl : currentUrl;
 
   // Clear logs and cache
   await clearData({ logs: true, cache: true });
@@ -1451,6 +1451,17 @@ const appEvents = async () => {
   app.on("child-process-gone", (e, details) => {
     const name = details.name || details.serviceName || "Unknown";
     console.error(`${details.type} Process ${details.reason} (code ${details.exitCode}): ${name}`);
+
+    // A page load in flight when the network service goes down is dropped without a
+    // did-fail-load, leaving that view blank; start those loads again.
+    if (details.serviceName === "network.mojom.NetworkService") {
+      WEBVIEW.views.forEach((view, i) => {
+        if (!view.webContents.getURL()) {
+          console.warn(`Reloading View: ${WEBVIEW.viewUrls[i]}`);
+          view.webContents.loadURL(WEBVIEW.viewUrls[i]);
+        }
+      });
+    }
   });
 
   // Update latest screenshot (every full 1min)
