@@ -10,6 +10,7 @@ If you are running Linux with a graphical user interface (Wayland or X11), you s
 |     | Status                | Notes                                                                     |
 | --- | --------------------- | ------------------------------------------------------------------------- |
 | 🟩   | Fully operational     | Working display power, brightness and keyboard control via MQTT.          |
+| 🟦   | Mostly operational    | Keyboard control is not available via MQTT.                               |
 | 🟨   | Partially operational | Display brightness control is not available via MQTT.                     |
 | 🟧   | Partially operational | Display brightness and keyboard control is not available via MQTT.        |
 | 🟥   | Partially operational | Display power, brightness and keyboard control is not available via MQTT. |
@@ -45,6 +46,7 @@ If you are running Linux with a graphical user interface (Wayland or X11), you s
 | Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Akntzcs Portable Touch HD 16" (1920x1200)](https://www.amazon.com/dp/B0CTGW6MQ6)                                                                                  | 🟨      |
 | Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | [Prechen Portable Touch FHD 18.5" (1920x1080)](https://www.amazon.de/dp/B0CT2KLDBQ)                                                                                | 🟨      |
 | Raspberry Pi 5 (arm64)    | Raspberry Pi OS (64-bit), Wayland, X11 | Generic Non-Touch                                                                                                                                                  | 🟨      |
+| Generic PC (x64)          | Xubuntu / Ubuntu XFCE (64-bit), X11    | Generic Touch                                                                                                                                                      | 🟦      |
 | Generic PC (x64)          | Debian KDE (64-bit), Wayland, X11      | Generic Non-Touch                                                                                                                                                  | 🟧      |
 | Generic PC (x64)          | Ubuntu XFCE (64-bit), X11              | Generic Non-Touch                                                                                                                                                  | 🟧      |
 | Generic PC (x64)          | Ubuntu GNOME (64-bit), X11             | Generic Non-Touch                                                                                                                                                  | 🟧      |

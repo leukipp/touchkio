@@ -48,6 +48,43 @@ echo -e "\nInstalling the latest release..."
 command -v apt &> /dev/null || { echo "Package manager apt was not found."; exit 1; }
 sudo apt install -y "$DEB_PATH" || { echo "Installation of .deb file failed."; exit 1; }
 
+# Install optional dependencies
+if ! $ARG_UPDATE && ! command -v pactl &> /dev/null; then
+    read -p "Command pactl not found, install pulseaudio-utils for volume control? (Y/n) " audio
+    if [[ ${audio:-y} == [Yy]* ]]; then
+        sudo apt install -y pulseaudio-utils || echo "Installation of pulseaudio-utils failed."
+    else
+        echo "Package pulseaudio-utils not installed."
+    fi
+fi
+
+# Hide idle mouse cursor (X11 only)
+if ! $ARG_UPDATE && [ "$XDG_SESSION_TYPE" != "wayland" ] && ! command -v unclutter &> /dev/null; then
+    read -p "Command unclutter not found, install unclutter to hide the idle cursor on X11? (Y/n) " cursor
+    if [[ ${cursor:-y} == [Yy]* ]]; then
+        sudo apt install -y unclutter && echo "Package unclutter installed, active after next login." || echo "Installation of unclutter failed."
+    else
+        echo "Package unclutter not installed."
+    fi
+fi
+
+# Configure password-less sudo
+if ! $ARG_UPDATE && ! sudo -n true &> /dev/null; then
+    read -p "User $USER has no password-less sudo rights, grant NOPASSWD: ALL (needed for reboot, shutdown, update, ddcutil)? (y/N) " nopasswd
+    if [[ ${nopasswd:-n} == [Yy]* ]]; then
+        SUDOERS_FILE="/etc/sudoers.d/touchkio"
+        SUDOERS_TMP="${TMP_DIR}/sudoers"
+        echo "$USER ALL=(ALL) NOPASSWD: ALL" > "$SUDOERS_TMP"
+        if sudo visudo -cf "$SUDOERS_TMP" &> /dev/null; then
+            sudo install -m 0440 -o root -g root "$SUDOERS_TMP" "$SUDOERS_FILE" && echo "Sudoers $SUDOERS_FILE created." || echo "Failed to write to $SUDOERS_FILE."
+        else
+            echo "Validation of sudoers file failed."
+        fi
+    else
+        echo "Password-less sudo not configured."
+    fi
+fi
+
 # Create the systemd user service
 echo -e "\nCreating systemd user service..."
 
