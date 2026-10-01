@@ -559,7 +559,7 @@ const getIlluminanceLevelPath = () => {
       continue;
     }
     const name = readFile(nameFile);
-    if (name === "als") {
+    if (["als", "acpi-als"].includes(name)) {
       return path.join(iio, device);
     }
   }
