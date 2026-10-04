@@ -729,7 +729,7 @@ const setDisplayStatus = (status, callback = null) => {
   }
   switch (HARDWARE.display.status.command) {
     case "ddcutil":
-      execAsyncCommand("sudo", ["ddcutil", "setvcp", "0xD6", status === "ON" ? "1" : "4"], (reply, error) => {
+      execAsyncCommand("sudo", ["ddcutil", "setvcp", "0xD6", status === "ON" ? "1" : "5"], (reply, error) => {
         fs.writeFileSync(path.join(HARDWARE.display.status.path, "dpms"), status.toLowerCase());
         fs.writeFileSync(path.join(HARDWARE.display.status.path, "status"), status.toLowerCase());
         if (typeof callback === "function") callback(reply, error);
