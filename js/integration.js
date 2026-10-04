@@ -803,7 +803,7 @@ const initPageNumber = () => {
     value_template: "{{ value | int }}",
     mode: "box",
     min: 1,
-    max: WEBVIEW.viewUrls.length - 1,
+    max: WEBVIEW.viewUrls.length,
     unit_of_measurement: "Page",
     icon: "mdi:page-next",
     device: INTEGRATION.device,
