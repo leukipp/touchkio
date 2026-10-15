@@ -48,6 +48,16 @@ echo -e "\nInstalling the latest release..."
 command -v apt &> /dev/null || { echo "Package manager apt was not found."; exit 1; }
 sudo apt install -y "$DEB_PATH" || { echo "Installation of .deb file failed."; exit 1; }
 
+# Install motion if a camera is detected
+if ! $ARG_UPDATE && ! command -v motion &> /dev/null && ls /dev/v4l/by-id/*-video-index0 &> /dev/null; then
+    read -p "Camera detected but command motion not found, install motion for motion detection? (Y/n) " motion
+    if [[ ${motion:-y} == [Yy]* ]]; then
+        sudo apt install -y motion && sudo systemctl enable --now motion.service && echo "Package motion installed and service enabled." || echo "Installation of motion failed."
+    else
+        echo "Package motion not installed."
+    fi
+fi
+
 # Create the systemd user service
 echo -e "\nCreating systemd user service..."
 

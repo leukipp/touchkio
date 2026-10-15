@@ -93,6 +93,7 @@ const init = async () => {
       initProcessorTemperature();
       initBatteryLevel();
       initIlluminanceLevel();
+      initMotion();
       initPackageUpgrades();
       initLastActive();
 
@@ -111,6 +112,7 @@ const init = async () => {
       EVENTS.on("updateVolume", updateVolume);
       EVENTS.on("updateMicrophone", updateMicrophone);
       EVENTS.on("updateKeyboard", updateKeyboard);
+      EVENTS.on("updateMotion", updateMotion);
       EVENTS.on("updatePage", () => {
         updatePageNumber();
         updatePageZoom();
@@ -1405,6 +1407,41 @@ const updateIlluminanceLevel = async () => {
   }
   const illuminanceLevel = hardware.getIlluminanceLevel();
   publishState("illuminance_level", illuminanceLevel, true);
+};
+
+/**
+ * Initializes the motion sensor.
+ *
+ * @returns {void}
+ */
+const initMotion = () => {
+  const root = `${INTEGRATION.root}/motion`;
+  const config = {
+    name: "Motion",
+    unique_id: `${INTEGRATION.node}_motion`,
+    state_topic: `${root}/state`,
+    device_class: "motion",
+    device: INTEGRATION.device,
+  };
+  if (!HARDWARE.support.motionDetection || ARGS.app_disable.includes("mqtt_motion")) {
+    removeConfig("binary_sensor", config, true);
+    return;
+  }
+  publishConfig("binary_sensor", config, true);
+  updateMotion();
+};
+
+/**
+ * Updates the motion sensor via the mqtt connection.
+ *
+ * @returns {Promise<void>}
+ */
+const updateMotion = async () => {
+  if (ARGS.app_disable.includes("mqtt_motion")) {
+    return;
+  }
+  const motion = hardware.getMotionDetection();
+  publishState("motion", motion, true);
 };
 
 /**

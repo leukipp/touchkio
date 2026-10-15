@@ -33,6 +33,13 @@ global.HARDWARE = global.HARDWARE || {
   keyboard: {
     visible: null,
   },
+  motion: {
+    detection: {
+      path: null,
+      command: null,
+      active: false,
+    },
+  },
   audio: {
     device: {
       output: null,
@@ -65,6 +72,8 @@ const init = async () => {
   HARDWARE.display.brightness.value.max = getDisplayBrightnessMax();
   HARDWARE.audio.device.output = getAudioOutput();
   HARDWARE.audio.device.input = getAudioInput();
+  HARDWARE.motion.detection.path = getMotionDetectionPath();
+  HARDWARE.motion.detection.command = getMotionDetectionCommand();
   HARDWARE.support = checkSupport();
   HARDWARE.initialized = true;
 
@@ -141,6 +150,13 @@ const init = async () => {
     `Keyboard Visibility [${HARDWARE.support.keyboardVisibility ? "dbus://sm/puri/OSK0" : none()}]:`,
     keyboardVisibilityInfo,
   );
+  const motionDetection = `${getMotionDetection()} (${HARDWARE.motion.detection.command})`;
+  const motionDetectionInfo = HARDWARE.support.motionDetection ? motionDetection : none();
+  const motionDetectionPath = HARDWARE.motion.detection.path || "journald://motion.service";
+  console.info(
+    `Motion Detection [${HARDWARE.support.motionDetection ? motionDetectionPath : none()}]:`,
+    motionDetectionInfo,
+  );
   process.stdout.write("\n");
 
   // Monitor audio output and input volume
@@ -174,6 +190,33 @@ const init = async () => {
         console.info("Update Keyboard Visibility:", getKeyboardVisibility());
         EVENTS.emit("updateKeyboard");
       });
+    });
+  }
+
+  // Monitor motion detection events
+  if (HARDWARE.support.motionDetection) {
+    const file = HARDWARE.motion.detection.path;
+    const [cmd, args] = {
+      tail: readRights(file) ? ["tail", ["-F", "-n", "0", file]] : ["sudo", ["tail", "-F", "-n", "0", file]],
+      journalctl: ["journalctl", ["-u", "motion.service", "-f", "-n", "0", "-o", "cat"]],
+    }[HARDWARE.motion.detection.command];
+    commandMonitor(cmd, args, (reply, error) => {
+      if (!reply || error) {
+        return;
+      }
+      for (const line of reply.split("\n")) {
+        let active = null;
+        if (/Motion detected - starting event/i.test(line)) {
+          active = true;
+        } else if (/End of event/i.test(line)) {
+          active = false;
+        }
+        if (active !== null && active !== HARDWARE.motion.detection.active) {
+          HARDWARE.motion.detection.active = active;
+          console.info("Update Motion Detection:", getMotionDetection());
+          EVENTS.emit("updateMotion");
+        }
+      }
     });
   }
 
@@ -315,6 +358,7 @@ const checkSupport = () => {
   const brightnessPath = !!HARDWARE.display.brightness.path && !!HARDWARE.display.brightness.value.max;
   const brightnessCommand = !!HARDWARE.display.brightness.command && !!HARDWARE.display.brightness.value.max;
   const keyboardProcess = processRuns("squeekboard");
+  const motionCommand = !!HARDWARE.motion.detection.command;
 
   return {
     batteryLevel: batteryPath,
@@ -322,6 +366,7 @@ const checkSupport = () => {
     displayStatus: statusPath && statusCommand,
     displayBrightness: statusPath && statusCommand && brightnessPath && brightnessCommand,
     keyboardVisibility: keyboardProcess,
+    motionDetection: motionCommand,
     audioVolume: audioOutput,
     microphoneVolume: audioInput,
     access: {
@@ -1072,6 +1117,50 @@ const setKeyboardVisibility = (visibility, callback = null) => {
 };
 
 /**
+ * Gets the motion log file path from the default `/etc/motion/motion.conf`.
+ *
+ * @returns {string|null} The motion log file path or null if logs are written to the journal.
+ */
+const getMotionDetectionPath = () => {
+  const conf = "/etc/motion/motion.conf";
+  if (!commandExists("motion") || !fs.existsSync(conf)) {
+    return null;
+  }
+  const match = (readFile(conf) || "").match(/^\s*log_file\s+(\S+)/m);
+  if (match && fs.existsSync(match[1])) {
+    return match[1];
+  }
+  return null;
+};
+
+/**
+ * Gets the command to follow motion events using `tail` or `journalctl`.
+ *
+ * @returns {string|null} The command name or null if nothing was found.
+ */
+const getMotionDetectionCommand = () => {
+  if (!commandExists("motion")) {
+    return null;
+  }
+  if (HARDWARE.motion.detection.path) {
+    return readRights(HARDWARE.motion.detection.path) || sudoRights() ? "tail" : null;
+  }
+  return commandExists("journalctl") ? "journalctl" : null;
+};
+
+/**
+ * Gets the current motion detection state reported by the `motion` daemon.
+ *
+ * @returns {string|null} The motion detection state as 'ON'/'OFF' or null if not supported.
+ */
+const getMotionDetection = () => {
+  if (!HARDWARE.support.motionDetection) {
+    return null;
+  }
+  return HARDWARE.motion.detection.active ? "ON" : "OFF";
+};
+
+/**
  * Checks if system upgrades are available using `apt`.
  *
  * @returns {Array<string>} A list of packages that are available for upgrade.
@@ -1167,6 +1256,20 @@ const rebootRights = () => {
 const shutdownRights = () => {
   try {
     cpr.execSync(`sudo -n shutdown --help`, { encoding: "utf8", stdio: "ignore" });
+    return true;
+  } catch {}
+  return false;
+};
+
+/**
+ * Checks if a file path has read access rights.
+ *
+ * @param {string} path - The file path to check.
+ * @returns {boolean} True if read access rights exist.
+ */
+const readRights = (path) => {
+  try {
+    fs.accessSync(path, fs.constants.R_OK);
     return true;
   } catch {}
   return false;
@@ -1500,6 +1603,7 @@ module.exports = {
   setMicrophoneVolume,
   getKeyboardVisibility,
   setKeyboardVisibility,
+  getMotionDetection,
   checkPackageUpgrades,
   shutdownSystem,
   rebootSystem,
