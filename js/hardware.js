@@ -195,17 +195,18 @@ const update = async () => {
     return;
   }
 
+  let displayStatusChanged = false;
+  let displayBrightnessChanged = false;
+
   // Check if display status has changed
   if (HARDWARE.support.displayStatus) {
-    let displayStatusChanged = false;
-
     // Use sysfs dpms path if available
     if (HARDWARE.display.status.path) {
       const power = await readFile(path.join(HARDWARE.display.status.path, "dpms"), false);
       const powerChanged = !!power && power !== HARDWARE.display.status.value.power;
 
       // Update internal status values
-      HARDWARE.display.status.value.power = power;
+      if (power) HARDWARE.display.status.value.power = power;
       displayStatusChanged |= powerChanged;
     }
 
@@ -215,21 +216,13 @@ const update = async () => {
       const connectionChanged = !!connection && connection !== HARDWARE.display.status.value.connection;
 
       // Update internal status values
-      HARDWARE.display.status.value.connection = connection;
+      if (connection) HARDWARE.display.status.value.connection = connection;
       displayStatusChanged |= connectionChanged;
-    }
-
-    // Emit display event if changed
-    if (displayStatusChanged) {
-      EVENTS.emit("updateDisplay");
-      console.info("Update Display Status:", getDisplayStatus());
     }
   }
 
   // Check if display brightness has changed
   if (HARDWARE.support.displayBrightness) {
-    let displayBrightnessChanged = false;
-
     // Use sysfs brightness path if available
     if (HARDWARE.display.brightness.path) {
       const brightness = await readFile(path.join(HARDWARE.display.brightness.path, "brightness"), false);
@@ -239,10 +232,31 @@ const update = async () => {
       HARDWARE.display.brightness.value.brightness = brightness;
       displayBrightnessChanged |= brightnessChanged;
     }
+  }
 
-    // Emit display event if changed
+  // Share one command result with all listeners and retry unsettled transitions.
+  const value = HARDWARE.display.status.value;
+  let status = null;
+  let commandStatusChanged = false;
+  if (HARDWARE.support.displayStatus && (displayStatusChanged || displayBrightnessChanged || value.pending)) {
+    const reported = getDisplayStatus();
+    status = ["ON", "OFF"].includes(reported) ? reported : null;
+    const power = (value.power || "").toLowerCase();
+    const expected = power === "on" ? "ON" : ["off", "standby", "suspend"].includes(power) ? "OFF" : null;
+    value.pending = !status || (expected !== null && status !== expected);
+    commandStatusChanged = status !== null && status !== value.current;
+    if (status !== null) value.current = status;
+    if (value.pending) {
+      console.debug("Display Status Pending:", { power: value.power, status });
+    }
+  }
+
+  if (displayStatusChanged || commandStatusChanged || displayBrightnessChanged) {
+    EVENTS.emit("updateDisplay", status);
+    if (status !== null && (displayStatusChanged || commandStatusChanged)) {
+      console.info("Update Display Status:", status);
+    }
     if (displayBrightnessChanged) {
-      EVENTS.emit("updateDisplay");
       console.info("Update Display Brightness:", getDisplayBrightness());
     }
   }

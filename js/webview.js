@@ -1397,11 +1397,11 @@ const appEvents = async () => {
   // Handle global events
   EVENTS.on("reloadView", reloadView);
   EVENTS.on("updateView", updateView);
-  EVENTS.on("updateDisplay", () => {
-    const status = hardware.getDisplayStatus();
-    if (status) {
-      WEBVIEW.tracker.display[status.toLowerCase()] = new Date();
+  EVENTS.on("updateDisplay", (status) => {
+    if (!["ON", "OFF"].includes(status)) {
+      return;
     }
+    WEBVIEW.tracker.display[status.toLowerCase()] = new Date();
     idleView(status === "OFF");
   });
   EVENTS.on("updateStatus", () => {

@@ -117,8 +117,8 @@ const init = async () => {
         updatePageUrl();
         updateTheme();
       });
-      EVENTS.on("updateDisplay", () => {
-        updateDisplay();
+      EVENTS.on("updateDisplay", (status) => {
+        updateDisplay(status);
         updateLastActive();
       });
       EVENTS.on("updateScreenshot", updateScreenshot);
@@ -631,13 +631,14 @@ const initDisplay = () => {
 /**
  * Updates the display status, brightness via the mqtt connection.
  *
+ * @param {string|null} [status] - Shared display status, or query it when omitted.
  * @returns {Promise<void>}
  */
-const updateDisplay = async () => {
+const updateDisplay = async (status) => {
   if (ARGS.app_disable.includes("mqtt_display")) {
     return;
   }
-  const status = hardware.getDisplayStatus();
+  if (status === undefined) status = hardware.getDisplayStatus();
   const brightness = hardware.getDisplayBrightness();
   publishState("display/color_mode", HARDWARE.support.displayBrightness ? "brightness" : "onoff", true);
   publishState("display/brightness", brightness, true);
