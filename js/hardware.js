@@ -552,22 +552,27 @@ const getIlluminanceLevelPath = () => {
   if (!fs.existsSync(iio)) {
     return null;
   }
+  const sensors = [];
   for (const device of fs.readdirSync(iio)) {
-    const nameFile = path.join(iio, device, "name");
-    const illuminanceFile = path.join(iio, device, "in_illuminance_raw");
-    if (!fs.existsSync(nameFile) || !fs.existsSync(illuminanceFile)) {
+    const devicePath = path.join(iio, device);
+    const nameFile = path.join(devicePath, "name");
+    const illuminanceFiles = ["in_illuminance_input", "in_illuminance_raw"].map((f) => path.join(devicePath, f));
+    if (!fs.existsSync(nameFile) || !illuminanceFiles.some((f) => fs.existsSync(f))) {
       continue;
     }
-    const name = readFile(nameFile);
-    if (name === "als") {
-      return path.join(iio, device);
+    // Prefer a sensor named 'als', otherwise use the first light sensor found
+    if (readFile(nameFile) === "als") {
+      return devicePath;
     }
+    sensors.push(devicePath);
   }
-  return null;
+  return sensors[0] || null;
 };
 
 /**
- * Gets the current ambient light level in lux using `/sys/bus/iio/devices/.../in_illuminance_raw`.
+ * Gets the current ambient light level in lux using `/sys/bus/iio/devices/.../in_illuminance_*`.
+ *
+ * Uses `in_illuminance_input` if available, otherwise `(in_illuminance_raw + offset) * scale`.
  *
  * @returns {number|null} The illuminance level in lux or null if nothing was found.
  */
@@ -575,9 +580,19 @@ const getIlluminanceLevel = () => {
   if (!HARDWARE.support.illuminanceLevel) {
     return null;
   }
-  const illuminance = readFile(`${HARDWARE.illuminance.level.path}/in_illuminance_raw`);
-  if (illuminance) {
-    return parseFloat(illuminance);
+  const file = (name) => path.join(HARDWARE.illuminance.level.path, `in_illuminance_${name}`);
+  const value = (name, fallback) => {
+    const content = fs.existsSync(file(name)) ? readFile(file(name)) : null;
+    const number = content !== null ? parseFloat(content) : NaN;
+    return isNaN(number) ? fallback : number;
+  };
+  const input = value("input", null);
+  if (input !== null) {
+    return Math.round(input * 10) / 10;
+  }
+  const raw = value("raw", null);
+  if (raw !== null) {
+    return Math.round((raw + value("offset", 0)) * value("scale", 1) * 10) / 10;
   }
   return null;
 };
