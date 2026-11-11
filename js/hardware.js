@@ -481,7 +481,7 @@ const getProcessorTemperature = () => {
   if (!fs.existsSync(thermal)) {
     return null;
   }
-  const types = ["cpu-thermal", "x86_pkg_temp", "k10temp", "TCPU", "cpu", "acpitz"];
+  const types = ["cpu-thermal", "package-thermal", "x86_pkg_temp", "k10temp", "TCPU", "cpu", "acpitz"];
   for (const zone of fs.readdirSync(thermal)) {
     const typeFile = path.join(thermal, zone, "type");
     const tempFile = path.join(thermal, zone, "temp");
