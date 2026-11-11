@@ -251,8 +251,9 @@ While using external sensors that directly integrate with Home Assistant and by 
     - `api.app`, `api.args`, `api.events`: The global app infos, arguments and event emitter.
     - `api.utils`: Helper methods of the `utils.js` file (`commandExists`, `readRights`, `writeRights` and `sudoRights`).
     - `api.hardware`: The exported methods of the `hardware.js` file (e.g. `execSyncCommand`, `setDisplayStatus`).
-    - `api.integration`: The MQTT helpers (`publishConfig`, `removeConfig`, `publishState`, `publishAttributes`) and the `client`, `device`, `node` and `root` properties.
-      Entities are identified by an `id`, from which the `unique_id`, `device` and `state_topic` (or `command_topic` for buttons) are added automatically.
+    - `api.integration`: The MQTT helpers (`publishConfig`, `removeConfig`, `publishState`, `publishAttributes`, `subscribe`) and the `client`, `device`, `node` and `root` properties.
+      Entities are identified by an `id`, from which the `unique_id`, `device`, `state_topic` and `command_topic` (for buttons, switches, numbers, selects and texts) are added automatically.
+      Use `subscribe(id, callback)` to receive commands. Ids already used by the app or another extension are rejected.
     - `api.require`: Imports libraries bundled with the app (e.g. `api.require("mqtt")`).
 
     Additional libraries can be installed inside an extension folder using `yarn add [package-name]` and imported with `require("[package-name]")`.

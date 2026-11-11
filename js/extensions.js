@@ -9,6 +9,7 @@ global.EXTENSIONS = global.EXTENSIONS || {
   initialized: false,
   path: null,
   loaded: [],
+  entities: new Map(),
 };
 
 /**
@@ -105,6 +106,21 @@ const call = async (method) => {
 };
 
 /**
+ * Claims an entity id for an extension, so it can't overwrite entities of the app or other extensions.
+ *
+ * @param {string} name - The extension name.
+ * @param {string} id - The entity id.
+ * @returns {void}
+ */
+const claim = (name, id) => {
+  const owner = EXTENSIONS.entities.get(id) || (INTEGRATION.entities.has(id) ? APP.title : null);
+  if (owner && owner !== name) {
+    throw new Error(`Entity '${id}' is already used by ${owner}`);
+  }
+  EXTENSIONS.entities.set(id, name);
+};
+
+/**
  * Creates the api object that is passed to the extension methods.
  *
  * @param {string} name - The extension name.
@@ -112,6 +128,7 @@ const call = async (method) => {
  * @returns {Object} The api object.
  */
 const createApi = (name, dir) => {
+  const commands = {};
   return {
     name: name,
     path: dir,
@@ -122,20 +139,41 @@ const createApi = (name, dir) => {
     hardware: hardware,
     integration: {
       publishConfig: (type, id, config = {}) => {
-        const topic = type === "button" ? "command_topic" : "state_topic";
-        const suffix = type === "button" ? "execute" : "state";
-        return integration.publishConfig(type, {
-          unique_id: `${INTEGRATION.node}_${id}`,
-          [topic]: `${INTEGRATION.root}/${id}/${suffix}`,
-          device: INTEGRATION.device,
-          ...config,
-        });
+        claim(name, id);
+        const root = `${INTEGRATION.root}/${id}`;
+        const topics = type === "button" ? { command_topic: `${root}/execute` } : { state_topic: `${root}/state` };
+        if (["switch", "number", "select", "text"].includes(type)) {
+          topics.command_topic = `${root}/set`;
+        }
+        config = { unique_id: `${INTEGRATION.node}_${id}`, ...topics, device: INTEGRATION.device, ...config };
+        commands[id] = config.command_topic;
+        return integration.publishConfig(type, config);
       },
       removeConfig: (type, id) => {
+        claim(name, id);
         return integration.removeConfig(type, { unique_id: `${INTEGRATION.node}_${id}` });
       },
-      publishState: integration.publishState,
-      publishAttributes: integration.publishAttributes,
+      publishState: (id, state, retain = true) => {
+        claim(name, id);
+        return integration.publishState(id, state, retain);
+      },
+      publishAttributes: (id, attributes, retain = true) => {
+        claim(name, id);
+        return integration.publishAttributes(id, attributes, retain);
+      },
+      subscribe: (id, callback) => {
+        claim(name, id);
+        const topic = commands[id] || `${INTEGRATION.root}/${id}/set`;
+        return INTEGRATION.client
+          .on("message", (t, message) => {
+            if (t === topic) {
+              Promise.resolve()
+                .then(() => callback(message.toString()))
+                .catch((error) => console.error(`Extension ${name} subscribe(${id}) failed:`, error.message));
+            }
+          })
+          .subscribe(topic);
+      },
       get client() {
         return INTEGRATION.client;
       },

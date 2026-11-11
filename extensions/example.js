@@ -1,5 +1,5 @@
 /**
- * Example extension that publishes a counter sensor via MQTT.
+ * Example extension that publishes a counter sensor and a reset button via MQTT.
  *
  * Copy this file into the `~/.config/touchkio/extensions` folder and restart the app.
  */
@@ -28,6 +28,15 @@ module.exports = {
       icon: "mdi:counter",
     });
     api.integration.publishState("example_counter", counter);
+
+    api.integration.publishConfig("button", "example_reset", {
+      name: "Example Reset",
+      icon: "mdi:restore",
+    });
+    api.integration.subscribe("example_reset", () => {
+      counter = 0;
+      api.integration.publishState("example_counter", counter);
+    });
   },
 
   /**
