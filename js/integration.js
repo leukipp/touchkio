@@ -4,6 +4,7 @@ const { app } = require("electron");
 
 global.INTEGRATION = global.INTEGRATION || {
   initialized: false,
+  entities: new Set(),
 };
 
 /**
@@ -104,6 +105,7 @@ const init = async () => {
 
       // Integration initialized
       INTEGRATION.initialized = true;
+      EVENTS.emit("initIntegration");
 
       // Register global events
       EVENTS.on("updateApp", updateApp);
@@ -219,6 +221,7 @@ const removeConfig = (type, config, retain = true) => {
   const path = config.unique_id.replace(`${INTEGRATION.node}_`, "");
   const root = `${INTEGRATION.discovery}/${type}/${INTEGRATION.node}/${path}/config`;
   console.debug(`integration.js: removeConfig(${path})`);
+  INTEGRATION.entities.add(path);
   return publish(root, JSON.stringify({}), retain);
 };
 
@@ -237,6 +240,7 @@ const publishConfig = (type, config, retain = true) => {
   const path = config.unique_id.replace(`${INTEGRATION.node}_`, "");
   const root = `${INTEGRATION.discovery}/${type}/${INTEGRATION.node}/${path}/config`;
   console.debug(`integration.js: publishConfig(${path})`);
+  INTEGRATION.entities.add(path);
   return publish(root, JSON.stringify(config), retain);
 };
 
@@ -1636,4 +1640,8 @@ const initHeartbeat = () => {
 module.exports = {
   init,
   update,
+  removeConfig,
+  publishConfig,
+  publishAttributes,
+  publishState,
 };

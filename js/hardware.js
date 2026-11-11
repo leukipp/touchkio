@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const fsp = require("fs/promises");
 const cpr = require("child_process");
+const { sudoRights, writeRights, commandExists } = require("./utils");
 
 global.HARDWARE = global.HARDWARE || {
   initialized: false,
@@ -1121,19 +1122,6 @@ const rebootSystem = (callback = null) => {
 };
 
 /**
- * Checks if `sudo` commands can run without a password.
- *
- * @returns {boolean} True if password-less sudo rights exist.
- */
-const sudoRights = () => {
-  try {
-    cpr.execSync(`sudo -n true`, { encoding: "utf8", stdio: "ignore" });
-    return true;
-  } catch {}
-  return false;
-};
-
-/**
  * Checks if `apt install` can run via sudo without a password.
  *
  * @returns {boolean} True if password-less apt install rights exist.
@@ -1173,20 +1161,6 @@ const shutdownRights = () => {
 };
 
 /**
- * Checks if a file path has write access rights.
- *
- * @param {string} path - The file path to check.
- * @returns {boolean} True if write access rights exist.
- */
-const writeRights = (path) => {
-  try {
-    fs.accessSync(path, fs.constants.R_OK | fs.constants.W_OK);
-    return true;
-  } catch {}
-  return false;
-};
-
-/**
  * Checks if a service is running using `systemctl`.
  *
  * @param {string} name - The service name to check.
@@ -1209,20 +1183,6 @@ const serviceRuns = (name) => {
 const processRuns = (name) => {
   try {
     cpr.execSync(`pidof ${name}`, { encoding: "utf8", stdio: "ignore" });
-    return true;
-  } catch {}
-  return false;
-};
-
-/**
- * Checks if a command is available using `which`.
- *
- * @param {string} name - The command name to check.
- * @returns {boolean} True if the command is available.
- */
-const commandExists = (name) => {
-  try {
-    cpr.execSync(`which ${name}`, { encoding: "utf8", stdio: "ignore" });
     return true;
   } catch {}
   return false;

@@ -5,6 +5,7 @@ const readline = require("readline/promises");
 const integration = require("./js/integration");
 const hardware = require("./js/hardware");
 const webview = require("./js/webview");
+const extensions = require("./js/extensions");
 const log = require("electron-log");
 const { app, powerMonitor } = require("electron");
 const Bonjour = require("bonjour-service");
@@ -45,6 +46,14 @@ app.whenReady().then(async () => {
     if (!(await init())) {
       console.debug(`${name}: init() --> aborted`);
       break;
+    }
+  }
+
+  // Extensions init function
+  if (!APP.exiting) {
+    console.debug("extensions.js: init()");
+    if (!(await extensions.init())) {
+      console.debug("extensions.js: init() --> aborted");
     }
   }
 });

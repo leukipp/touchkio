@@ -202,13 +202,14 @@ To make this permanent, consider adding the export variables into the `~/.bashrc
 These flags are primarily meant for development and debugging, but may also come in handy for some special use cases.
 They can be added into `Arguments.json`, but may change in future versions.
 
-| Name            | Default      | Description                                                                |
-| --------------- | ------------ | -------------------------------------------------------------------------- |
-| `--app-kiosk`   | `fullscreen` | Initial window status (`framed`, `fullscreen`, `maximized` or `minimized`) |
-| `--app-reset`   | -            | Reset stored data (`session` or `arguments`)                               |
-| `--app-disable` | -            | List of disabled features (`web_*` or `mqtt_*`)                            |
-| `--app-early`   | -            | Include pre-release versions for app updates                               |
-| `--app-debug`   | -            | Opens dev tools and raises the log level                                   |
+| Name               | Default                         | Description                                                                |
+| ------------------ | ------------------------------- | -------------------------------------------------------------------------- |
+| `--app-kiosk`      | `fullscreen`                    | Initial window status (`framed`, `fullscreen`, `maximized` or `minimized`) |
+| `--app-reset`      | -                               | Reset stored data (`session` or `arguments`)                               |
+| `--app-disable`    | -                               | List of disabled features (`web_*`, `mqtt_*`, `ext_*` or `extensions`)     |
+| `--app-early`      | -                               | Include pre-release versions for app updates                               |
+| `--app-debug`      | -                               | Opens dev tools and raises the log level                                   |
+| `--app-extensions` | `~/.config/touchkio/extensions` | Folder to load custom [extensions](#extensions) from                       |
 
 For example:
 ```bash
@@ -232,34 +233,45 @@ In the `~/.config/touchkio/Arguments.json` file:
 
 <details><summary>You probably won't need this.</summary><div></br>
 
-Incorporating custom extensions and external hardware (like motion sensors, ultrasonic sensors, cameras, relays and switches) via **Raspberry Pi's GPIO/USB** involves several steps.
+Incorporating custom extensions and external hardware (like motion sensors, ultrasonic sensors, cameras, relays and switches) via **Raspberry Pi's GPIO/USB** can be done by placing JavaScript files into the `~/.config/touchkio/extensions` folder.
 While using external sensors that directly integrate with Home Assistant and by utilizing automation's to interact with **TouchKio via MQTT** is generally easier and **recommended**, here's a rough guide on how to proceed with custom hardware integration:
 
-1. **Install Node.js library**: Use Yarn to add a library that can interact with your hardware (GPIO, USB, etc.):
-    ```bash
-    yarn add [package-name]
-    ```
-    This will update the `package.json` file with the required dependencies.
-
-2. **Import the library**: Open the `hardware.js` file and import the library using:
+1. **Create an extension**: Each `[name].js` file or `[name]/` folder (containing an `index.js` or `package.json`) inside the extensions folder is loaded on startup.
+    Files starting with `.` or `_` are ignored, single extensions can be disabled via `--app-disable=ext_[name]`.
+    An extension can export any of the following methods, each of them receives an `api` object:
     ```javascript
-    const package = require("[package-name]");
-    ```
-    Then implement your custom methods and logic to handle the hardware. Don't forget to export the methods at the end of the file:
-    ```javascript
-    module.exports = { ... };
+    module.exports = {
+      init: async (api) => { ... },            // called on startup
+      initIntegration: async (api) => { ... }, // called once MQTT is connected
+      update: async (api) => { ... },          // called every minute
+    };
     ```
 
-3. **Expose sensors via MQTT**: If you want to publish sensor data through MQTT, implement some init and update methods in the `integration.js` file:
+2. **Use the api object**: The `api` object provides access to the app internals:
+    - `api.app`, `api.args`, `api.events`: The global app infos, arguments and event emitter.
+    - `api.utils`: Helper methods of the `utils.js` file (`commandExists`, `readRights`, `writeRights` and `sudoRights`).
+    - `api.hardware`: The exported methods of the `hardware.js` file (e.g. `execSyncCommand`, `setDisplayStatus`).
+    - `api.integration`: The MQTT helpers (`publishConfig`, `removeConfig`, `publishState`, `publishAttributes`, `subscribe`) and the `client`, `device`, `node` and `root` properties.
+      Entities are identified by an `id`, from which the `unique_id`, `device`, `state_topic` and `command_topic` (for buttons, switches, numbers, selects and texts) are added automatically.
+      Use `subscribe(id, callback)` to receive commands. Ids already used by the app or another extension are rejected.
+    - `api.require`: Imports libraries bundled with the app (e.g. `api.require("mqtt")`).
+
+    Additional libraries can be installed inside an extension folder using `yarn add [package-name]` and imported with `require("[package-name]")`.
+
+3. **Expose sensors via MQTT**: If you want to publish sensor data through MQTT, use the `initIntegration` method:
     ```javascript
-    const initCustomSensor = (client) => { ... }
-    const updateCustomSensor = (client) => { ... }
-    ```
-    To get started have a look at the existing methods. Don't forget to call the custom sensor initialization method inside the global init method, where the MQTT connection is established:
-    ```javascript
-    const init = async (args) => { ... }
+    module.exports = {
+      initIntegration: async (api) => {
+        api.integration.publishConfig("binary_sensor", "custom_sensor", { name: "Custom Sensor" });
+        api.integration.publishState("custom_sensor", "ON");
+      },
+    };
     ```
     From there, you will need to further refine your code by tinkering with sensor updates. This can be achieved through either periodic update calls or event based triggers.
+    A complete example can be found in the [example.js](https://github.com/leukipp/touchkio/blob/main/extensions/example.js) file.
+
+A list of public extensions maintained by the community can be found in the [extensions](https://github.com/leukipp/touchkio/blob/main/extensions/README.md) folder.
+Extensions run with the same privileges as the app itself and are **not officially supported**, use them at your own risk.
 
 </div></details>
 

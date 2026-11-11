@@ -20,7 +20,7 @@ const generateBuildFile = (platform, arch, maker) => {
 
 module.exports = {
   packagerConfig: {
-    ignore: [".github", ".gitignore", "install.sh", "forge.config.js"],
+    ignore: [".github", ".gitignore", "install.sh", "forge.config.js", "^/extensions($|/)"],
   },
   makers: [
     {
