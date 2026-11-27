@@ -38,6 +38,7 @@ const init = async () => {
   INTEGRATION.discovery = discovery;
   INTEGRATION.node = `rpi_${deviceId}`;
   INTEGRATION.root = `${APP.name}/${INTEGRATION.node}`;
+  INTEGRATION.availability = `${INTEGRATION.root}/availability`;
   INTEGRATION.device = {
     name: `${APP.title} ${deviceName}`,
     model: model,
@@ -51,7 +52,7 @@ const init = async () => {
   // Init options
   const masked = password && "*".repeat(password.length);
   const options = user && password ? { username: user, password: password } : {};
-  options.will = { topic: `${INTEGRATION.root}/kiosk/state`, payload: "Terminated", qos: 1, retain: true };
+  options.will = { topic: INTEGRATION.availability, payload: "offline", qos: 1, retain: true };
   options.rejectUnauthorized = !("ignore_certificate_errors" in ARGS);
   options.reconnectPeriod = 10 * 1000;
 
@@ -127,6 +128,7 @@ const init = async () => {
     .on("connect", () => {
       console.info(`MQTT Connected: ${connection}`);
       process.stdout.write("\n");
+      publish(INTEGRATION.availability, "online", true);
       updateKiosk();
     })
     .on("offline", () => {
@@ -237,7 +239,7 @@ const publishConfig = (type, config, retain = true) => {
   const path = config.unique_id.replace(`${INTEGRATION.node}_`, "");
   const root = `${INTEGRATION.discovery}/${type}/${INTEGRATION.node}/${path}/config`;
   console.debug(`integration.js: publishConfig(${path})`);
-  return publish(root, JSON.stringify(config), retain);
+  return publish(root, JSON.stringify({ availability_topic: INTEGRATION.availability, ...config }), retain);
 };
 
 /**
