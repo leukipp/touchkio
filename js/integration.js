@@ -1003,6 +1003,7 @@ const initModel = () => {
     state_topic: `${root}/state`,
     json_attributes_topic: `${root}/attributes`,
     value_template: "{{ value }}",
+    entity_category: "diagnostic",
     icon: "mdi:raspberry-pi",
     device: INTEGRATION.device,
   };
@@ -1040,6 +1041,7 @@ const initSerialNumber = () => {
     unique_id: `${INTEGRATION.node}_serial_number`,
     state_topic: `${root}/state`,
     value_template: "{{ value }}",
+    entity_category: "diagnostic",
     icon: "mdi:hexadecimal",
     device: INTEGRATION.device,
   };
@@ -1077,6 +1079,7 @@ const initNetworkAddress = () => {
     state_topic: `${root}/state`,
     json_attributes_topic: `${root}/attributes`,
     value_template: "{{ value }}",
+    entity_category: "diagnostic",
     icon: "mdi:ip-network",
     device: INTEGRATION.device,
   };
@@ -1117,6 +1120,7 @@ const initHostName = () => {
     unique_id: `${INTEGRATION.node}_host_name`,
     state_topic: `${root}/state`,
     value_template: "{{ value }}",
+    entity_category: "diagnostic",
     icon: "mdi:console-network",
     device: INTEGRATION.device,
   };
@@ -1155,6 +1159,8 @@ const initUpTime = () => {
     json_attributes_topic: `${root}/attributes`,
     value_template: "{{ (value | float) | round(0) }}",
     unit_of_measurement: "min",
+    device_class: "duration",
+    entity_category: "diagnostic",
     icon: "mdi:timeline-clock",
     device: INTEGRATION.device,
   };
@@ -1197,6 +1203,8 @@ const initMemorySize = () => {
     state_topic: `${root}/state`,
     value_template: "{{ (value | float) | round(2) }}",
     unit_of_measurement: "GiB",
+    device_class: "data_size",
+    entity_category: "diagnostic",
     icon: "mdi:memory",
     device: INTEGRATION.device,
   };
@@ -1234,6 +1242,7 @@ const initMemoryUsage = () => {
     state_topic: `${root}/state`,
     value_template: "{{ (value | float) | round(0) }}",
     unit_of_measurement: "%",
+    state_class: "measurement",
     icon: "mdi:memory-arrow-down",
     device: INTEGRATION.device,
   };
@@ -1271,6 +1280,7 @@ const initProcessorUsage = () => {
     state_topic: `${root}/state`,
     value_template: "{{ (value | float) | round(0) }}",
     unit_of_measurement: "%",
+    state_class: "measurement",
     icon: "mdi:cpu-64-bit",
     device: INTEGRATION.device,
   };
@@ -1308,6 +1318,8 @@ const initProcessorTemperature = () => {
     state_topic: `${root}/state`,
     value_template: "{{ (value | float) | round(0) }}",
     unit_of_measurement: "°C",
+    device_class: "temperature",
+    state_class: "measurement",
     icon: "mdi:radiator",
     device: INTEGRATION.device,
   };
@@ -1345,6 +1357,8 @@ const initBatteryLevel = () => {
     state_topic: `${root}/state`,
     value_template: "{{ (value | float) | round(0) }}",
     unit_of_measurement: "%",
+    device_class: "battery",
+    state_class: "measurement",
     icon: "mdi:battery-medium",
     device: INTEGRATION.device,
   };
@@ -1383,6 +1397,7 @@ const initIlluminanceLevel = () => {
     value_template: "{{ (value | float) | round(0) }}",
     unit_of_measurement: "lx",
     device_class: "illuminance",
+    state_class: "measurement",
     icon: "mdi:brightness-5",
     device: INTEGRATION.device,
   };
@@ -1465,6 +1480,7 @@ const initLastActive = () => {
     json_attributes_topic: `${root}/attributes`,
     value_template: "{{ (value | float) | round(0) }}",
     unit_of_measurement: "min",
+    device_class: "duration",
     icon: "mdi:gesture-tap-hold",
     device: INTEGRATION.device,
   };
